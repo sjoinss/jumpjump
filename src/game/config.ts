@@ -74,6 +74,39 @@ export const CONFIG = {
     platformWidthShrinkPerCompanion: 0,
   },
 
+  /** 특수 발판 (기획서 3-4. 초기 제안) */
+  special: {
+    /** 고점프: 점프 속도 배율. 높이는 배율의 제곱 (1.35 → 약 1.8배) */
+    highJumpVelocityMultiplier: 1.35,
+    /** 일회용: 밟은 뒤 부서지며 사라지는 시간 */
+    oneTimeBreakDuration: 0.3,
+    /**
+     * 점수대별 등장 확률. 발판은 보통 1개에 1점이라 "몇 번째로 만든 발판인지"를 점수 대신 쓴다.
+     * from 이상인 마지막 줄이 적용된다. 나머지 확률은 기본 발판.
+     */
+    table: [
+      { from: 0, highJump: 0, oneTime: 0 },
+      { from: 20, highJump: 0.15, oneTime: 0 },
+      { from: 40, highJump: 0.15, oneTime: 0.15 },
+      { from: 150, highJump: 0.18, oneTime: 0.22 },
+    ],
+  },
+
+  /** 지역 (기획서 3-5). startScore에서 시작하고 경계 ±blend점 구간에서 섞인다 */
+  regions: {
+    list: [
+      { id: "cave", name: "동굴", startScore: 0 },
+      { id: "ground", name: "지상", startScore: 80 },
+      { id: "sky", name: "하늘", startScore: 200 },
+      { id: "space", name: "우주", startScore: 380 },
+    ],
+    blend: 20,
+    /** 배경이 목표 지역 색으로 따라가는 속도 (지역 단위/초). 점수가 1점씩 오를 때 뚝뚝 끊기지 않게 */
+    followSpeed: 0.8,
+    /** 지역 이름 배너 표시 시간(초) */
+    bannerSeconds: 2,
+  },
+
   character: {
     /** 착지 순간 착지 프레임을 보여주는 시간 (0.15~0.25초 조절) */
     landingFrameDuration: 0.2,

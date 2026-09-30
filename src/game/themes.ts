@@ -1,3 +1,5 @@
+import type { RegionId } from "./regions";
+
 /**
  * 테마 목록. UI 색은 styles/tokens.css의 [data-theme]에, 게임 장면 색은 여기 SCENE에 둔다.
  * 테마를 추가할 때는 두 곳 + THEME_IDS에 같은 id로 넣는다.
@@ -39,16 +41,20 @@ export function isThemeId(v: unknown): v is ThemeId {
   return typeof v === "string" && (THEME_IDS as readonly string[]).includes(v);
 }
 
-/** 게임 캔버스 장면 색 */
+/** 지역 하나의 하늘 (위 → 아래 계단식 띠) */
+export type RegionSky = { top: string; bottom: string };
+
+/** 게임 캔버스 장면 색. 지역(동굴·지상·하늘·우주)마다 하늘이 다르고 장식 색은 테마 공통 */
 export type ScenePalette = {
-  skyTop: string;
-  skyBottom: string;
+  regions: Record<RegionId, RegionSky>;
   cloud: string;
   sparkle: string;
   sparkleCore: string;
   /** 반짝이 개수 배율 (꿈나라는 별이 많다) */
   sparkleDensity: number;
-  moon: string | null;
+  /** 동굴 수정·우주 행성 같은 포인트 장식 색 */
+  accent: string;
+  moon: string;
   ground: {
     top: string;
     topEdge: string;
@@ -60,19 +66,27 @@ export type ScenePalette = {
   };
   /** 캐릭터 그림자 */
   shadow: string;
-  /** 캔버스 뒤 CSS 배경 (캔버스가 그려지기 전 잠깐 보인다) */
+  /** 캔버스 뒤 CSS 배경 (캔버스가 그려지기 전 잠깐 보인다) = 동굴 하늘 윗색 */
   cssBackground: string;
 };
 
+/**
+ * 우주도 너무 어두워지지 않게 한다: 캐릭터 외곽선(잉크)은 묻혀도 채우기 색과 HUD가 또렷하도록 (기획서 3-5, 13-3).
+ */
 export const SCENE: Record<ThemeId, ScenePalette> = {
   dot: {
-    skyTop: "#dcd0fb",
-    skyBottom: "#ffe6f1",
+    regions: {
+      cave: { top: "#cbbdf3", bottom: "#efe4fb" },
+      ground: { top: "#bfe3ff", bottom: "#fff1d6" },
+      sky: { top: "#9fd3ff", bottom: "#dff1ff" },
+      space: { top: "#5d5bb0", bottom: "#8f86d8" },
+    },
     cloud: "rgba(255,255,255,0.85)",
     sparkle: "#ffffff",
     sparkleCore: "#fff3b0",
     sparkleDensity: 1,
-    moon: null,
+    accent: "#ffb3d9",
+    moon: "#fff4c7",
     ground: {
       top: "#a8e6c8",
       topEdge: "#6cc59a",
@@ -83,16 +97,21 @@ export const SCENE: Record<ThemeId, ScenePalette> = {
       flowerCore: "#fff3b0",
     },
     shadow: "rgba(61,44,94,0.18)",
-    cssBackground: "#dcd0fb",
+    cssBackground: "#cbbdf3",
   },
   cotton: {
-    skyTop: "#ffe0ee",
-    skyBottom: "#fff6e6",
+    regions: {
+      cave: { top: "#f1cfe6", bottom: "#ffeef6" },
+      ground: { top: "#d2ecff", bottom: "#fff4e6" },
+      sky: { top: "#bfe2ff", bottom: "#eef8ff" },
+      space: { top: "#7a6fc2", bottom: "#b1a5e6" },
+    },
     cloud: "rgba(255,255,255,0.95)",
     sparkle: "#ffffff",
     sparkleCore: "#ffc2da",
     sparkleDensity: 0.8,
-    moon: null,
+    accent: "#ffc2da",
+    moon: "#fff6d8",
     ground: {
       top: "#ffd1e3",
       topEdge: "#f3a0c2",
@@ -103,15 +122,20 @@ export const SCENE: Record<ThemeId, ScenePalette> = {
       flowerCore: "#ffffff",
     },
     shadow: "rgba(231,163,194,0.35)",
-    cssBackground: "#ffe0ee",
+    cssBackground: "#f1cfe6",
   },
   dream: {
-    skyTop: "#a9a2ec",
-    skyBottom: "#ffd9ef",
-    cloud: "rgba(245,240,255,0.7)",
+    regions: {
+      cave: { top: "#a79ee9", bottom: "#d6ccf8" },
+      ground: { top: "#b9d5ff", bottom: "#ffe2f3" },
+      sky: { top: "#aac9ff", bottom: "#e3eeff" },
+      space: { top: "#4a4598", bottom: "#7b6fcc" },
+    },
+    cloud: "rgba(245,240,255,0.75)",
     sparkle: "#fff8d6",
     sparkleCore: "#ffffff",
     sparkleDensity: 2,
+    accent: "#f5b8e8",
     moon: "#fff4c7",
     ground: {
       top: "#cfc1ff",
@@ -123,6 +147,6 @@ export const SCENE: Record<ThemeId, ScenePalette> = {
       flowerCore: "#fff8d6",
     },
     shadow: "rgba(51,41,92,0.22)",
-    cssBackground: "#a9a2ec",
+    cssBackground: "#a79ee9",
   },
 };

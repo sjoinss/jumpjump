@@ -38,8 +38,14 @@ test("최대 점프 높이와 간격 상한: 어느 높이에서도 80%를 넘�
 test("생성된 발판 사이 간격은 항상 도달 가능", () => {
   const w = make(7);
   w.launch();
-  run(w, 30, autopilot);
-  const ys = w.platforms.filter((p) => p.kind === "basic").map((p) => p.y).sort((a, b) => a - b);
+  // 일회용 발판은 밟으면 사라지므로, 만들어진 발판을 모두 기록해서 본다
+  const seen = new Map<number, number>();
+  run(w, 30, (world) => {
+    for (const p of world.platforms) if (p.kind !== "ground") seen.set(p.id, p.y);
+    return autopilot(world);
+  });
+  assert.ok(seen.size > 30);
+  const ys = [...seen.values()].sort((a, b) => a - b);
   for (let i = 1; i < ys.length; i++) assert.ok(ys[i] - ys[i - 1] <= maxJumpHeight() * 0.8 + 1e-6);
 });
 
@@ -130,4 +136,72 @@ test("좌우 벽에서 멈춘다 (반대편으로 넘어가지 않음)", () => {
   assert.equal(w.hero.x, 0);
   run(w, 3, () => ({ kind: "axis", dir: 1 }));
   assert.equal(w.hero.x, CONFIG.view.width - CONFIG.character.width);
+});
+
+// ── 8단계: 특수 발판·지역 ──
+import { pickKind } from "../src/game/world";
+import { regionBlendAt, regionIndexAt, regionName } from "../src/game/regions";
+
+test("특수 발판 확률표: 20점대 전엔 기본만, 고점프는 20부터, 일회용은 40부터", () => {
+  for (const roll of [0, 0.1, 0.5, 0.99]) assert.equal(pickKind(5, roll), "basic");
+  assert.equal(pickKind(25, 0.05), "highJump");
+  assert.equal(pickKind(25, 0.2), "basic", "20점대엔 일회용 없음");
+  assert.equal(pickKind(45, 0.05), "highJump");
+  assert.equal(pickKind(45, 0.2), "oneTime");
+  assert.equal(pickKind(45, 0.5), "basic");
+});
+
+test("고점프 발판은 기본보다 높이 튄다", () => {
+  const peak = (kind: "basic" | "highJump") => {
+    const w = make();
+    w.platforms = [{ id: 1, kind, x: w.hero.x, y: 0, width: 128, touched: false }];
+    let top = 0;
+    for (let i = 0; i < 240; i++) {
+      w.step(DT, NONE);
+      top = Math.max(top, w.hero.y);
+    }
+    return top;
+  };
+  const basic = peak("basic");
+  const high = peak("highJump");
+  const m = CONFIG.special.highJumpVelocityMultiplier;
+  assert.ok(Math.abs(high / basic - m * m) < 0.05, `ratio ${high / basic}`);
+});
+
+test("일회용 발판: 한 번 밟으면 부서지고, 잠시 뒤 사라지며 다시 밟을 수 없다", () => {
+  const w = make();
+  w.platforms = [{ id: 7, kind: "oneTime", x: w.hero.x, y: -1, width: 128, touched: false }];
+  w.hero.y = 0;
+  const ev = run(w, 0.05);
+  assert.ok(ev.some((e) => e.type === "land" && e.platform.id === 7));
+  assert.equal(w.platforms.find((p) => p.id === 7)?.broken !== undefined, true, "부서짐 표시");
+  run(w, CONFIG.special.oneTimeBreakDuration + 0.05);
+  assert.equal(w.platforms.some((p) => p.id === 7), false, "사라짐");
+});
+
+test("지역: 경계 점수에서 들어가고, 한 판에 지역마다 한 번만 알린다", () => {
+  assert.equal(regionIndexAt(0), 0);
+  assert.equal(regionIndexAt(79), 0);
+  assert.equal(regionIndexAt(80), 1);
+  assert.equal(regionIndexAt(380), 3);
+  assert.equal(regionName(2), "하늘");
+
+  const w = make();
+  w.score = 79;
+  w.platforms = [{ id: 1, kind: "basic", x: w.hero.x, y: -1, width: 128, touched: false }];
+  const ev = run(w, 0.05);
+  assert.deepEqual(ev.filter((e) => e.type === "region"), [{ type: "region", index: 1 }]);
+  w.platforms.push({ id: 2, kind: "basic", x: w.hero.x, y: w.hero.y - 1, width: 128, touched: false });
+  const again = run(w, 2);
+  assert.equal(again.filter((e) => e.type === "region").length, 0, "지상은 이미 알림");
+});
+
+test("배경 섞임: 경계 ±20점에서 0→1, 그 밖은 한 지역", () => {
+  assert.equal(regionBlendAt(0), 0);
+  assert.equal(regionBlendAt(59), 0);
+  assert.equal(regionBlendAt(80), 0.5);
+  assert.equal(regionBlendAt(100), 1);
+  assert.equal(regionBlendAt(150), 1);
+  assert.equal(regionBlendAt(200), 1.5);
+  assert.equal(regionBlendAt(1000), 3);
 });

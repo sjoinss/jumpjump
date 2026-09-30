@@ -1,4 +1,5 @@
 import { CONFIG } from "./config";
+import { regionIndexAt } from "./regions";
 import { stepMover, type Mover } from "../input/movement";
 import type { MoveIntent } from "../input/controller";
 
@@ -8,7 +9,7 @@ import type { MoveIntent } from "../input/controller";
  * 카메라 cameraY는 "화면 맨 아래"의 세계 높이다.
  */
 
-export type PlatformKind = "ground" | "basic";
+export type PlatformKind = "ground" | "basic" | "highJump" | "oneTime";
 
 export type Platform = {
   id: number;
@@ -19,12 +20,16 @@ export type Platform = {
   width: number;
   /** 한 번이라도 밟았는지 (점수는 처음 밟을 때만) */
   touched: boolean;
+  /** 일회용 발판이 부서진 뒤 지난 시간. 부서진 발판은 밟을 수 없고 잠시 뒤 사라진다 */
+  broken?: number;
 };
 
 export type WorldEvent =
   | { type: "land"; platform: Platform; first: boolean }
   | { type: "score"; score: number }
-  | { type: "gameover"; score: number };
+  | { type: "gameover"; score: number }
+  /** 새 지역에 처음 들어옴 (한 판에 지역마다 한 번) */
+  | { type: "region"; index: number };
 
 export type Rng = () => number;
 
@@ -38,6 +43,15 @@ export function mulberry32(seed: number): Rng {
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
+}
+
+/** n번째로 만드는 발판의 종류 (점수대별 확률표, 기획서 3-4) */
+export function pickKind(index: number, roll: number): PlatformKind {
+  let row: (typeof CONFIG.special.table)[number] = CONFIG.special.table[0];
+  for (const r of CONFIG.special.table) if (index >= r.from) row = r;
+  if (roll < row.highJump) return "highJump";
+  if (roll < row.highJump + row.oneTime) return "oneTime";
+  return "basic";
 }
 
 /** 최대 점프 높이 = v² / 2g */
@@ -73,6 +87,8 @@ export class World {
   cameraY = 0;
   score = 0;
   over = false;
+  /** 이번 판에서 들어와 본 가장 먼 지역 */
+  region = 0;
   private nextId = 1;
   private topY = 0;
 
@@ -107,6 +123,7 @@ export class World {
     this.prev = { x: this.hero.x, y: 0, cameraY: this.cameraY };
     this.score = 0;
     this.over = false;
+    this.region = 0;
     this.nextId = 1;
     this.platforms = [{ id: 0, kind: "ground", x: -w, y: 0, width: w * 3, touched: true }];
     this.topY = CONFIG.world.firstPlatformY - gapAt(0);
@@ -136,19 +153,28 @@ export class World {
     if (h.vy <= 0) {
       let hit: Platform | null = null;
       for (const p of this.platforms) {
+        if (p.broken !== undefined) continue;
         if (prevFeet < p.y || h.y > p.y) continue;
         if (h.x + this.heroWidth <= p.x || h.x >= p.x + p.width) continue;
         if (!hit || p.y > hit.y) hit = p;
       }
       if (hit) {
         h.y = hit.y;
-        h.vy = CONFIG.physics.jumpVelocity;
+        const boost = hit.kind === "highJump" ? CONFIG.special.highJumpVelocityMultiplier : 1;
+        h.vy = CONFIG.physics.jumpVelocity * boost;
         const first = !hit.touched;
         hit.touched = true;
+        if (hit.kind === "oneTime") hit.broken = 0;
         events.push({ type: "land", platform: hit, first });
         if (first && hit.kind !== "ground") {
           this.score += 1;
           events.push({ type: "score", score: this.score });
+          // 경계를 넘으면 새 지역 (한 발판에 1점이라 지역을 건너뛰지 않지만 혹시 몰라 하나씩)
+          const reached = regionIndexAt(this.score);
+          while (this.region < reached) {
+            this.region += 1;
+            events.push({ type: "region", index: this.region });
+          }
         }
       }
     }
@@ -157,8 +183,14 @@ export class World {
     const target = h.y - this.playHeight * (1 - CONFIG.world.cameraRatio);
     if (target > this.cameraY) this.cameraY = target;
 
+    // 부서진 일회용 발판: 잠깐 떨어지는 모습을 보여준 뒤 없앤다
+    for (const p of this.platforms) if (p.broken !== undefined) p.broken += dt;
+    const breakTime = CONFIG.special.oneTimeBreakDuration;
+
     this.spawn();
-    this.platforms = this.platforms.filter((p) => p.y >= this.cameraY - CONFIG.world.removeBelow);
+    this.platforms = this.platforms.filter(
+      (p) => p.y >= this.cameraY - CONFIG.world.removeBelow && (p.broken === undefined || p.broken < breakTime),
+    );
 
     // 화면 아래로 완전히 벗어나면 끝
     if (h.y + CONFIG.character.height < this.cameraY) {
@@ -176,7 +208,8 @@ export class World {
       const gap = gapAt(this.topY) * (1 - CONFIG.world.gapJitter * this.rng());
       this.topY += gap;
       const x = this.rng() * (CONFIG.view.width - width);
-      this.platforms.push({ id: this.nextId++, kind: "basic", x, y: this.topY, width, touched: false });
+      const kind = pickKind(this.nextId, this.rng());
+      this.platforms.push({ id: this.nextId++, kind, x, y: this.topY, width, touched: false });
     }
   }
 }

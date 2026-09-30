@@ -8,6 +8,9 @@ import { needsBackupReminder } from "@/lib/dataFile";
 import type { BestScores, Character } from "@/lib/schema";
 import { ControlsGuide } from "../ControlsGuide";
 import { GameOverDialog, type GameResult } from "../GameOverDialog";
+import { RegionBanner } from "../RegionBanner";
+import { regionName } from "@/game/regions";
+import { CONFIG } from "@/game/config";
 import { useSaveData, useStorageBanner } from "../SaveProvider";
 import { Button, IconButton } from "../ui/Button";
 import { Dialog } from "../ui/Dialog";
@@ -38,6 +41,9 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [score, setScore] = useState(0);
   const [result, setResult] = useState<GameResult | null>(null);
+  /** 지역 이름 배너. id가 바뀔 때마다 새로 뜬다 */
+  const [regionBanner, setRegionBanner] = useState<{ id: number; name: string } | null>(null);
+  const bannerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** 판 시작 시점의 동료 최대 인원 (최고 기록 구분 기준, 기획서 7-8). 저장하지 않는 런타임 값 */
   const runRef = useRef({ companionMaxAtStart: 0 });
   const [data, update] = useSaveData();
@@ -132,6 +138,7 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
   const backToStart = useCallback(() => {
     setMenuOpen(false);
     setResult(null);
+    setRegionBanner(null);
     engineRef.current?.showReady();
     logoRef.current?.focus({ preventScroll: true });
   }, []);
@@ -155,6 +162,13 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
         if (s > 0 && s % 10 === 0) announceRef.current(`${s}점`);
       },
       onGameOver: (s) => onGameOverRef.current(s),
+      onRegion: (index) => {
+        const name = regionName(index);
+        setRegionBanner((prev) => ({ id: (prev?.id ?? 0) + 1, name }));
+        announceRef.current(name);
+        if (bannerTimer.current) clearTimeout(bannerTimer.current);
+        bannerTimer.current = setTimeout(() => setRegionBanner(null), CONFIG.regions.bannerSeconds * 1000 + 200);
+      },
     });
     engine.setPlatformSprites(dataRef.current.platforms);
     // 개발 중 디버깅용 (배포 빌드에는 들어가지 않음)
@@ -174,6 +188,7 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
     logoRef.current?.focus({ preventScroll: true });
 
     return () => {
+      if (bannerTimer.current) clearTimeout(bannerTimer.current);
       ro.disconnect();
       window.removeEventListener("resize", fit);
       engine.destroy();
@@ -186,6 +201,12 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
   useEffect(() => {
     engineRef.current?.setTheme(theme);
   }, [theme]);
+
+  // 특수 발판 표식 (색약 대응) 설정
+  const markers = data.settings.specialPlatformMarker;
+  useEffect(() => {
+    engineRef.current?.setMarkers(markers);
+  }, [markers]);
 
   // 에디터에서 발판을 바꾸면 바로 반영
   useEffect(() => {
@@ -314,6 +335,8 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
           markGuideShown();
         }}
       />
+
+      {regionBanner && !ready && <RegionBanner id={regionBanner.id} name={regionBanner.name} />}
 
       <GameOverDialog
         result={covered ? null : result}

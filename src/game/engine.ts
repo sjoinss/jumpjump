@@ -1,6 +1,7 @@
 import { drawBackground, drawGround } from "./background";
 import { CONFIG } from "./config";
 import { FixedStepLoop } from "./loop";
+import { regionBlendAt } from "./regions";
 import { drawSprite } from "./sprites";
 import { DEFAULT_THEME, SCENE, type ScenePalette, type ThemeId } from "./themes";
 import { computeViewport, type Viewport } from "./viewport";
@@ -28,6 +29,8 @@ export type EngineEvents = {
   onLayout?: (layout: SceneLayout) => void;
   onScore?: (score: number) => void;
   onGameOver?: (score: number) => void;
+  /** 새 지역에 들어옴 (게임 시작 때 동굴 포함). React가 지역 이름 배너를 띄운다 */
+  onRegion?: (index: number) => void;
 };
 
 /**
@@ -52,6 +55,10 @@ export class Engine {
   private landingTimer = 0;
   /** 시작 장면에서는 발판을 숨기고, 시작하면 짧게 나타나게 한다 (0 → 1) */
   private platformAlpha = 0;
+  /** 화면에 보이는 지역 섞임 위치. 점수로 정한 목표를 천천히 따라간다 */
+  private blend = 0;
+  /** 특수 발판 표식 (색약 대응, 설정에서 끌 수 있음) */
+  private markers = true;
 
   constructor(canvas: HTMLCanvasElement, hero: Character, events: EngineEvents = {}) {
     const ctx = canvas.getContext("2d", { alpha: false });
@@ -113,6 +120,11 @@ export class Engine {
     this.render(0);
   }
 
+  setMarkers(on: boolean) {
+    this.markers = on;
+    this.render(0);
+  }
+
   setPlatformSprites(platforms: Platforms) {
     this.platformSprites = platforms;
     this.render(0);
@@ -122,6 +134,7 @@ export class Engine {
   showReady() {
     this.world = this.createWorld();
     this.platformAlpha = 0;
+    this.blend = 0;
     this.landingTimer = 0;
     this.events.onScore?.(0);
     this.setPhase("ready");
@@ -131,15 +144,18 @@ export class Engine {
     if (this.phase !== "ready") return;
     this.world.launch();
     this.setPhase("playing");
+    this.events.onRegion?.(0);
   }
 
   /** 게임오버 후 "다시 하기": 바닥에서 바로 다시 출발 */
   restart() {
     this.world = this.createWorld();
     this.landingTimer = 0;
+    this.blend = 0;
     this.events.onScore?.(0);
     this.world.launch();
     this.setPhase("playing");
+    this.events.onRegion?.(0);
   }
 
   pause() {
@@ -183,11 +199,19 @@ export class Engine {
     this.time += dt;
     if (this.phase !== "ready" && this.platformAlpha < 1) this.platformAlpha = Math.min(1, this.platformAlpha + dt / 0.35);
     if (this.landingTimer > 0) this.landingTimer = Math.max(0, this.landingTimer - dt);
+    // 배경 지역: 점수로 정한 목표 위치를 천천히 따라간다 (동작 줄이기면 바로)
+    const target = regionBlendAt(this.world.score);
+    if (this.reducedMotion) this.blend = target;
+    else {
+      const step = CONFIG.regions.followSpeed * dt;
+      this.blend += Math.max(-step, Math.min(step, target - this.blend));
+    }
     if (this.phase !== "playing") return;
 
     for (const e of this.world.step(dt, this.input.consumeIntent())) {
       if (e.type === "land") this.landListeners.forEach((fn) => fn({ platform: e.platform, first: e.first }));
       else if (e.type === "score") this.events.onScore?.(e.score);
+      else if (e.type === "region") this.events.onRegion?.(e.index);
       else if (e.type === "gameover") {
         this.setPhase("gameover");
         this.events.onGameOver?.(e.score);
@@ -207,7 +231,12 @@ export class Engine {
     // 세계 높이 → 화면 y (화면 맨 아래 = cameraY)
     const screenY = (y: number) => vp.logicalHeight - (y - cameraY);
 
-    drawBackground(ctx, this.scene, vp.logicalWidth, vp.logicalHeight, this.time, this.reducedMotion);
+    drawBackground(ctx, this.scene, vp.logicalWidth, vp.logicalHeight, {
+      blend: this.blend,
+      cameraY,
+      time: this.time,
+      reducedMotion: this.reducedMotion,
+    });
 
     const groundTop = screenY(0);
     if (groundTop < vp.logicalHeight) {
@@ -222,7 +251,18 @@ export class Engine {
         if (p.kind === "ground") continue;
         const y = screenY(p.y);
         if (y > vp.logicalHeight || y + height < 0) continue;
-        drawSprite(ctx, this.platformSprites.basic, Math.round(vp.playX + p.x + (p.width - width) / 2), Math.round(y), width, height);
+        const px = Math.round(vp.playX + p.x + (p.width - width) / 2);
+        if (p.broken !== undefined) {
+          // 부서진 일회용 발판: 떨어지며 흐려진다
+          const k = p.broken / CONFIG.special.oneTimeBreakDuration;
+          ctx.globalAlpha = this.platformAlpha * Math.max(0, 1 - k);
+          drawSprite(ctx, this.platformSprites.oneTime, px, Math.round(y + k * 40), width, height);
+          ctx.globalAlpha = this.platformAlpha;
+          continue;
+        }
+        const sprite = p.kind === "highJump" ? this.platformSprites.highJump : p.kind === "oneTime" ? this.platformSprites.oneTime : this.platformSprites.basic;
+        drawSprite(ctx, sprite, px, Math.round(y), width, height);
+        if (this.markers) this.drawMarker(p.kind, px + width / 2, Math.round(y));
       }
       ctx.globalAlpha = 1;
     }
@@ -245,6 +285,29 @@ export class Engine {
     drawSprite(ctx, sprite, x, Math.round(screenY(feet) - ch), cw, ch);
   };
 
+  /**
+   * 색약 대응 표식 (기획서 18): 색만으로 구분하지 않도록 모양으로 알려준다.
+   * 고점프 = 위 화살표(살짝 둥실), 일회용 = 금 간 표시(깜빡임). 흰 테두리로 어느 배경에서도 보이게.
+   */
+  private drawMarker(kind: Platform["kind"], cx: number, top: number) {
+    const cell = 3;
+    const shape = kind === "highJump" ? ARROW_MARK : kind === "oneTime" ? CRACK_MARK : null;
+    if (!shape) return;
+    if (kind === "oneTime" && !this.reducedMotion && (this.time * 1.6) % 1 > 0.65) return;
+    const bob = kind === "highJump" && !this.reducedMotion ? Math.round(Math.sin(this.time * 5) * 2) : 0;
+    const w = shape[0].length * cell;
+    const x = Math.round(cx - w / 2);
+    const y = kind === "highJump" ? top - shape.length * cell - 4 + bob : top + 12;
+    const draw = (dx: number, dy: number, color: string) => {
+      this.ctx.fillStyle = color;
+      shape.forEach((row, ry) => {
+        for (let rx = 0; rx < row.length; rx++) if (row[rx] === "#") this.ctx.fillRect(x + rx * cell + dx, y + ry * cell + dy, cell, cell);
+      });
+    };
+    for (const [dx, dy] of [[-2, 0], [2, 0], [0, -2], [0, 2]]) draw(dx, dy, "#ffffff");
+    draw(0, 0, "#3d2c5e");
+  }
+
   /** 시작 장면에서 제자리 폴짝 (그림만, 판정 없음) */
   private idleHop() {
     if (this.reducedMotion) return 0;
@@ -253,3 +316,6 @@ export class Engine {
     return t > 1 ? 0 : 4 * idleHopHeight * t * (1 - t);
   }
 }
+
+const ARROW_MARK = ["...#...", "..###..", ".#####.", "#######", "..###..", "..###.."];
+const CRACK_MARK = ["#...#...#", ".#.#.#.#.", "..#...#.."];
