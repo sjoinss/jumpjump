@@ -1,0 +1,154 @@
+.shell {
+  position: relative;
+  width: 100%;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.mobile .frame {
+  width: 100%;
+  height: 100%;
+}
+
+.desktop {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* 스테이지와 무관하게 밝은 톤 고정. 두 색 사이를 계단식으로 나눠 장식 레이어로만 쓴다 */
+  background:
+    linear-gradient(
+      180deg,
+      var(--color-desk-bg-2) 0 25%,
+      #f0f1fd 25% 50%,
+      #f7f0f9 50% 75%,
+      var(--color-desk-bg) 75% 100%
+    );
+}
+
+.frame {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-background);
+}
+
+.desktop .frame {
+  z-index: 1;
+  border-radius: var(--radius-xl);
+  /* 테두리는 box-shadow로 바깥에 그린다: border를 쓰면 안쪽 크기가 줄어 스냅한 배율이 틀어진다 */
+  box-shadow:
+    0 0 0 4px var(--color-line),
+    0 10px 0 4px var(--color-secondary-edge),
+    0 10px 0 8px var(--color-line);
+}
+
+/* 좌우 정보 영역: 프레임 오른쪽에 붙인다. 정보는 흰 판 위에 올려 대비를 확보 */
+.side {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* ── 도트 장식 (box-shadow로 그린 픽셀 아트) ── */
+.decor {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.cloud,
+.star,
+.grass {
+  position: absolute;
+  display: block;
+  width: 8px;
+  height: 8px;
+  image-rendering: pixelated;
+}
+
+.cloud {
+  background: transparent;
+  box-shadow:
+    16px 0 #fff, 24px 0 #fff, 32px 0 #fff,
+    8px 8px #fff, 16px 8px #fff, 24px 8px #fff, 32px 8px #fff, 40px 8px #fff, 48px 8px #fff,
+    0 16px #fff, 8px 16px #fff, 16px 16px #fff, 24px 16px #fff, 32px 16px #fff, 40px 16px #fff, 48px 16px #fff, 56px 16px #fff,
+    0 24px #e8ecf7, 8px 24px #e8ecf7, 16px 24px #e8ecf7, 24px 24px #e8ecf7, 32px 24px #e8ecf7, 40px 24px #e8ecf7, 48px 24px #e8ecf7, 56px 24px #e8ecf7;
+  animation: drift 28s linear infinite alternate;
+}
+
+.cloudA {
+  top: 12%;
+  left: 6%;
+}
+.cloudB {
+  top: 38%;
+  right: 12%;
+  animation-duration: 36s;
+  animation-direction: alternate-reverse;
+}
+.cloudC {
+  top: 70%;
+  left: 14%;
+  animation-duration: 32s;
+}
+
+.star {
+  box-shadow:
+    8px 0 #ffd36e,
+    0 8px #ffd36e, 8px 8px #fff3c4, 16px 8px #ffd36e,
+    8px 16px #ffd36e;
+  animation: twinkle 3.2s steps(2, jump-none) infinite;
+}
+
+.starA {
+  top: 22%;
+  right: 22%;
+}
+.starB {
+  top: 58%;
+  left: 24%;
+  animation-delay: 1.1s;
+}
+.starC {
+  top: 8%;
+  left: 40%;
+  animation-delay: 2s;
+}
+
+.grass {
+  bottom: 0;
+  box-shadow:
+    0 -8px #7cc98f, 16px -16px #7cc98f, 32px -8px #7cc98f,
+    0 0 #5fb27a, 8px 0 #5fb27a, 16px 0 #5fb27a, 24px 0 #5fb27a, 32px 0 #5fb27a, 40px 0 #5fb27a;
+}
+
+.grassA {
+  left: 8%;
+  bottom: 8px;
+}
+.grassB {
+  right: 10%;
+  bottom: 8px;
+}
+
+@keyframes drift {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(48px);
+  }
+}
+
+@keyframes twinkle {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cloud,
+  .star {
+    animation: none;
+  }
+}

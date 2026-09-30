@@ -1,0 +1,120 @@
+.sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.sectionTitle {
+  font-size: var(--font-size-section-title);
+}
+
+.sectionHelp {
+  color: var(--color-muted);
+  font-size: var(--font-size-caption);
+}
+
+.themes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-xs);
+}
+
+/* 테마 카드: 선택되면 두꺼운 잉크 테두리 + 체크 (색만으로 구분하지 않음) */
+.theme {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  width: 100%;
+  padding: var(--spacing-sm);
+  border: var(--game-outline);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: 0 var(--edge-height) 0 var(--color-line);
+  color: var(--color-ink);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    background-color var(--duration-fast) var(--ease-out);
+}
+
+.theme:hover {
+  background: var(--color-surface-alt);
+}
+
+.theme[aria-checked="true"] {
+  outline: 3px solid var(--color-ink);
+  outline-offset: 2px;
+  background: var(--color-primary-soft);
+}
+
+.theme[aria-checked="true"]:focus-visible {
+  outline-color: var(--color-focus);
+}
+
+.preview {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  width: 72px;
+  height: 64px;
+  padding: 0 12px;
+  border-radius: 12px;
+}
+
+.previewPill {
+  display: block;
+  height: 14px;
+  border: 2px solid;
+  border-radius: var(--radius-full);
+}
+
+.previewPill + .previewPill {
+  width: 70%;
+}
+
+.themeText {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.themeName {
+  font-family: var(--font-display);
+  font-size: var(--font-size-subheading);
+}
+
+.themeDesc {
+  color: var(--color-muted);
+  font-size: var(--font-size-caption);
+  line-height: 1.4;
+}
+
+.check {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--color-line);
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+}
+
+.theme[aria-checked="true"] .check {
+  background: var(--color-mint);
+  border-color: var(--color-ink);
+}

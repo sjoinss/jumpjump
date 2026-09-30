@@ -1,0 +1,64 @@
+.row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  min-height: var(--touch-target);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.row:hover {
+  background: var(--color-surface-alt);
+}
+
+.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 실제 체크박스는 투명하게 겹쳐 두고(키보드·스크린리더용), 모양은 .box로 그린다 */
+.input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.box {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: var(--game-outline);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+
+.input:checked + .box {
+  background: var(--color-mint);
+}
+
+.input:focus-visible + .box {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.label {
+  font-family: var(--font-display);
+  font-size: var(--font-size-body);
+}
+
+.detail {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  margin-left: auto;
+  min-width: 0;
+  color: var(--color-muted);
+  font-size: var(--font-size-caption);
+  text-align: right;
+}

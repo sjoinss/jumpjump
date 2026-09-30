@@ -1,0 +1,36 @@
+.layer {
+  width: 100%;
+  height: 100%;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+}
+
+/* 휴대폰을 가로로 돌렸을 때만 안내. 태블릿·PC 가로 화면은 프레임으로 처리 */
+.rotate {
+  display: none;
+}
+
+@media (orientation: landscape) and (max-height: 500px) and (pointer: coarse) {
+  .rotate {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-lg);
+    background: var(--color-background);
+    text-align: center;
+  }
+}
+
+.rotateTitle {
+  font-size: var(--font-size-section-title);
+  font-weight: var(--font-weight-bold);
+}

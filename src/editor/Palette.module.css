@@ -1,0 +1,141 @@
+.palette {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  min-width: 0;
+}
+
+.current {
+  position: relative;
+  flex: none;
+  width: 48px;
+  height: 48px;
+  padding: 4px;
+  border: var(--game-outline);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: 0 3px 0 var(--color-line);
+  cursor: pointer;
+}
+
+.current:focus-within {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 3px;
+}
+
+.currentSwatch {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 2px solid var(--color-line);
+  border-radius: 8px;
+}
+
+/* 네이티브 색상 피커는 라벨 전체를 덮는 투명한 입력으로 둔다 (키보드로도 열린다) */
+.picker {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.swatches {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 4px 2px 6px;
+  overflow-x: auto;
+  list-style: none;
+  scrollbar-width: thin;
+}
+
+.swatch {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 2px solid var(--color-line);
+  border-radius: var(--radius-full);
+  color: var(--color-ink);
+  cursor: pointer;
+}
+
+/* 선택된 색: 두꺼운 링 + 살짝 커짐 (색이 아닌 모양으로도 구분) */
+.swatch[aria-pressed="true"] {
+  box-shadow:
+    0 0 0 2px var(--color-surface),
+    0 0 0 5px var(--color-ink);
+  transform: scale(1.05);
+}
+
+.deleting {
+  animation: wiggle 0.4s ease-in-out infinite alternate;
+}
+
+.deleting > svg {
+  padding: 2px;
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  box-sizing: content-box;
+}
+
+@keyframes wiggle {
+  from {
+    transform: rotate(-6deg);
+  }
+  to {
+    transform: rotate(6deg);
+  }
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-xs) var(--spacing-sm);
+}
+
+.small {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  padding: 0 var(--spacing-sm);
+  border: 2px solid var(--color-line);
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  font-size: var(--font-size-caption);
+  cursor: pointer;
+}
+
+.small:hover:not(:disabled) {
+  background: var(--color-surface-alt);
+}
+
+.small[aria-pressed="true"] {
+  background: var(--color-butter);
+}
+
+.small:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.helper {
+  color: var(--color-muted);
+  font-size: var(--font-size-caption);
+}

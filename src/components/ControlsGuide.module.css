@@ -1,0 +1,172 @@
+.guide {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+/* ── 움직이는 작은 그림 ── */
+.stage {
+  position: relative;
+  height: 84px;
+  overflow: hidden;
+  border: 2px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: linear-gradient(var(--color-secondary-soft), var(--color-primary-soft));
+}
+
+.runner {
+  position: absolute;
+  left: calc(50% - 16px);
+  bottom: 18px;
+  animation: slide 2.4s ease-in-out infinite;
+}
+
+.runner > * {
+  display: block;
+  animation: hop 0.6s ease-out infinite;
+}
+
+.floor {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 18px;
+  border-top: 4px solid var(--color-mint-edge);
+  background: var(--color-mint);
+}
+
+.finger {
+  position: absolute;
+  left: calc(50% - 14px);
+  /* 캐릭터 발밑이 아니라 바닥 띠 위에서 같이 움직이게 */
+  bottom: -16px;
+  color: var(--color-ink);
+  animation: slide 2.4s ease-in-out infinite;
+}
+
+@keyframes slide {
+  0%,
+  100% {
+    transform: translateX(-70px);
+  }
+  50% {
+    transform: translateX(70px);
+  }
+}
+
+@keyframes hop {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-14px);
+  }
+}
+
+/* ── 조작 방법 ── */
+.ways {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.way {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.wayIcon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  /* 아이콘 칸 폭을 맞춰 설명 글자가 한 줄로 정렬되게 */
+  width: 64px;
+  min-height: 48px;
+  padding: 0 var(--spacing-xs);
+  border: 2px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: var(--color-butter);
+  color: var(--color-ink);
+}
+
+.wayText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: var(--font-size-caption);
+}
+
+.wayText strong {
+  font-family: var(--font-display);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-regular);
+}
+
+.wayText span {
+  color: var(--color-muted);
+}
+
+.keys {
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  gap: 2px;
+  justify-items: center;
+  padding: var(--spacing-xs) 0;
+}
+
+.or {
+  grid-column: 1 / -1;
+  font-size: var(--font-size-caption);
+  line-height: 1.2;
+  color: var(--color-muted);
+}
+
+.guide kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 4px;
+  border: 2px solid var(--color-ink);
+  border-radius: 6px;
+  background: var(--color-surface);
+  box-shadow: 0 2px 0 var(--color-ink);
+  font-family: var(--font-display);
+  font-size: var(--font-size-caption);
+  line-height: 1;
+}
+
+/* ── 규칙 ── */
+.rules {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  margin: 0;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-alt);
+  list-style: none;
+  font-size: var(--font-size-caption);
+}
+
+.rules li {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.rules svg {
+  flex: none;
+  color: var(--color-primary-strong);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .runner,
+  .runner > *,
+  .finger {
+    animation: none;
+  }
+}

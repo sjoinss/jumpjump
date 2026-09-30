@@ -1,0 +1,51 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  min-width: 0;
+}
+
+.label {
+  font-family: var(--font-display);
+  font-size: var(--font-size-body);
+}
+
+.group {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border: var(--game-outline);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-alt);
+}
+
+.option {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0 var(--spacing-sm);
+  border: 2px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--color-muted);
+  font-family: var(--font-display);
+  font-size: var(--font-size-body);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.option:hover {
+  color: var(--color-ink);
+  background: var(--color-surface);
+}
+
+.option[aria-checked="true"] {
+  border-color: var(--color-line);
+  background: var(--color-mint);
+  color: var(--color-ink);
+}
+
+.sm .option {
+  min-height: 36px;
+  font-size: var(--font-size-caption);
+}

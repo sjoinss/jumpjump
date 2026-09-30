@@ -1,0 +1,25 @@
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xl) var(--spacing-lg);
+  border: var(--game-outline);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+  box-shadow: 0 var(--edge-height) 0 var(--color-line);
+  text-align: center;
+}
+
+.title {
+  font-size: var(--font-size-section-title);
+}
+
+.description {
+  max-width: 30ch;
+  color: var(--color-muted);
+}
+
+.action {
+  margin-top: var(--spacing-sm);
+}

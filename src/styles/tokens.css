@@ -1,0 +1,206 @@
+/*
+ * 디자인 토큰 — 귀여운 파스텔 게임 스타일.
+ * 원칙: 파스텔은 "채우기"에만 쓰고, 글자·외곽선은 진한 잉크색(--color-ink)으로 대비를 확보한다.
+ * 대비(크림 배경 --color-background 기준): ink 11.4:1, muted 5.7:1, primary-strong 5.6:1, focus 4.8:1
+ * 파스텔 채우기(primary/secondary/mint/butter/sky/danger) 위 잉크 글자는 모두 6:1 이상.
+ */
+:root {
+  /* 잉크: 글자와 게임 외곽선 */
+  --color-ink: #3d2c5e;
+  --color-text: #3d2c5e;
+  --color-muted: #6b5a86;
+
+  /* 배경 */
+  --color-background: #fff4f8;
+  --color-background-dot: #ffe1ec;
+  --color-surface: #fffdf8;
+  --color-surface-alt: #fbeef5;
+  --color-border: #ecd9e6;
+  --color-border-strong: #a58fbf;
+  --color-overlay: rgba(61, 44, 94, 0.45);
+
+  /* 파스텔 채우기 + 아래 두께(edge) */
+  --color-primary: #ff9cc6; /* 딸기우유 */
+  --color-primary-edge: #e46a9f;
+  --color-primary-soft: #ffe3ef;
+  --color-primary-strong: #b0306a; /* 글자용 진한 분홍 */
+
+  --color-secondary: #c9b6ff; /* 라벤더 */
+  --color-secondary-edge: #9b82e6;
+  --color-secondary-soft: #efe8ff;
+
+  --color-mint: #a8e6c8;
+  --color-mint-edge: #6cc59a;
+  --color-butter: #ffe39a;
+  --color-butter-edge: #e8bd4f;
+  --color-sky: #bfe3ff;
+  --color-sky-edge: #82bde8;
+  --color-cream: #fffaf0;
+  --color-cream-edge: #e6d5c3;
+
+  /* 상태 (글자·기호용 진한 색 + 연한 배경) */
+  --color-success: #2e7d4f;
+  --color-success-soft: #dcf5e7;
+  --color-warning: #8a5a00;
+  --color-warning-soft: #fff1c9;
+  --color-error: #c02a37;
+  --color-error-soft: #ffe0e3;
+  --color-danger-fill: #ff9d94;
+  --color-danger-edge: #d9645b;
+
+  --color-focus: #6a4cff;
+
+  /* PC 주변 배경 (게임 스테이지와 무관하게 밝은 톤 고정) */
+  --color-desk-bg: #ffe9f2;
+  --color-desk-bg-2: #e6f3ff;
+
+  /* 게임 외곽선·입체감. 외곽선 색(--color-line)은 테마마다 다르고, 글자색(--color-ink)은 대비 때문에 거의 고정 */
+  --color-line: var(--color-ink);
+  --outline-width: 3px;
+  --edge-height: 4px;
+  --game-outline: var(--outline-width) solid var(--color-line);
+
+  /* 시작 화면 로고 글자 */
+  --logo-fill: var(--color-primary);
+  --logo-stroke: var(--color-ink);
+
+  /* 간격 */
+  --spacing-2xs: 2px;
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-2xl: 48px;
+
+  /* 모서리 */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-full: 999px;
+
+  /* 글자: 제목·버튼·HUD는 번들 폰트(Jua), 긴 본문은 시스템 한글 폰트 */
+  --font-display: var(--font-jua), "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", system-ui, sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR",
+    system-ui, sans-serif;
+  --font-size-display: 34px;
+  --font-size-page-title: 26px;
+  --font-size-section-title: 21px;
+  --font-size-subheading: 18px;
+  --font-size-body: 16px;
+  --font-size-caption: 14px;
+  --line-height-tight: 1.25;
+  --line-height-body: 1.55;
+  --font-weight-regular: 400;
+  --font-weight-medium: 600;
+  --font-weight-bold: 800;
+
+  /* 크기 */
+  --touch-target: 44px;
+  --button-height: 52px;
+  --hud-button: 48px;
+
+  /* 모션 */
+  --duration-fast: 120ms;
+  --duration-base: 220ms;
+  --ease-out: cubic-bezier(0.2, 0.7, 0.3, 1);
+  --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* 레이어 */
+  --z-hud: 10;
+  --z-banner: 20;
+  --z-toast: 100;
+}
+
+/*
+ * ── 테마 ──
+ * 기본(도트 놀이터)은 위 :root 값. 아래는 <html data-theme="…">일 때 덮어쓰는 값.
+ * 글자색은 모든 테마에서 AA(4.5:1) 이상을 유지한다. 게임 배경 색은 src/game/themes.ts에 있다.
+ */
+
+/* 솜사탕: 얇고 연한 외곽선, 더 둥글고 폭신하게 */
+:root[data-theme="cotton"] {
+  --logo-fill: #ffffff;
+  --logo-stroke: #c05f8c;
+  --color-ink: #4a3553;
+  --color-text: #4a3553;
+  --color-muted: #7a5f80;
+  --color-line: #e7a3c2;
+  --outline-width: 2px;
+  --edge-height: 3px;
+
+  --color-background: #fff7fb;
+  --color-background-dot: #ffe4ef;
+  --color-surface: #ffffff;
+  --color-surface-alt: #fff0f6;
+  --color-border: #f6d8e6;
+
+  --color-primary: #ffc2da;
+  --color-primary-edge: #f3a0c2;
+  --color-primary-soft: #ffe9f2;
+  --color-secondary: #dcd2ff;
+  --color-secondary-edge: #bba9f5;
+  --color-secondary-soft: #f3efff;
+  --color-mint: #c8f2df;
+  --color-mint-edge: #97dcbd;
+  --color-butter: #fff1bf;
+  --color-butter-edge: #f2d680;
+  --color-sky: #d4ecff;
+  --color-sky-edge: #a6d2f5;
+  --color-cream: #fffaf6;
+  --color-cream-edge: #f3dfe6;
+  --color-danger-fill: #ffc0ba;
+  --color-danger-edge: #f19a92;
+
+  --color-desk-bg: #fff0f6;
+  --color-desk-bg-2: #f1f6ff;
+
+  --radius-sm: 10px;
+  --radius-md: 18px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+}
+
+/* 꿈나라: 라벤더·하늘빛, 은은한 빛 */
+:root[data-theme="dream"] {
+  --logo-fill: #fff6fd;
+  --logo-stroke: #6f5cc9;
+  --color-ink: #33295c;
+  --color-text: #33295c;
+  --color-muted: #5f5689;
+  --color-line: #9d8ee6;
+  --outline-width: 2px;
+  --edge-height: 4px;
+
+  --color-background: #f4f1ff;
+  --color-background-dot: #e3dcff;
+  --color-surface: #fdfbff;
+  --color-surface-alt: #eeeaff;
+  --color-border: #ddd5fb;
+
+  --color-primary: #f5b8e8;
+  --color-primary-edge: #d88fcd;
+  --color-primary-soft: #fde8f8;
+  --color-secondary: #bccbff;
+  --color-secondary-edge: #8fa3ef;
+  --color-secondary-soft: #e9eeff;
+  --color-mint: #bdf0f0;
+  --color-mint-edge: #85d6d8;
+  --color-butter: #fff0c7;
+  --color-butter-edge: #ecce86;
+  --color-sky: #cfe4ff;
+  --color-sky-edge: #98bff0;
+  --color-cream: #fbf9ff;
+  --color-cream-edge: #dcd3f7;
+  --color-danger-fill: #ffc2cf;
+  --color-danger-edge: #ea93a8;
+
+  --color-desk-bg: #efe8ff;
+  --color-desk-bg-2: #e2ecff;
+
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 30px;
+}

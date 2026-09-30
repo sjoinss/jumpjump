@@ -1,0 +1,60 @@
+.toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.row {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+.tool {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  min-height: 52px;
+  padding: var(--spacing-xs) 2px 3px;
+  border: 2px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: 0 3px 0 var(--color-line);
+  color: var(--color-ink);
+  cursor: pointer;
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out),
+    background-color var(--duration-fast) var(--ease-out);
+}
+
+.tool:hover:not(:disabled) {
+  background: var(--color-surface-alt);
+}
+
+.tool:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 0 0 var(--color-line);
+}
+
+/* 선택된 도구 / 켜진 토글: 채우기 색 + 눌린 상태로 고정 */
+.tool[aria-pressed="true"] {
+  background: var(--color-primary);
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--color-line);
+}
+
+.tool:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.label {
+  font-family: var(--font-display);
+  font-size: var(--font-size-caption);
+  line-height: 1.1;
+  white-space: nowrap;
+}

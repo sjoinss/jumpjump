@@ -1,0 +1,52 @@
+.tabs {
+  display: flex;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs);
+  border: var(--game-outline);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-alt);
+}
+
+.tab {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0 var(--spacing-xs);
+  border: 2px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-muted);
+  font-family: var(--font-display);
+  font-size: var(--font-size-caption);
+  line-height: 1.2;
+  word-break: keep-all;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+.tab:hover {
+  color: var(--color-ink);
+  background: var(--color-surface);
+}
+
+.tab[aria-selected="true"] {
+  border-color: var(--color-line);
+  background: var(--color-butter);
+  color: var(--color-ink);
+  box-shadow: 0 3px 0 var(--color-line);
+}
+
+/* 수정됨 표시: 작은 점 (글자는 스크린리더용으로 따로 제공) */
+.mark {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  border: 2px solid var(--color-line);
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+}

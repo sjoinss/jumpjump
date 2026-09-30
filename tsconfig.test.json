@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": ".test-build",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "incremental": false,
+    "plugins": []
+  },
+  "include": ["tests/**/*.ts", "src/lib/**/*.ts", "src/editor/grid.ts", "src/editor/history.ts", "src/editor/session.ts", "src/editor/imageMath.ts", "src/game/config.ts", "src/game/presets.ts", "src/game/themes.ts", "src/game/world.ts"],
+  "exclude": ["node_modules"]
+}

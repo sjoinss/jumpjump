@@ -1,0 +1,89 @@
+.dialog {
+  width: min(360px, calc(100vw - 2 * var(--spacing-md)));
+  max-height: calc(100dvh - 2 * var(--spacing-md));
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+  overflow: visible;
+}
+
+.dialog::backdrop {
+  background: var(--color-overlay);
+}
+
+.dialog[open] {
+  animation: dialog-pop var(--duration-base) var(--ease-pop);
+}
+
+@keyframes dialog-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+/* 크림색 판 + 잉크 외곽선 + 아래 두께 */
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  max-height: calc(100dvh - 2 * var(--spacing-md) - 8px);
+  overflow-y: auto;
+  padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-md);
+  border: var(--game-outline);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+  box-shadow:
+    0 6px 0 var(--color-primary-soft),
+    0 6px 0 var(--outline-width) var(--color-line);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  min-height: var(--touch-target);
+}
+
+/* 제목은 가운데 리본 */
+.title {
+  padding: var(--spacing-xs) var(--spacing-lg);
+  border: var(--game-outline);
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+  font-size: var(--font-size-section-title);
+  line-height: var(--line-height-tight);
+  text-align: center;
+}
+
+.close {
+  position: absolute;
+  top: 50%;
+  right: calc(-1 * var(--spacing-sm));
+  display: grid;
+  place-items: center;
+  width: var(--touch-target);
+  height: var(--touch-target);
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-ink);
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+.close:hover {
+  background: var(--color-surface-alt);
+}
+
+.description {
+  color: var(--color-muted);
+  text-align: center;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
