@@ -13,6 +13,7 @@ import { PixelPreview } from "@/components/PixelPreview";
 import type { PixelSprite, Sprite } from "@/lib/schema";
 import { applyBackground, encodeSprite, loadImageFile, type LoadedImage } from "./imageDom";
 import { clampZoom, cornerBackground, fitToBox, imageToDotPixels, NO_ADJUST, placedRect, type Adjust } from "./imageMath";
+import { skinToDots, SKIN_OUT } from "./skin";
 import styles from "./ImageImportScreen.module.css";
 
 type Props = {
@@ -29,6 +30,7 @@ const ACCEPT = "image/png,image/jpeg,image/webp,image/gif";
 /**
  * 이미지 불러오기 (기획서 6번): 고르기 → 상자에 맞추기·이동·확대 → 배경 제거 → 다시 인코딩해서 저장.
  * 도트 격자와 같은 크기(16×18, 32×36px)면 먼저 "도트로 바꿔서 고치기 / 이미지 그대로"를 고른다 (사용자 결정).
+ * 블록 게임 스킨(64×64·64×32 PNG)이면 앞모습을 떼어 32×36 꼬마 도트 캐릭터로 조립해 같은 방식으로 묻는다.
  */
 export function ImageImportScreen({ initialFile, onCancel, onDone }: Props) {
   const [loaded, setLoaded] = useState<LoadedImage | null>(null);
@@ -57,7 +59,7 @@ export function ImageImportScreen({ initialFile, onCancel, onDone }: Props) {
       return;
     }
     setLoaded(r.value);
-    setAskDots(r.value.dots !== null);
+    setAskDots(r.value.dots !== null || r.value.skin !== null);
     setDotsBg(!r.value.hasAlpha);
     setAdjust(NO_ADJUST);
     setView("result");
@@ -98,7 +100,9 @@ export function ImageImportScreen({ initialFile, onCancel, onDone }: Props) {
 
   // 도트로 바꾼 결과 (미리보기와 넣기에 같이 쓴다)
   const dotsBackground = loaded?.dots ? cornerBackground(loaded.dots.rgba, loaded.dots.width, loaded.dots.height) : null;
+  const isSkin = !!loaded?.skin;
   const dotSprite = useMemo<PixelSprite | null>(() => {
+    if (loaded?.skin) return { kind: "pixel", ...SKIN_OUT, pixels: skinToDots(loaded.skin) };
     const d = loaded?.dots;
     if (!d) return null;
     return { kind: "pixel", width: d.width, height: d.height, pixels: imageToDotPixels(d.rgba, d.width, d.height, dotsBg) };
@@ -144,6 +148,7 @@ export function ImageImportScreen({ initialFile, onCancel, onDone }: Props) {
               캐릭터로 쓸 이미지를 골라주세요
             </h2>
             <p className={styles.helper}>PNG · JPEG · WebP · GIF(첫 장면), 10MB까지</p>
+            <p className={styles.helper}>마인크래프트 같은 블록 게임 스킨(64×64 PNG)을 고르면 작은 도트 캐릭터로 바꿔 줘요</p>
             <Button variant="primary" size="lg" icon="image" loading={loading} loadingLabel="여는 중…" onClick={() => inputRef.current?.click()}>
               파일 고르기
             </Button>
@@ -152,16 +157,17 @@ export function ImageImportScreen({ initialFile, onCancel, onDone }: Props) {
         ) : askDots && dotSprite ? (
           <section className={styles.dots} aria-labelledby="dots-title">
             <h2 id="dots-title" className={styles.dropTitle}>
-              도트로 바꿔서 고칠까요?
+              {isSkin ? "스킨을 도트 캐릭터로 바꿀까요?" : "도트로 바꿔서 고칠까요?"}
             </h2>
             <div className={styles.dotsPreview}>
               <PixelPreview sprite={dotSprite} width={128} height={144} label="도트로 바꾼 미리보기" />
             </div>
             <p className={styles.helper}>
-              도트 칸과 같은 크기({dotSprite.width}×{dotSprite.height}px)예요. 도트로 바꾸면 픽셀 하나가 칸 하나가 되어 펜·지우개로 직접 고칠 수
-              있어요. 이미지 그대로 쓰면 고칠 수는 없어요.
+              {isSkin
+                ? `스킨 파일(${loaded.width}×${loaded.height})이에요. 머리·몸·팔·다리 앞모습을 떼어 머리가 큰 꼬마 캐릭터(${dotSprite.width}×${dotSprite.height})로 만들었어요. 바꾼 뒤 펜·지우개로 고칠 수 있어요.`
+                : `도트 칸과 같은 크기(${dotSprite.width}×${dotSprite.height}px)예요. 도트로 바꾸면 픽셀 하나가 칸 하나가 되어 펜·지우개로 직접 고칠 수 있어요. 이미지 그대로 쓰면 고칠 수는 없어요.`}
             </p>
-            {dotsBackground && (
+            {dotsBackground && !isSkin && (
               <Switch
                 label="배경색 지우기"
                 checked={dotsBg}
@@ -174,7 +180,7 @@ export function ImageImportScreen({ initialFile, onCancel, onDone }: Props) {
                 이미지 그대로 쓰기
               </Button>
               <Button variant="primary" icon="pencil" onClick={() => onDone(dotSprite)}>
-                도트로 바꿔서 고치기
+                {isSkin ? "도트 캐릭터로 바꾸기" : "도트로 바꿔서 고치기"}
               </Button>
             </div>
           </section>

@@ -201,34 +201,22 @@ test("일회용 발판: 한 번 밟으면 부서지고, 잠시 뒤 사라지며 
   assert.equal(w.platforms.some((p) => p.id === 7), false, "사라짐");
 });
 
-test("지역: 경계 높이(m)에서 들어가고, 한 판에 지역마다 한 번만 알린다", () => {
+test("지역: 경계 높이(m)에서 들어간다 (배경이 너무 빨리 바뀌지 않게 300/1000/2500m)", () => {
   assert.equal(regionIndexAt(0), 0);
-  assert.equal(regionIndexAt(74), 0);
-  assert.equal(regionIndexAt(75), 1);
-  assert.equal(regionIndexAt(600), 3);
+  assert.equal(regionIndexAt(299), 0);
+  assert.equal(regionIndexAt(300), 1);
+  assert.equal(regionIndexAt(2500), 3);
   assert.equal(regionName(2), "하늘");
-
-  const w = make();
-  // 지상 경계(75m) 바로 아래 발판에서 튀어 올라 경계를 넘는다
-  const y = 74 * CONFIG.score.pxPerMeter;
-  w.score = 74;
-  w.hero.y = y;
-  w.platforms = [{ id: 1, kind: "basic", x: w.hero.x, y: y - 1, width: 128, touched: false }];
-  const ev = run(w, 0.3);
-  assert.deepEqual(ev.filter((e) => e.type === "region"), [{ type: "region", index: 1 }]);
-  w.platforms.push({ id: 2, kind: "basic", x: w.hero.x, y: w.hero.y - 1, width: 128, touched: false });
-  const again = run(w, 2);
-  assert.equal(again.filter((e) => e.type === "region").length, 0, "지상은 이미 알림");
 });
 
-test("배경 섞임: 경계 ±25m에서 0→1, 그 밖은 한 지역", () => {
+test("배경 섞임: 경계 ±60m에서 0→1, 그 밖은 한 지역", () => {
   assert.equal(regionBlendAt(0), 0);
-  assert.equal(regionBlendAt(49), 0);
-  assert.equal(regionBlendAt(75), 0.5);
-  assert.equal(regionBlendAt(100), 1);
-  assert.equal(regionBlendAt(200), 1);
-  assert.equal(regionBlendAt(260), 1.5);
-  assert.equal(regionBlendAt(2000), 3);
+  assert.equal(regionBlendAt(239), 0);
+  assert.equal(regionBlendAt(300), 0.5);
+  assert.equal(regionBlendAt(360), 1);
+  assert.equal(regionBlendAt(800), 1);
+  assert.equal(regionBlendAt(1000), 1.5);
+  assert.equal(regionBlendAt(9000), 3);
 });
 
 test("일회용 발판을 밟으면 아래 발판이 가까운 것부터 무너진다: 그 아래로 떨어지면 끝, 화면은 끌어올리지 않음", () => {
@@ -252,10 +240,10 @@ test("일회용 발판을 밟으면 아래 발판이 가까운 것부터 무너�
   assert.equal(w.platforms.find((p) => p.id === 3)?.broken, undefined, "위 발판은 그대로");
 });
 
-test("지역을 넘을 때마다 조금씩 빨라진다 (점프 높이는 그대로, 최대 +15%)", () => {
-  const apex = (region: number) => {
+test("정해진 높이(75/260/600m)를 넘을 때마다 조금씩 빨라진다 (배경 지역과 따로, 점프 높이는 그대로, 최대 +15%)", () => {
+  const apex = (score: number) => {
     const w = make();
-    w.region = region;
+    w.score = score;
     w.platforms = [{ id: 1, kind: "basic", x: w.hero.x, y: 0, width: 128, touched: true }];
     w.launch();
     let t = 0;
@@ -267,11 +255,12 @@ test("지역을 넘을 때마다 조금씩 빨라진다 (점프 높이는 그대
     }
     return { t, top };
   };
-  const speeds = CONFIG.regions.speedScale;
-  assert.deepEqual([...speeds].sort((a, b) => a - b), [...speeds], "점점 빨라짐");
+  const speeds = CONFIG.regions.speedSteps.map((s) => s.scale);
+  assert.deepEqual([...speeds].sort((a, b) => a - b), speeds, "점점 빨라짐");
   assert.ok(speeds.at(-1)! <= 1.2, "너무 빨라지지 않음");
+  assert.deepEqual(CONFIG.regions.speedSteps.map((s) => s.fromM), [0, 75, 260, 600], "난이도는 예전 높이 그대로");
   const cave = apex(0);
-  const space = apex(3);
+  const space = apex(600);
   assert.ok(space.t < cave.t, "우주에서 더 빨리 꼭대기");
   assert.ok(Math.abs(space.top - cave.top) < 3, "점프 높이는 같음");
 });

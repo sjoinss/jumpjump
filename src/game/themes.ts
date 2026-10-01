@@ -101,7 +101,7 @@ function classicRegions(sky: Record<"cave" | "ground" | "sky" | "space", [string
   return CONFIG.regions.list.map((r) => ({ key: r.id, name: r.name, startM: r.startM, top: sky[r.id][0], bottom: sky[r.id][1] }));
 }
 
-/** 해저 테마: 높이는 기본과 같고(수면 = 75m) 이름만 바다식 */
+/** 해저 테마: 높이는 기본과 같고(수면 = 지상 시작 높이) 이름만 바다식 */
 const OCEAN_STOPS = CONFIG.regions.list.map((r) => r.startM);
 
 /**
@@ -216,10 +216,10 @@ export const SCENE: Record<ThemeId, ScenePalette> = {
     style: "blocks",
     regions: [
       { key: "nether", name: "네더", startM: 0, top: "#7d3540", bottom: "#a8505a" },
-      { key: "stone", name: "동굴", startM: 35, top: "#6f7180", bottom: "#9496a3" },
-      { key: "overworld", name: "지상", startM: 110, top: "#9fd6ff", bottom: "#e4f4ff" },
-      { key: "sky", name: "하늘", startM: 260, top: "#8ccaff", bottom: "#d8efff" },
-      { key: "space", name: "우주", startM: 600, top: "#3f3f7a", bottom: "#6a6aa8" },
+      { key: "stone", name: "동굴", startM: 150, top: "#6f7180", bottom: "#9496a3" },
+      { key: "overworld", name: "지상", startM: 500, top: "#9fd6ff", bottom: "#e4f4ff" },
+      { key: "sky", name: "하늘", startM: 1200, top: "#8ccaff", bottom: "#d8efff" },
+      { key: "space", name: "우주", startM: 2500, top: "#3f3f7a", bottom: "#6a6aa8" },
     ],
     cloud: "rgba(255,255,255,0.95)",
     sparkle: "#ffffff",

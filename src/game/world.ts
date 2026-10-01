@@ -1,7 +1,6 @@
 import { canOfferCompanion, candidateHeight } from "./companions";
 import { CONFIG } from "./config";
 import { cameraRatioFor, formationSize } from "./formation";
-import { regionIndexAt } from "./regions";
 import { stepMover, type Mover } from "../input/movement";
 import type { MoveIntent } from "../input/controller";
 
@@ -53,8 +52,6 @@ export type WorldEvent =
   | { type: "land"; platform: Platform; first: boolean }
   | { type: "score"; score: number }
   | { type: "gameover"; score: number }
-  /** 새 지역에 처음 들어옴 (한 판에 지역마다 한 번) */
-  | { type: "region"; index: number }
   /** 대열이 동료 후보에 닿음. slot = 합류하면 들어갈 동료 슬롯 번호(1~5) */
   | { type: "candidate"; candidate: Candidate; slot: number };
 
@@ -125,8 +122,6 @@ export class World {
   /** 점수 = 이번 판에서 올라간 가장 높은 곳(m). 떨어져도 줄지 않는다 */
   score = 0;
   over = false;
-  /** 이번 판에서 들어와 본 가장 먼 지역 */
-  region = 0;
   /** 지금 동료 수 C (0~5). 판이 끝나면 0으로 (저장하지 않는 런타임 상태) */
   companions = 0;
   /** 동료 최대 인원 M. 판 도중엔 자동 설정으로만 바뀐다 */
@@ -174,7 +169,6 @@ export class World {
     this.prev = { x: this.hero.x, y: 0, cameraY: this.cameraY };
     this.score = 0;
     this.over = false;
-    this.region = 0;
     this.nextId = 1;
     this.nextCandidate = 0;
     this.candidates = [];
@@ -247,12 +241,14 @@ export class World {
   }
 
   /**
-   * 게임 속도 배율: 새 지역에 들어갈 때마다 조금씩 빨라진다 (난이도). 시간을 빠르게 흘려서
-   * 점프 높이·발판 간격(= 닿을 수 있는 거리)은 그대로이고 반응할 시간만 줄어든다.
+   * 게임 속도 배율: 정해진 높이(CONFIG.regions.speedSteps)를 넘을 때마다 조금씩 빨라진다 (난이도). 시간을 빠르게 흘려서
+   * 점프 높이·발판 간격(= 닿을 수 있는 거리)은 그대로이고 반응할 시간만 줄어든다. 점수는 줄지 않으니 느려지지 않는다.
+   * 지역 배너·배경은 테마의 지역 목록을 따로 따른다 (engine.ts)
    */
   get speed() {
-    const list = CONFIG.regions.speedScale;
-    return list[Math.min(this.region, list.length - 1)];
+    let scale = 1;
+    for (const step of CONFIG.regions.speedSteps) if (this.score >= step.fromM) scale = step.scale;
+    return scale;
   }
 
   step(realDt: number, intent: MoveIntent): WorldEvent[] {
@@ -321,12 +317,6 @@ export class World {
     if (meters > this.score) {
       this.score = meters;
       events.push({ type: "score", score: this.score });
-      // 경계를 넘으면 새 지역 (한 번에 여러 경계를 넘을 일은 없지만 혹시 몰라 하나씩)
-      const reached = regionIndexAt(this.score);
-      while (this.region < reached) {
-        this.region += 1;
-        events.push({ type: "region", index: this.region });
-      }
     }
 
     // 카메라: 위로만. 맨 아래 줄 발밑이 화면 위에서 (줄 수에 따른) 비율 위치에 오도록

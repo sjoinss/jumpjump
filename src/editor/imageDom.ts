@@ -1,5 +1,6 @@
 import { CONFIG } from "../game/config";
 import type { ImageMime, ImageSprite } from "../lib/schema";
+import { isSkinSize } from "./skin";
 import {
   checkDimensions,
   checkFileSize,
@@ -29,6 +30,8 @@ export type LoadedImage = {
   hasAlpha: boolean;
   /** 도트 격자와 같은 크기(16×18, 32×36)면 원본 픽셀 — 도트로 바꿔 고칠 수 있다. 아니면 null */
   dots: { width: number; height: number; rgba: Uint8ClampedArray } | null;
+  /** 블록 게임 스킨 크기(64×64, 64×32)면 원본 픽셀 — 작은 도트 캐릭터로 조립할 수 있다 (skin.ts). 아니면 null */
+  skin: { width: number; height: number; rgba: Uint8ClampedArray } | null;
 };
 
 export type Result<T> = { ok: true; value: T } | { ok: false; message: string };
@@ -82,16 +85,18 @@ export async function loadImageFile(file: File): Promise<Result<LoadedImage>> {
 
   let hasAlpha = false;
   let dots: LoadedImage["dots"] = null;
+  let skin: LoadedImage["skin"] = null;
   try {
     const data = ctx.getImageData(0, 0, w, h).data;
     hasAlpha = format !== "jpeg" && hasTransparency(data);
     // 작은 이미지는 작업본이 원본과 같은 크기(1:1)라 픽셀이 그대로다
     const grid = dotGridFor(width, height);
     if (grid && w === width && h === height) dots = { ...grid, rgba: data };
+    if (format === "png" && isSkinSize(width, height) && w === width && h === height) skin = { width, height, rgba: data };
   } catch {
     return { ok: false, message: DECODE_FAIL_MESSAGE };
   }
-  return { ok: true, value: { work, width, height, hasAlpha, dots } };
+  return { ok: true, value: { work, width, height, hasAlpha, dots, skin } };
 }
 
 export type BackgroundOptions = { enabled: boolean; tolerance: number; soften: boolean };
