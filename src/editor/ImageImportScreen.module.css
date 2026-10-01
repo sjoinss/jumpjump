@@ -51,6 +51,7 @@
 /* 스킨 세 모습 미리보기 */
 .skinPoses {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
   gap: var(--spacing-sm);
   margin: 0;

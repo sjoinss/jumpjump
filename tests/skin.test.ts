@@ -55,8 +55,10 @@ test("스킨 세 모습: 내려갈 때는 팔을 옆으로 쭉(십자), 착지�
   const p = skinToPoses(makeSkin(64));
   assert.deepEqual(p.base, skinToDots(makeSkin(64)));
   // 십자
-  assert.equal(at(p.fall, 0, 24), "#ffff00", "오른팔이 왼쪽 끝까지 (머리보다 바깥)");
-  assert.equal(at(p.fall, 31, 25), "#00ffff", "왼팔이 오른쪽 끝까지");
+  assert.equal(at(p.fall, 6, 24), "#ffff00", "오른팔이 어깨 높이에서 옆으로 6칸 (차렷 팔과 같은 길이)");
+  assert.equal(at(p.fall, 5, 24), "", "너무 길게 뻗지 않음");
+  assert.equal(at(p.fall, 25, 25), "#00ffff", "왼팔도 6칸");
+  assert.equal(at(p.fall, 26, 25), "");
   assert.equal(at(p.fall, 10, 28), "", "몸 옆에는 팔이 없음");
   // 착지
   assert.equal(at(p.land, 4, 1), "", "머리가 두 칸 내려옴");

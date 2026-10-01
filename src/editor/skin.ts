@@ -141,9 +141,9 @@ function pose(src: Src, kind: "base" | "fall" | "land"): string[] {
   blit(out, src, p.legR, LEFT + LEG_W + spread, legY, LEG_W, legH);
   blit(out, src, p.body, LEFT, bodyY, BODY_W, BODY_H);
   if (kind === "fall") {
-    // 십자: 어깨 높이에서 양옆 끝까지 — 큰 머리(24칸)보다 바깥으로 삐져나와야 팔을 벌린 게 보인다
-    blitArmOut(out, src, p.armL, LEFT - 1, bodyY, LEFT, ARM_W, -1);
-    blitArmOut(out, src, p.armR, LEFT + BODY_W, bodyY, W - LEFT - BODY_W, ARM_W, 1);
+    // 십자: 어깨(몸 맨 위)에 붙여 차렷 팔과 같은 길이(6칸)로 양옆에 (화면 끝까지 길게 뻗으면 징그럽다는 의견 — 2026-10-01)
+    blitArmOut(out, src, p.armL, LEFT - 1, bodyY, BODY_H, ARM_W, -1);
+    blitArmOut(out, src, p.armR, LEFT + BODY_W, bodyY, BODY_H, ARM_W, 1);
   } else {
     // 차렷: 몸에 붙인다
     blit(out, src, p.armL, LEFT - ARM_W, bodyY, ARM_W, BODY_H);

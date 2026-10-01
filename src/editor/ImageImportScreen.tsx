@@ -230,7 +230,7 @@ export function ImageImportScreen({ initialFile, onCancel, onDone, onDoneCharact
                 ).map(([pose, label]) => (
                   <li key={pose}>
                     <span className={styles.dotsPreview}>
-                      <PixelPreview sprite={skinPoses[pose] as PixelSprite} width={80} height={90} label={`${label} 모습`} />
+                      <PixelPreview sprite={skinPoses[pose] as PixelSprite} width={64} height={72} label={`${label} 모습`} />
                     </span>
                     <span className={styles.helper}>{label}</span>
                   </li>
