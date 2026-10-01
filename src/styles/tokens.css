@@ -2,6 +2,7 @@
  * 디자인 토큰 — 귀여운 파스텔 게임 스타일.
  * 원칙: 파스텔은 "채우기"에만 쓰고, 글자·외곽선은 진한 잉크색(--color-ink)으로 대비를 확보한다.
  * 대비(크림 배경 --color-background 기준): ink 11.4:1, muted 5.7:1, primary-strong 5.6:1, focus 4.8:1
+ * 세 테마 모두 tests/contrast.test.ts가 글자 4.5:1 · 포커스 3:1을 확인한다.
  * 파스텔 채우기(primary/secondary/mint/butter/sky/danger) 위 잉크 글자는 모두 6:1 이상.
  */
 :root {
@@ -39,7 +40,7 @@
   --color-cream-edge: #e6d5c3;
 
   /* 상태 (글자·기호용 진한 색 + 연한 배경) */
-  --color-success: #2e7d4f;
+  --color-success: #2b764a;
   --color-success-soft: #dcf5e7;
   --color-warning: #8a5a00;
   --color-warning-soft: #fff1c9;

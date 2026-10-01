@@ -60,16 +60,24 @@
 }
 
 .swatch {
+  position: relative;
   display: grid;
   place-items: center;
   flex: none;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   padding: 0;
   border: 2px solid var(--color-line);
   border-radius: var(--radius-full);
   color: var(--color-ink);
   cursor: pointer;
+}
+
+/* 누르는 영역은 위아래로 넓혀 44px (보이는 원은 36px) */
+.swatch::after {
+  content: "";
+  position: absolute;
+  inset: -4px 0;
 }
 
 /* 선택된 색: 두꺼운 링 + 살짝 커짐 (색이 아닌 모양으로도 구분) */

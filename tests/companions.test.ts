@@ -183,3 +183,15 @@ test("직접 설정한 적이 있으면 거절을 세지 않는다", () => {
   assert.equal(r.settings, s);
   assert.equal(r.autoSetTo, null);
 });
+
+test("동료 최대 인원 0으로 시작한 판은 발판 판정 폭이 넓다 (혼자 하는 사람 보정)", () => {
+  const solo = make(0);
+  const withM = make(5);
+  assert.equal(solo.platformWidth, CONFIG.platform.width + CONFIG.world.platformWidthBonusSolo);
+  assert.equal(withM.platformWidth, CONFIG.platform.width);
+  assert.ok(CONFIG.world.platformWidthBonusSolo > 0);
+  // 넓어져도 화면 폭 안에서만 생긴다
+  solo.cameraY = 5000;
+  solo.setView(720, 720);
+  for (const p of solo.platforms.filter((q) => q.kind !== "ground")) assert.ok(p.x >= 0 && p.x + p.width <= CONFIG.view.width);
+});

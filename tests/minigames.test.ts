@@ -192,3 +192,77 @@ test("피하기: 낙하물에 맞으면 목숨 -1", () => {
   const ev = g.step(DT, IDLE);
   assert.deepEqual(ev.filter((e) => e.type === "hit"), [{ type: "hit", lives: 2 }]);
 });
+
+// ── 15단계: 사람처럼 실수해도 대부분 성공 (기획서 8번 "첫 시도 성공률 약 80%") ──
+// 반응이 0.24초 늦고 판단이 조금씩 흔들리는 자동 플레이로 여러 판을 돌려 성공 비율을 본다.
+
+function gauss(rng: () => number) {
+  let u = 0;
+  let v = 0;
+  while (u === 0) u = rng();
+  while (v === 0) v = rng();
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+
+const HUMAN = { delay: 0.24, sigma: 0.11 };
+const lagFrames = Math.round(HUMAN.delay / DT);
+
+function humanFlappy(seed: number) {
+  const rng = mulberry32(seed);
+  const g = new FlappyGame(mulberry32(seed + 99));
+  const seen: { y: number; vy: number; gap?: number }[] = [];
+  let cool = 0;
+  play(g, 60, (x) => {
+    seen.push({ y: x.y, vy: x.vy, gap: x.pipes.find((p) => !p.passed)?.gapY });
+    if (!x.started) return tap;
+    const s = seen[Math.max(0, seen.length - 1 - lagFrames)];
+    cool -= DT;
+    if (cool <= 0 && s.y > (s.gap ?? ARENA.height / 2) + 15 && s.vy >= 0) {
+      cool = 0.18 + Math.abs(HUMAN.sigma * gauss(rng));
+      return tap;
+    }
+    return IDLE;
+  });
+  return g.status === "success";
+}
+
+function humanDodge(seed: number) {
+  const rng = mulberry32(seed);
+  const g = new DodgeGame(mulberry32(seed + 3));
+  const seen: { x: number; y: number }[][] = [];
+  let goal = g.player.x + ACTOR.width / 2;
+  let rethink = 0;
+  play(g, 20, (x) => {
+    seen.push(x.fallers.map((f) => ({ x: f.x, y: f.y })));
+    const s = seen[Math.max(0, seen.length - 1 - lagFrames)];
+    rethink -= DT;
+    if (rethink <= 0) {
+      rethink = 0.15;
+      const danger = s.filter((f) => f.y > 220);
+      let best = goal;
+      let bestScore = -1;
+      for (let px = ACTOR.width / 2; px <= ARENA.width - ACTOR.width / 2; px += 8) {
+        const score = Math.min(999, ...danger.map((f) => Math.abs(f.x - px))) - Math.abs(px - (x.player.x + ACTOR.width / 2)) * 0.08;
+        if (score > bestScore) {
+          bestScore = score;
+          best = px;
+        }
+      }
+      goal = best + 6 * gauss(rng);
+    }
+    return goTo(goal);
+  });
+  return g.status === "success";
+}
+
+const rate = (fn: (seed: number) => boolean, n = 80) => Array.from({ length: n }, (_, i) => fn(5000 + i)).filter(Boolean).length / n;
+
+test("밸런스: 파닥파닥은 반응이 느려도 대부분 성공 (75% 이상)", () => {
+  const r = rate(humanFlappy);
+  assert.ok(r >= 0.75, `성공률 ${Math.round(r * 100)}%`);
+});
+
+test("밸런스: 피하기는 반응이 느려도 대부분 성공 (75% 이상)", () => {
+  const r = rate(humanDodge);
+  assert.ok(r >= 0.75, `성공률 ${Math.round(r * 100)}%`);
+});

@@ -69,8 +69,14 @@ export const CONFIG = {
     removeBelow: 60,
     /** 대열 맨 아래 줄을 화면 위에서부터 이 비율 위치에 둔다 */
     cameraRatio: 0.55,
-    /** 동료 0명(M=0) 사용자를 위한 발판 폭 보정, 동료 수에 따른 발판 폭 축소 (기본 0) */
-    platformWidthBonusSolo: 0,
+    /**
+     * 동료 0명(M=0) 사용자를 위한 발판 판정 폭 보정 (15단계 밸런스).
+     * 동료1이 있으면 판정 폭이 64→128px이라 훨씬 쉬워서, 혼자 하는 사람도 비슷한 높이까지 가도록 양옆 12px씩 넓힌다.
+     * 그림은 도트가 흐려지지 않게 128px 그대로 그리므로 보이지 않는 여유다.
+     * 자동 플레이 시뮬레이션: 보정 0 → 중앙값 약 118m, 24 → 약 195m (동료 1명일 때 약 204m)
+     */
+    platformWidthBonusSolo: 24,
+    /** 동료 수에 따른 발판 폭 축소 (기본 0) */
     platformWidthShrinkPerCompanion: 0,
   },
 
@@ -234,12 +240,16 @@ export const CONFIG = {
     flappy: {
       goal: 5,
       lives: 3,
-      gravity: 900,
-      flapVelocity: 320,
-      pipeSpeed: 110,
+      /**
+       * 중력·날갯짓을 약하게 (15단계 밸런스): 반응이 0.24초 늦는 자동 플레이도 약 90% 성공하도록.
+       * 900/320일 때는 같은 조건에서 약 20%라 너무 어려웠다
+       */
+      gravity: 550,
+      flapVelocity: 240,
+      pipeSpeed: 100,
       pipeWidth: 56,
       /** 통로 높이 (넓게) */
-      pipeGap: 210,
+      pipeGap: 225,
       /** 기둥 사이 가로 간격 */
       pipeSpacing: 230,
       invincible: 1.2,

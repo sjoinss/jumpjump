@@ -22,10 +22,11 @@
 
 .chip,
 .chipGhost {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  min-height: 34px;
+  min-height: 36px;
   padding: 0 var(--spacing-md);
   border: 2px solid var(--color-line);
   border-radius: var(--radius-full);
@@ -35,6 +36,14 @@
   font-size: var(--font-size-caption);
   white-space: nowrap;
   cursor: pointer;
+}
+
+/* 보이는 크기는 작게 두고, 누르는 영역만 위아래로 넓혀 44px (터치 목표 크기) */
+.chip::after,
+.chipGhost::after {
+  content: "";
+  position: absolute;
+  inset: -4px 0;
 }
 
 .chip[aria-pressed="true"] {
