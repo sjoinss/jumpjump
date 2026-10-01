@@ -317,3 +317,19 @@ test("움직이는 발판에도 위에서 내려오면 착지한다", () => {
   const ev = run(w, 0.05);
   assert.ok(ev.some((e) => e.type === "land" && e.platform.id === 3));
 });
+
+test("일회용 발판을 밟으면 무너지는 아래 발판의 후보 구슬도 사라진다 (떨어지며 닿아 선택창이 뜨지 않게)", () => {
+  const w = make();
+  w.companionMax = 5;
+  w.platforms = [
+    { id: 1, kind: "basic", x: w.hero.x, y: 300, width: 128, touched: true },
+    { id: 2, kind: "oneTime", x: w.hero.x, y: 500, width: 128, touched: false },
+  ];
+  w.candidates = [{ id: 1, x: w.hero.x + 32, y: 320, state: "active", fade: 0, refusalCounted: false }];
+  w.hero.y = 501;
+  w.hero.vy = -10;
+  const ev = run(w, 5);
+  assert.ok(ev.some((e) => e.type === "land" && e.platform.id === 2));
+  assert.ok(!ev.some((e) => e.type === "candidate"), "떨어지는 동안 선택창 없음");
+  assert.ok(ev.some((e) => e.type === "gameover"));
+});

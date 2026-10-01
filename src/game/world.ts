@@ -306,6 +306,11 @@ export class World {
           for (const p of this.platforms) {
             if (p.broken === undefined && p.y < hit.y) p.broken = -(hit.y - p.y) / CONFIG.special.collapseWaveSpeed;
           }
+          // 무너진 발판 위 후보 구슬도 조용히 사라진다 (떨어지는 도중 닿아서 선택창이 뜨지 않게). 후보 id = 발판 id
+          for (const c of this.candidates) {
+            const p = this.platforms.find((x) => x.id === c.id);
+            if (p && p.broken !== undefined && p !== hit) c.state = "fading";
+          }
         }
         events.push({ type: "land", platform: hit, first });
       }
