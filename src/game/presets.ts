@@ -178,3 +178,28 @@ export const PLATFORM_PRESETS: Platforms = {
 
 /** 처음 팔레트: 프리셋에 쓰인 색 위주로 8개 */
 export const DEFAULT_PALETTE = ["#28213a", "#ffffff", "#ffd36e", "#ff8fab", "#c02a37", "#3fa66b", "#7cc98f", "#a47b52"];
+
+/** 그림이 없는 동료 슬롯·후보의 모습: 물음표 방울 (기획서 4-3 "슬롯이 비어 있으면 ?") */
+export const COMPANION_QUESTION = pixelSprite(
+  [
+    "................",
+    "................",
+    "................",
+    ".....oooooo.....",
+    "...oowwwwwwoo...",
+    "..owwwwqqwwwwo..",
+    ".owwwwqwwqwwwwo.",
+    ".owwwwwwwqwwwwo.",
+    ".owwwwwwqwwwwwo.",
+    ".owwwwwqwwwwwwo.",
+    ".owwwwwqwwwwwwo.",
+    ".owwwwwwwwwwwwo.",
+    ".owwwwwqwwwwwwo.",
+    "..owwwwwwwwwwo..",
+    "...oowwwwwwoo...",
+    ".....oooooo.....",
+    "................",
+    "................",
+  ],
+  { o: INK, w: "#efe8ff", q: "#b0306a" },
+);

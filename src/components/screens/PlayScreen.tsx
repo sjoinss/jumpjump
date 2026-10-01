@@ -6,7 +6,9 @@ import { CHARACTER_PRESETS } from "@/game/presets";
 import { SCENE } from "@/game/themes";
 import { needsBackupReminder } from "@/lib/dataFile";
 import type { BestScores, Character } from "@/lib/schema";
+import { CompanionPrompt } from "../CompanionPrompt";
 import { ControlsGuide } from "../ControlsGuide";
+import { applyRefusal } from "@/game/companions";
 import { GameOverDialog, type GameResult } from "../GameOverDialog";
 import { RegionBanner } from "../RegionBanner";
 import { regionName } from "@/game/regions";
@@ -29,7 +31,7 @@ type Props = {
 /**
  * 시작 장면과 게임을 한 화면에서 처리한다.
  * ready: 캐릭터가 바닥에 서 있고 좌우에 "시작하기 / 캐릭터 만들기" 카드
- * playing/paused: HUD(점수 · 설정 · 일시정지)
+ * playing/paused: HUD(점수(높이 m) · 설정 · 일시정지)
  */
 export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -53,7 +55,7 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
   const showBackup = !banner && needsBackupReminder(data, now);
   const snoozeBackup = () =>
     update((d) => ({ ...d, settings: { ...d.settings, onboarding: { ...d.settings.onboarding, backupReminderAt: Date.now() } } }));
-  const { announce } = useToast();
+  const { announce, show } = useToast();
   const announceRef = useRef(announce);
   announceRef.current = announce;
 
@@ -94,7 +96,7 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
     const engine = engineRef.current;
     if (!engine || engine.currentPhase !== "ready") return;
     markRunStart();
-    engine.start();
+    engine.start({ companionMax: runRef.current.companionMaxAtStart });
     canvasRef.current?.focus({ preventScroll: true });
     announce("게임 시작");
     update((d) =>
@@ -120,7 +122,7 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
       const isNew = final > prevBest;
       if (isNew) update((d) => ({ ...d, best: { ...d.best, [key]: Math.max(d.best[key], final) } }));
       setResult({ score: final, best: Math.max(prevBest, final), isNew, withCompanions });
-      announce(`게임 끝. ${final}점${isNew ? ", 최고 기록!" : ""}`);
+      announce(`게임 끝. ${final}미터${isNew ? ", 최고 기록!" : ""}`);
     },
     [announce, update],
   );
@@ -130,15 +132,47 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
   const restart = useCallback(() => {
     setResult(null);
     markRunStart();
-    engineRef.current?.restart();
+    engineRef.current?.restart({ companionMax: runRef.current.companionMaxAtStart });
     canvasRef.current?.focus({ preventScroll: true });
     announce("다시 시작");
   }, [announce]);
+
+  // ── 동료 후보 선택창 (기획서 7-4) ──
+  const [prompt, setPrompt] = useState<{ id: number; slot: number } | null>(null);
+
+  const closePrompt = () => {
+    setPrompt(null);
+    canvasRef.current?.focus({ preventScroll: true });
+  };
+
+  const acceptCompanion = () => {
+    if (!prompt) return;
+    // 10단계(그리기)·11단계(미니게임)가 들어오면 여기서 그 흐름으로 넘어간다
+    engineRef.current?.acceptCandidate(prompt.id);
+    announce(`동료 ${prompt.slot}번이 합류했어요!`);
+    closePrompt();
+  };
+
+  const refuseCompanion = (count: boolean) => {
+    if (!prompt) return;
+    const engine = engineRef.current;
+    const counted = engine?.refuseCandidate(prompt.id, count) ?? false;
+    closePrompt();
+    if (!counted || !engine) return;
+    // 거절 누적 → 설정을 직접 건드린 적이 없으면 3번째에 자동 설정 (기획서 7-6)
+    const outcome = applyRefusal(dataRef.current.settings, engine.companions);
+    update((d) => ({ ...d, settings: applyRefusal(d.settings, engine.companions).settings }));
+    if (outcome.autoSetTo !== null) {
+      engine.setCompanionMax(outcome.autoSetTo);
+      show(`동료 ${outcome.autoSetTo}명까지만 나오도록 설정했어요. 설정에서 바꿀 수 있어요.`, "info");
+    }
+  };
 
   const backToStart = useCallback(() => {
     setMenuOpen(false);
     setResult(null);
     setRegionBanner(null);
+    setPrompt(null);
     engineRef.current?.showReady();
     logoRef.current?.focus({ preventScroll: true });
   }, []);
@@ -158,10 +192,12 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
       onLayout: setLayout,
       onScore: (s) => {
         setScore(s);
-        // 스크린리더에는 10점마다만 알린다 (매 발판마다 읽으면 너무 시끄럽다)
-        if (s > 0 && s % 10 === 0) announceRef.current(`${s}점`);
+        // 스크린리더에는 일정 간격(m)마다만 알린다 (1m마다 읽으면 너무 시끄럽다)
+        const every = CONFIG.score.announceEvery;
+        if (s > 0 && s % every === 0) announceRef.current(`${s}미터`);
       },
       onGameOver: (s) => onGameOverRef.current(s),
+      onCandidate: (c) => setPrompt(c),
       onRegion: (index) => {
         const name = regionName(index);
         setRegionBanner((prev) => ({ id: (prev?.id ?? 0) + 1, name }));
@@ -202,6 +238,12 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
     engineRef.current?.setTheme(theme);
   }, [theme]);
 
+  // 동료 슬롯 그림 (후보·대열 모습)
+  const slots = data.companionSlots;
+  useEffect(() => {
+    engineRef.current?.setCompanionLooks(slots.map((s) => s.character));
+  }, [slots]);
+
   // 특수 발판 표식 (색약 대응) 설정
   const markers = data.settings.specialPlatformMarker;
   useEffect(() => {
@@ -233,7 +275,8 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
   }, [phase, covered, guideOpen, start]);
 
   const ready = phase === "ready";
-  const inGame = phase === "playing" || phase === "paused" || phase === "gameover";
+  // 동료 선택창이 떠 있는 동안에도 게임 중 HUD(점수)를 그대로 보여준다
+  const inGame = !ready;
   const sceneStyle = { "--ground": `${layout.groundHeight}px`, background: SCENE[theme].cssBackground } as CSSProperties;
 
   return (
@@ -250,9 +293,10 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
         <div className={styles.hudLeft}>
           {inGame ? (
             <p className={styles.score}>
-              <span className="visually-hidden">점수 </span>
+              <span className="visually-hidden">높이 </span>
               <span className={styles.scoreValue}>{score}</span>
-              <span className={styles.scoreUnit}>점</span>
+              <span className={styles.scoreUnit} aria-hidden="true">m</span>
+              <span className="visually-hidden">미터</span>
             </p>
           ) : (
             <BestBadge best={data.best} />
@@ -338,6 +382,13 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
 
       {regionBanner && !ready && <RegionBanner id={regionBanner.id} name={regionBanner.name} />}
 
+      <CompanionPrompt
+        prompt={prompt && !covered ? { slot: prompt.slot, data: slots[prompt.slot - 1] } : null}
+        onYes={acceptCompanion}
+        onNo={() => refuseCompanion(true)}
+        onDismiss={() => refuseCompanion(false)}
+      />
+
       <GameOverDialog
         result={covered ? null : result}
         onRetry={restart}
@@ -384,13 +435,13 @@ function BestBadge({ best }: { best: BestScores }) {
         {best.withCompanions > 0 && (
           <div>
             <dt>동료와</dt>
-            <dd>{best.withCompanions}</dd>
+            <dd>{best.withCompanions}m</dd>
           </div>
         )}
         {best.solo > 0 && (
           <div>
             <dt>혼자</dt>
-            <dd>{best.solo}</dd>
+            <dd>{best.solo}m</dd>
           </div>
         )}
       </dl>

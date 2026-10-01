@@ -89,7 +89,7 @@ export function ControlsGuide({ open, hero, onStart, onClose }: Props) {
         </li>
         <li>
           <PixelIcon name="star" size={16} />
-          처음 밟은 발판마다 1점
+          높이 올라갈수록 점수(m)가 올라가요
         </li>
         <li>
           <PixelIcon name="fall" size={16} />

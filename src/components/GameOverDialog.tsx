@@ -50,7 +50,7 @@ export function GameOverDialog({ result, onRetry, onEditor, onHome }: Props) {
         <div className={styles.result}>
           <p className={styles.score}>
             <span className={styles.value}>{result.score}</span>
-            <span className={styles.unit}>점</span>
+            <span className={styles.unit}>m</span>
           </p>
           <div className={styles.badges}>
             {result.isNew && (
@@ -62,7 +62,7 @@ export function GameOverDialog({ result, onRetry, onEditor, onHome }: Props) {
             <span className={styles.badge}>{result.withCompanions ? "동료 있음" : "동료 없음"}</span>
           </div>
           <p className={styles.best}>
-            {result.isNew ? "지금까지 가장 높이 올라갔어요!" : `최고 기록 ${result.best}점`}
+            {result.isNew ? "지금까지 가장 높이 올라갔어요!" : `최고 기록 ${result.best}m`}
           </p>
         </div>
       )}

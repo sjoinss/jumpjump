@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { CONFIG } from "../src/game/config";
-import { gapAt, maxJumpHeight, mulberry32, World, type WorldEvent } from "../src/game/world";
+import { gapAt, maxJumpHeight, mulberry32, toMeters, World, type WorldEvent } from "../src/game/world";
 import type { MoveIntent } from "../src/input/controller";
 
 const DT = CONFIG.loop.fixedStep;
@@ -49,11 +49,11 @@ test("생성된 발판 사이 간격은 항상 도달 가능", () => {
   for (let i = 1; i < ys.length; i++) assert.ok(ys[i] - ys[i - 1] <= maxJumpHeight() * 0.8 + 1e-6);
 });
 
-test("바닥에서 자동 점프, 바닥은 점수 없음", () => {
+test("바닥에서 자동 점프, 서 있을 땐 0m", () => {
   const w = make();
+  assert.equal(w.score, 0);
   const ev = run(w, 0.1);
   assert.ok(ev.some((e) => e.type === "land" && e.platform.kind === "ground"));
-  assert.equal(w.score, 0);
 });
 
 test("단방향 발판: 올라가는 중엔 통과, 내려올 때만 착지", () => {
@@ -70,13 +70,35 @@ test("단방향 발판: 올라가는 중엔 통과, 내려올 때만 착지", ()
   assert.ok(land && land.type === "land" && land.platform.id === 99);
 });
 
-test("점수: 처음 밟은 발판마다 +1, 같은 발판은 다시 세지 않음", () => {
+test("점수 = 올라간 가장 높은 곳(m, 내림). 같은 자리에서 여러 번 튀어도 오르지 않는다", () => {
+  const px = CONFIG.score.pxPerMeter;
+  assert.equal(toMeters(0), 0);
+  assert.equal(toMeters(px - 1), 0);
+  assert.equal(toMeters(px), 1);
+  assert.equal(toMeters(-50), 0);
+
   const w = make();
-  w.platforms = w.platforms.filter((p) => p.kind === "ground");
-  w.platforms.push({ id: 99, kind: "basic", x: w.hero.x, y: 60, width: 128, touched: false });
+  w.platforms = [{ id: 99, kind: "basic", x: w.hero.x, y: 0, width: 128, touched: false }];
   w.launch();
-  run(w, 3);
-  assert.equal(w.score, 1, "여러 번 튀어도 1점");
+  const ev = run(w, 3);
+  const top = toMeters(maxJumpHeight());
+  assert.equal(w.score, top, "제자리 점프 최고점");
+  // 점수 이벤트는 1m 오를 때마다 한 번씩만
+  assert.deepEqual(
+    ev.filter((e) => e.type === "score").map((e) => e.type === "score" && e.score),
+    Array.from({ length: top }, (_, i) => i + 1),
+  );
+});
+
+test("떨어져도 점수는 줄지 않는다", () => {
+  const w = make();
+  w.hero.y = 10 * CONFIG.score.pxPerMeter + 5;
+  w.hero.vy = 0;
+  run(w, DT);
+  assert.equal(w.score, 10);
+  w.hero.y = 2 * CONFIG.score.pxPerMeter;
+  run(w, DT);
+  assert.equal(w.score, 10);
 });
 
 test("카메라는 위로만 움직인다", () => {
@@ -96,7 +118,7 @@ test("자동 조종으로 꾸준히 올라가며 점수가 오른다 (발판 배
   w.launch();
   run(w, 20, autopilot);
   assert.equal(w.over, false);
-  assert.ok(w.score >= 20, `score ${w.score}`);
+  assert.ok(w.score >= 20, `score ${w.score}m`);
 });
 
 test("화면 아래로 떨어지면 게임오버, 이후 step은 아무 일도 안 함", () => {
@@ -142,13 +164,13 @@ test("좌우 벽에서 멈춘다 (반대편으로 넘어가지 않음)", () => {
 import { pickKind } from "../src/game/world";
 import { regionBlendAt, regionIndexAt, regionName } from "../src/game/regions";
 
-test("특수 발판 확률표: 20점대 전엔 기본만, 고점프는 20부터, 일회용은 40부터", () => {
+test("특수 발판 확률표(높이 m): 15m 전엔 기본만, 고점프는 15m부터, 일회용은 35m부터", () => {
   for (const roll of [0, 0.1, 0.5, 0.99]) assert.equal(pickKind(5, roll), "basic");
-  assert.equal(pickKind(25, 0.05), "highJump");
-  assert.equal(pickKind(25, 0.2), "basic", "20점대엔 일회용 없음");
-  assert.equal(pickKind(45, 0.05), "highJump");
-  assert.equal(pickKind(45, 0.2), "oneTime");
-  assert.equal(pickKind(45, 0.5), "basic");
+  assert.equal(pickKind(20, 0.05), "highJump");
+  assert.equal(pickKind(20, 0.2), "basic", "35m 전엔 일회용 없음");
+  assert.equal(pickKind(40, 0.05), "highJump");
+  assert.equal(pickKind(40, 0.2), "oneTime");
+  assert.equal(pickKind(40, 0.5), "basic");
 });
 
 test("고점프 발판은 기본보다 높이 튄다", () => {
@@ -179,29 +201,32 @@ test("일회용 발판: 한 번 밟으면 부서지고, 잠시 뒤 사라지며 
   assert.equal(w.platforms.some((p) => p.id === 7), false, "사라짐");
 });
 
-test("지역: 경계 점수에서 들어가고, 한 판에 지역마다 한 번만 알린다", () => {
+test("지역: 경계 높이(m)에서 들어가고, 한 판에 지역마다 한 번만 알린다", () => {
   assert.equal(regionIndexAt(0), 0);
-  assert.equal(regionIndexAt(79), 0);
-  assert.equal(regionIndexAt(80), 1);
-  assert.equal(regionIndexAt(380), 3);
+  assert.equal(regionIndexAt(74), 0);
+  assert.equal(regionIndexAt(75), 1);
+  assert.equal(regionIndexAt(600), 3);
   assert.equal(regionName(2), "하늘");
 
   const w = make();
-  w.score = 79;
-  w.platforms = [{ id: 1, kind: "basic", x: w.hero.x, y: -1, width: 128, touched: false }];
-  const ev = run(w, 0.05);
+  // 지상 경계(75m) 바로 아래 발판에서 튀어 올라 경계를 넘는다
+  const y = 74 * CONFIG.score.pxPerMeter;
+  w.score = 74;
+  w.hero.y = y;
+  w.platforms = [{ id: 1, kind: "basic", x: w.hero.x, y: y - 1, width: 128, touched: false }];
+  const ev = run(w, 0.3);
   assert.deepEqual(ev.filter((e) => e.type === "region"), [{ type: "region", index: 1 }]);
   w.platforms.push({ id: 2, kind: "basic", x: w.hero.x, y: w.hero.y - 1, width: 128, touched: false });
   const again = run(w, 2);
   assert.equal(again.filter((e) => e.type === "region").length, 0, "지상은 이미 알림");
 });
 
-test("배경 섞임: 경계 ±20점에서 0→1, 그 밖은 한 지역", () => {
+test("배경 섞임: 경계 ±25m에서 0→1, 그 밖은 한 지역", () => {
   assert.equal(regionBlendAt(0), 0);
-  assert.equal(regionBlendAt(59), 0);
-  assert.equal(regionBlendAt(80), 0.5);
+  assert.equal(regionBlendAt(49), 0);
+  assert.equal(regionBlendAt(75), 0.5);
   assert.equal(regionBlendAt(100), 1);
-  assert.equal(regionBlendAt(150), 1);
-  assert.equal(regionBlendAt(200), 1.5);
-  assert.equal(regionBlendAt(1000), 3);
+  assert.equal(regionBlendAt(200), 1);
+  assert.equal(regionBlendAt(260), 1.5);
+  assert.equal(regionBlendAt(2000), 3);
 });

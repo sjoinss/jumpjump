@@ -81,27 +81,38 @@ export const CONFIG = {
     /** 일회용: 밟은 뒤 부서지며 사라지는 시간 */
     oneTimeBreakDuration: 0.3,
     /**
-     * 점수대별 등장 확률. 발판은 보통 1개에 1점이라 "몇 번째로 만든 발판인지"를 점수 대신 쓴다.
-     * from 이상인 마지막 줄이 적용된다. 나머지 확률은 기본 발판.
+     * 높이(m)대별 등장 확률. 발판이 생기는 높이가 from(m) 이상인 마지막 줄이 적용된다. 나머지 확률은 기본 발판.
+     * (예전 발판 수 기준 20·40·150번째 발판이 생기던 높이에 맞춘 값)
      */
     table: [
       { from: 0, highJump: 0, oneTime: 0 },
-      { from: 20, highJump: 0.15, oneTime: 0 },
-      { from: 40, highJump: 0.15, oneTime: 0.15 },
-      { from: 150, highJump: 0.18, oneTime: 0.22 },
+      { from: 15, highJump: 0.15, oneTime: 0 },
+      { from: 35, highJump: 0.15, oneTime: 0.15 },
+      { from: 175, highJump: 0.18, oneTime: 0.22 },
     ],
   },
 
-  /** 지역 (기획서 3-5). startScore에서 시작하고 경계 ±blend점 구간에서 섞인다 */
+  /**
+   * 점수 = 높이(m). 이번 판에서 대열 맨 아래 줄 발밑이 올라간 가장 높은 곳(바닥 윗면 기준)을 pxPerMeter로 나눠 내림.
+   * 발판을 몇 개 밟았는지와는 무관하다 (기획서 3-2의 "발판마다 +1"을 사용자 결정으로 변경)
+   */
+  score: {
+    /** 1m = 캐릭터 키(72px) */
+    pxPerMeter: 72,
+    /** 스크린리더에는 이 간격(m)마다만 알린다 */
+    announceEvery: 10,
+  },
+
+  /** 지역 (기획서 3-5). startM(높이 m)에서 시작하고 경계 ±blend m 구간에서 섞인다 */
   regions: {
     list: [
-      { id: "cave", name: "동굴", startScore: 0 },
-      { id: "ground", name: "지상", startScore: 80 },
-      { id: "sky", name: "하늘", startScore: 200 },
-      { id: "space", name: "우주", startScore: 380 },
+      { id: "cave", name: "동굴", startM: 0 },
+      { id: "ground", name: "지상", startM: 75 },
+      { id: "sky", name: "하늘", startM: 260 },
+      { id: "space", name: "우주", startM: 600 },
     ],
-    blend: 20,
-    /** 배경이 목표 지역 색으로 따라가는 속도 (지역 단위/초). 점수가 1점씩 오를 때 뚝뚝 끊기지 않게 */
+    blend: 25,
+    /** 배경이 목표 지역 색으로 따라가는 속도 (지역 단위/초). 점수가 1m씩 오를 때 뚝뚝 끊기지 않게 */
     followSpeed: 0.8,
     /** 지역 이름 배너 표시 시간(초) */
     bannerSeconds: 2,
@@ -129,6 +140,25 @@ export const CONFIG = {
   companion: {
     maxCount: 5,
     defaultMax: 5,
+    /** 후보가 나오는 높이(m) (기획서 7-2). 이 높이 이상에서 처음 생기는 발판 위에. 그 뒤에도 모자라면 repeatEvery(m) 간격으로 */
+    candidateHeights: [25, 75, 175, 350, 650],
+    repeatEvery: 300,
+    /** 거절이 이만큼 쌓이면 동료 최대 인원을 그때 동료 수로 자동 설정 (기획서 7-6) */
+    refusalLimit: 3,
+    /** 후보 블록 크기(논리 px)와 발판 위 떠 있는 높이 */
+    candidateSize: 56,
+    candidateLift: 22,
+    /** 조건이 사라진 후보가 조용히 사라지는 시간 */
+    candidateFade: 0.45,
+    /** 합류 연출(톡 튀어나오기) 시간 */
+    joinPop: 0.45,
+  },
+
+  /** 대열 (기획서 3-3, 7-1): 2열 × 최대 3행 */
+  formation: {
+    columns: 2,
+    /** 대열 줄 수(1~3)에 따라 맨 아래 줄을 화면 위에서부터 이 비율 위치에 둔다. 줄이 많을수록 아래로 내려 위쪽 시야 확보 */
+    cameraRatioByRows: [0.55, 0.62, 0.7],
   },
 
   /** 저장 데이터 상한. 불러온 데이터가 이를 넘으면 거부하거나 잘라낸다 */

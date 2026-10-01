@@ -27,11 +27,11 @@ export function BestRecords({ best }: Props) {
         <dl className={styles.list}>
           <div className={styles.row}>
             <dt>동료와 함께</dt>
-            <dd>{best.withCompanions}점</dd>
+            <dd>{best.withCompanions}m</dd>
           </div>
           <div className={styles.row}>
             <dt>혼자서</dt>
-            <dd>{best.solo}점</dd>
+            <dd>{best.solo}m</dd>
           </div>
         </dl>
       )}
