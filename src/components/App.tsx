@@ -5,6 +5,8 @@ import { sfx } from "@/game/audio";
 import { applyTheme } from "@/lib/theme";
 import { BestRecords } from "./BestRecords";
 import { DesktopFrame } from "./DesktopFrame";
+import { InstallButton } from "./InstallButton";
+import { PwaProvider } from "./PwaProvider";
 import { SaveProvider, useSaveData } from "./SaveProvider";
 import { BootScreen } from "./screens/BootScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
@@ -15,6 +17,7 @@ import styles from "./App.module.css";
 
 export function App() {
   return (
+    <PwaProvider>
     <ToastProvider>
       <SaveProvider
         loading={
@@ -31,6 +34,7 @@ export function App() {
         <p>이 게임은 세로 화면에서 플레이해요.</p>
       </div>
     </ToastProvider>
+    </PwaProvider>
   );
 }
 
@@ -70,7 +74,14 @@ function Screens() {
   }, []);
 
   return (
-    <DesktopFrame side={<BestRecords best={data.best} />}>
+    <DesktopFrame
+      side={
+        <>
+          <BestRecords best={data.best} />
+          <InstallButton block />
+        </>
+      }
+    >
       {screen === "play" && (
         <div className={styles.layer} inert={settingsOpen}>
           <PlayScreen

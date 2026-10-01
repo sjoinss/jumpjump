@@ -1,0 +1,41 @@
+.guide {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+}
+
+.num {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 2px solid var(--color-line);
+  border-radius: var(--radius-full);
+  background: var(--color-primary-soft);
+  font-family: var(--font-display);
+}
+
+.shareIcon {
+  display: inline-flex;
+  margin: 0 2px;
+  padding: 2px;
+  border: 2px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  vertical-align: middle;
+}

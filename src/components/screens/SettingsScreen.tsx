@@ -6,6 +6,8 @@ import type { TabKey } from "@/editor/session";
 import { THEME_IDS, THEMES, type ThemeId } from "@/game/themes";
 import type { Settings } from "@/lib/schema";
 import { CompanionSettings } from "../CompanionSettings";
+import { InstallButton } from "../InstallButton";
+import { usePwa } from "../PwaProvider";
 import { DataManager } from "../DataManager";
 import { useSaveData } from "../SaveProvider";
 import { SpritePreview } from "../SpritePreview";
@@ -44,6 +46,7 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
   const [confirmReset, setConfirmReset] = useState(false);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const osReducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
+  const { installState, updateReady, applyUpdate } = usePwa();
 
   const openEditor = (next: Editing) => {
     returnFocus.current = document.activeElement as HTMLElement | null;
@@ -181,7 +184,23 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
           <Button variant="danger" icon="trash" block disabled={!hasRecords} onClick={() => setConfirmReset(true)}>
             최고 기록 초기화
           </Button>
-          <p className={styles.sectionHelp}>앱으로 설치하는 기능은 다음 업데이트에서 들어와요.</p>
+          {updateReady && (
+            <Button variant="primary" icon="download" block onClick={applyUpdate}>
+              새 버전으로 업데이트
+            </Button>
+          )}
+          {installState === "installed" ? (
+            <p className={styles.sectionHelp}>앱으로 설치되어 있어요. 인터넷이 없어도 열 수 있어요.</p>
+          ) : installState === "unavailable" ? (
+            <p className={styles.sectionHelp}>
+              이 브라우저에서는 설치 버튼을 띄울 수 없어요. 브라우저 메뉴에서 &quot;홈 화면에 추가&quot; 또는 &quot;앱 설치&quot;를 찾아보세요.
+            </p>
+          ) : (
+            <>
+              <InstallButton block />
+              <p className={styles.sectionHelp}>설치하면 홈 화면에서 바로 열리고, 인터넷이 없어도 플레이할 수 있어요.</p>
+            </>
+          )}
         </section>
       </div>
     </ScreenLayout>

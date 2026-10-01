@@ -21,6 +21,9 @@ import { useSaveData, useStorageBanner } from "../SaveProvider";
 import { Button, IconButton } from "../ui/Button";
 import { Dialog } from "../ui/Dialog";
 import { InlineMessage } from "../ui/InlineMessage";
+import { InstallButton } from "../InstallButton";
+import { usePwa } from "../PwaProvider";
+import { useMediaQuery } from "../useMediaQuery";
 import { Switch } from "../ui/Switch";
 import { PixelIcon } from "../ui/PixelIcon";
 import { useToast } from "../ui/Toast";
@@ -57,7 +60,10 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
   const banner = useStorageBanner();
   // 주기적 백업 안내 (기획서 10-4). 저장소 경고가 있으면 그쪽이 먼저
   const [now] = useState(() => Date.now());
-  const showBackup = !banner && needsBackupReminder(data, now);
+  const { updateReady, applyUpdate } = usePwa();
+  const showBackup = !banner && !updateReady && needsBackupReminder(data, now);
+  // PC는 프레임 옆에 설치 버튼이 있으니, 휴대폰(터치)일 때만 시작 장면에 둔다
+  const touchDevice = useMediaQuery("(pointer: coarse)");
   const snoozeBackup = () =>
     update((d) => ({ ...d, settings: { ...d.settings, onboarding: { ...d.settings.onboarding, backupReminderAt: Date.now() } } }));
   const { announce, show } = useToast();
@@ -454,6 +460,21 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
             <h1 ref={logoRef} tabIndex={-1} className={styles.logo}>
               <span className={styles.logoMain}>점프점프</span>
             </h1>
+            {updateReady && (
+              <div className={styles.banner}>
+                <InlineMessage
+                  tone="info"
+                  title="새 버전이 있어요"
+                  action={
+                    <Button variant="primary" icon="download" onClick={applyUpdate}>
+                      업데이트
+                    </Button>
+                  }
+                >
+                  누르면 바로 새로고침돼요. 그림과 기록은 그대로예요.
+                </InlineMessage>
+              </div>
+            )}
             {banner && (
               <div className={styles.banner}>
                 <InlineMessage tone="warning" title={banner.title}>
@@ -481,6 +502,7 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
                 </InlineMessage>
               </div>
             )}
+            {touchDevice && <InstallButton variant="ghost" />}
           </div>
 
           <nav className={styles.cards} aria-label="시작 메뉴">

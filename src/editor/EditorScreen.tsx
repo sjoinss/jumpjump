@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { PixelPreview } from "@/components/PixelPreview";
 import { SpritePreview } from "@/components/SpritePreview";
+import { requestPersistentStorage } from "@/components/PwaProvider";
 import { useKeyValueStore, useSaveData } from "@/components/SaveProvider";
 import { ScreenLayout } from "@/components/screens/ScreenLayout";
 import { Button } from "@/components/ui/Button";
@@ -172,6 +173,8 @@ export function EditorScreen({ onClose, companion, initialTab }: Props) {
     });
     dispatch({ type: "markSaved" });
     kv.delete(draftKey).catch(() => {});
+    // 그린 그림이 생겼으니 브라우저에 데이터를 지우지 말아 달라고 요청 (기획서 16번)
+    void requestPersistentStorage();
     if (!inGame) show(companion ? `동료 ${companion.slot}번 그림을 저장했어요.` : "저장했어요! 게임에 바로 적용돼요.", "success");
     if (firstTime) setDialog("backup");
     else finish();
