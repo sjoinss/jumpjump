@@ -244,6 +244,7 @@ function summary(d: Partial<SaveData>, k: DataKey) {
             <PixelPreview sprite={d.platforms.basic} width={32} height={8} />
             <PixelPreview sprite={d.platforms.highJump} width={32} height={8} />
             <PixelPreview sprite={d.platforms.oneTime} width={32} height={8} />
+            <PixelPreview sprite={d.platforms.moving} width={32} height={8} />
           </>
         )
       );

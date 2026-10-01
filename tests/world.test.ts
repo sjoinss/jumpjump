@@ -271,3 +271,45 @@ test("지역을 넘을 때마다 조금씩 빨라진다 (점프 높이는 그대
   assert.ok(space.t < cave.t, "우주에서 더 빨리 꼭대기");
   assert.ok(Math.abs(space.top - cave.top) < 3, "점프 높이는 같음");
 });
+
+test("움직이는 발판: 좌우 벽 사이를 오가고, 벽에 닿으면 돌아선다", () => {
+  const w = make();
+  const p = { id: 9, kind: "moving" as const, x: 220, y: 5000, width: 128, touched: false, vx: 80 };
+  w.platforms.push(p);
+  const xs: number[] = [];
+  for (let i = 0; i < 4 / DT; i++) {
+    w.step(DT, NONE);
+    xs.push(p.x);
+  }
+  assert.ok(xs.every((x) => x >= 0 && x <= CONFIG.view.width - p.width + 1e-6), "화면 밖으로 안 나감");
+  assert.ok(Math.max(...xs) > CONFIG.view.width - p.width - 1 && Math.min(...xs) < 1, "양쪽 벽까지 오감");
+});
+
+test("움직이는 발판: 60m 전엔 안 나오고, 높이 올라갈수록 많이 나온다", () => {
+  const share = (m: number) => {
+    let n = 0;
+    for (let i = 0; i < 1000; i++) if (pickKind(m, i / 1000) === "moving") n++;
+    return n / 1000;
+  };
+  assert.equal(share(50), 0);
+  assert.ok(share(70) > 0);
+  assert.ok(share(400) > share(200) && share(200) > share(70));
+  const gen = make(4);
+  gen.cameraY = 40000;
+  gen.setView(720, 720);
+  const moving = gen.platforms.filter((p) => p.kind === "moving");
+  assert.ok(moving.length > 0);
+  for (const p of moving) {
+    const { speedMin, speedMax } = CONFIG.special.moving;
+    assert.ok(Math.abs(p.vx!) >= speedMin && Math.abs(p.vx!) <= speedMax);
+    assert.ok(toMeters(p.y) >= 60);
+  }
+});
+
+test("움직이는 발판에도 위에서 내려오면 착지한다", () => {
+  const w = make();
+  w.platforms = [{ id: 3, kind: "moving", x: w.hero.x - 20, y: -1, width: 128, touched: false, vx: 60 }];
+  w.hero.y = 0;
+  const ev = run(w, 0.05);
+  assert.ok(ev.some((e) => e.type === "land" && e.platform.id === 3));
+});

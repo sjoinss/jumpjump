@@ -1,4 +1,5 @@
 import { CONFIG } from "../game/config";
+import { PLATFORM_PRESETS } from "../game/presets";
 import { isThemeId } from "../game/themes";
 import { createDefaultSaveData, createDefaultSettings, type DefaultEnv } from "./defaults";
 import {
@@ -146,12 +147,18 @@ const PLATFORM_LABEL: Record<keyof Platforms, string> = {
   basic: "기본 발판",
   highJump: "고점프 발판",
   oneTime: "일회용 발판",
+  moving: "움직이는 발판",
 };
 
 export function validatePlatforms(raw: unknown): Result<Platforms> {
   if (!isRecord(raw)) return fail("발판 데이터 형식이 올바르지 않습니다");
   const out: Partial<Platforms> = {};
   for (const key of Object.keys(PLATFORM_LABEL) as (keyof Platforms)[]) {
+    // 움직이는 발판은 나중에 생겨서 예전 데이터·파일에는 없다 → 기본 그림 (손상으로 치지 않음)
+    if (key === "moving" && raw[key] === undefined) {
+      out.moving = structuredClone(PLATFORM_PRESETS.moving);
+      continue;
+    }
     const r = validatePixelSprite(raw[key], "platform", PLATFORM_LABEL[key]);
     if (!r.ok) return r;
     out[key] = r.value;

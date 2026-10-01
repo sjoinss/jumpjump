@@ -26,16 +26,17 @@ import { createHistory, pushHistory, redo, replacePresent, undo, type History } 
  * - companion: 동료 한 명(companion 탭 하나)과 이름
  */
 
-export type TabKey = "hero" | "companion" | "basic" | "highJump" | "oneTime";
+export type TabKey = "hero" | "companion" | "basic" | "highJump" | "oneTime" | "moving";
 /** 주인공·발판 편집 화면의 탭 순서 */
-export const TAB_KEYS: TabKey[] = ["hero", "basic", "highJump", "oneTime"];
-const ALL_KEYS: TabKey[] = ["hero", "companion", "basic", "highJump", "oneTime"];
+export const TAB_KEYS: TabKey[] = ["hero", "basic", "highJump", "oneTime", "moving"];
+const ALL_KEYS: TabKey[] = ["hero", "companion", "basic", "highJump", "oneTime", "moving"];
 export const TAB_LABEL: Record<TabKey, string> = {
   hero: "캐릭터",
   companion: "동료",
   basic: "기본 발판",
   highJump: "고점프 발판",
   oneTime: "일회용 발판",
+  moving: "움직이는 발판",
 };
 
 /** 캐릭터(기본 + 내려갈 때·착지 선택, 도트·이미지)를 그리는 탭인지. 발판 탭은 도트 1장 */
@@ -158,6 +159,7 @@ export function createEditorState(save: Pick<SaveData, "hero" | "platforms" | "p
       basic: tab({ frames: [save.platforms.basic] }),
       highJump: tab({ frames: [save.platforms.highJump] }),
       oneTime: tab({ frames: [save.platforms.oneTime] }),
+      moving: tab({ frames: [save.platforms.moving] }),
     },
     active: "hero",
   };
@@ -449,7 +451,7 @@ export function applyToSave(s: EditorState, save: SaveData): SaveData {
   return {
     ...save,
     hero,
-    platforms: { basic: plat("basic"), highJump: plat("highJump"), oneTime: plat("oneTime") },
+    platforms: { basic: plat("basic"), highJump: plat("highJump"), oneTime: plat("oneTime"), moving: plat("moving") },
   };
 }
 

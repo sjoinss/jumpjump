@@ -101,11 +101,16 @@ export const CONFIG = {
      * (예전 발판 수 기준 20·40·150번째 발판이 생기던 높이에 맞춘 값)
      */
     table: [
-      { from: 0, highJump: 0, oneTime: 0 },
-      { from: 15, highJump: 0.15, oneTime: 0 },
-      { from: 35, highJump: 0.15, oneTime: 0.15 },
-      { from: 175, highJump: 0.18, oneTime: 0.22 },
+      { from: 0, highJump: 0, oneTime: 0, moving: 0 },
+      { from: 15, highJump: 0.15, oneTime: 0, moving: 0 },
+      { from: 35, highJump: 0.15, oneTime: 0.15, moving: 0 },
+      // 움직이는 발판: 60m부터 조금씩, 높이 올라갈수록 늘어난다 (난이도)
+      { from: 60, highJump: 0.15, oneTime: 0.15, moving: 0.12 },
+      { from: 175, highJump: 0.16, oneTime: 0.2, moving: 0.2 },
+      { from: 350, highJump: 0.16, oneTime: 0.22, moving: 0.28 },
     ],
+    /** 움직이는 발판: 좌우 벽 사이를 오가는 빠르기(px/초, 발판마다 이 사이에서 무작위). 지역 속도 배율도 받는다 */
+    moving: { speedMin: 45, speedMax: 85 },
   },
 
   /**

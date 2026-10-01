@@ -301,3 +301,14 @@ test("아주 큰 점수: 세 자리 쉼표, 자릿수가 많으면 작은 글씨
   assert.equal(scoreSize(100000), "long");
   assert.equal(scoreSize(10000000), "huge");
 });
+
+test("움직이는 발판 그림이 없는 예전 데이터·파일은 기본 그림으로 채운다 (손상 아님)", async () => {
+  const { validatePlatforms } = await import("../src/lib/validate");
+  const { PLATFORM_PRESETS } = await import("../src/game/presets");
+  const old = { basic: PLATFORM_PRESETS.basic, highJump: PLATFORM_PRESETS.highJump, oneTime: PLATFORM_PRESETS.oneTime };
+  const r = validatePlatforms(old);
+  assert.ok(r.ok);
+  assert.deepEqual(r.value.moving, PLATFORM_PRESETS.moving);
+  const { issues } = normalizeSaveData({ ...createDefaultSaveData(env), platforms: old }, env);
+  assert.deepEqual(issues, []);
+});

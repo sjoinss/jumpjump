@@ -109,7 +109,7 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
               발판 만들기
             </Button>
           </div>
-          <p className={styles.sectionHelp}>발판은 기본 · 고점프 · 일회용 세 가지를 따로 그려요.</p>
+          <p className={styles.sectionHelp}>발판은 기본 · 고점프 · 일회용 · 움직이는 네 가지를 따로 그려요.</p>
         </section>
 
         <section className={`${styles.section} ${styles.card}`} aria-labelledby="effects-title">

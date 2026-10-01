@@ -292,7 +292,7 @@ test("탭 줄 항목은 그 에디터에 있는 탭만 (동료 에디터가 주�
   );
   assert.deepEqual(
     editorTabItems(createEditorState(save())).map((t) => t.id),
-    ["hero", "basic", "highJump", "oneTime"],
+    ["hero", "basic", "highJump", "oneTime", "moving"],
   );
 });
 

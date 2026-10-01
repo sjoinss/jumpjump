@@ -392,6 +392,14 @@ export const PLATFORM_PRESETS: Platforms = {
     a: "#9c7a3c",
     e: "#8a6a30",
   }),
+  // 움직이는: 하늘색 + 두 칸씩 끊긴 줄무늬 (바퀴 자국 느낌)
+  moving: platformSprite("bbaabb".repeat(5), {
+    t: "#9fd8ff",
+    s: "#5aa9e6",
+    b: "#e3f3ff",
+    a: "#4f8fd0",
+    e: "#3f6fa8",
+  }),
 };
 
 /** 처음 팔레트: 프리셋에 쓰인 색 위주로 8개 */

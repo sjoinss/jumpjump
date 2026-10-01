@@ -389,7 +389,8 @@ export class Engine {
           ctx.globalAlpha = this.platformAlpha;
           continue;
         }
-        const sprite = p.kind === "highJump" ? this.platformSprites.highJump : p.kind === "oneTime" ? this.platformSprites.oneTime : this.platformSprites.basic;
+        const sprites = this.platformSprites;
+        const sprite = p.kind === "highJump" ? sprites.highJump : p.kind === "oneTime" ? sprites.oneTime : p.kind === "moving" ? sprites.moving : sprites.basic;
         drawSprite(ctx, sprite, px, Math.round(y), width, height);
         if (this.markers) this.drawMarker(p.kind, px + width / 2, Math.round(y));
       }
@@ -514,11 +515,11 @@ export class Engine {
 
   /**
    * 색약 대응 표식 (기획서 18): 색만으로 구분하지 않도록 모양으로 알려준다.
-   * 고점프 = 위 화살표(살짝 둥실), 일회용 = 금 간 표시(깜빡임). 흰 테두리로 어느 배경에서도 보이게.
+   * 고점프 = 위 화살표(살짝 둥실), 일회용 = 금 간 표시(깜빡임), 움직이는 = 좌우 화살표. 흰 테두리로 어느 배경에서도 보이게.
    */
   private drawMarker(kind: Platform["kind"], cx: number, top: number) {
     const cell = 3;
-    const shape = kind === "highJump" ? ARROW_MARK : kind === "oneTime" ? CRACK_MARK : null;
+    const shape = kind === "highJump" ? ARROW_MARK : kind === "oneTime" ? CRACK_MARK : kind === "moving" ? MOVE_MARK : null;
     if (!shape) return;
     if (kind === "oneTime" && !this.reducedMotion && (this.time * 1.6) % 1 > 0.65) return;
     const bob = kind === "highJump" && !this.reducedMotion ? Math.round(Math.sin(this.time * 5) * 2) : 0;
@@ -564,3 +565,5 @@ function popScale(t: number) {
 
 const ARROW_MARK =["...#...", "..###..", ".#####.", "#######", "..###..", "..###.."];
 const CRACK_MARK = ["#...#...#", ".#.#.#.#.", "..#...#.."];
+/** 움직이는 발판: 좌우 화살표 */
+const MOVE_MARK = ["..#.....#..", ".##.....##.", "###########", ".##.....##.", "..#.....#.."];

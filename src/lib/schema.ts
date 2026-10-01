@@ -56,6 +56,8 @@ export type Platforms = {
   basic: PixelSprite;
   highJump: PixelSprite;
   oneTime: PixelSprite;
+  /** 좌우로 움직이는 발판. 나중에 추가된 항목이라 없으면 기본 그림으로 채운다 */
+  moving: PixelSprite;
 };
 
 export type PlatformKind = keyof Platforms;

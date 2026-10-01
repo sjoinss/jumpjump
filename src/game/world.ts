@@ -11,7 +11,7 @@ import type { MoveIntent } from "../input/controller";
  * 카메라 cameraY는 "화면 맨 아래"의 세계 높이다.
  */
 
-export type PlatformKind = "ground" | "basic" | "highJump" | "oneTime";
+export type PlatformKind = "ground" | "basic" | "highJump" | "oneTime" | "moving";
 
 export type Platform = {
   id: number;
@@ -24,6 +24,8 @@ export type Platform = {
   touched: boolean;
   /** 일회용 발판이 부서진 뒤 지난 시간. 부서진 발판은 밟을 수 없고 잠시 뒤 사라진다 */
   broken?: number;
+  /** 움직이는 발판의 가로 빠르기(px/초, 부호 = 방향). 벽에 닿으면 돌아선다 */
+  vx?: number;
 };
 
 /**
@@ -78,6 +80,7 @@ export function pickKind(meters: number, roll: number): PlatformKind {
   for (const r of CONFIG.special.table) if (meters >= r.from) row = r;
   if (roll < row.highJump) return "highJump";
   if (roll < row.highJump + row.oneTime) return "oneTime";
+  if (roll < row.highJump + row.oneTime + row.moving) return "moving";
   return "basic";
 }
 
@@ -266,6 +269,20 @@ export class World {
     // 좌우 이동: 대열 폭 기준으로 벽에서 멈춤 (반대편 등장 없음)
     stepMover(h, intent, dt, 0, CONFIG.view.width - f.width, f.width / 2);
 
+    // 움직이는 발판: 좌우 벽 사이를 오간다 (착지 판정 전에 옮긴다)
+    for (const p of this.platforms) {
+      if (p.vx === undefined) continue;
+      p.x += p.vx * dt;
+      const maxX = CONFIG.view.width - p.width;
+      if (p.x < 0) {
+        p.x = -p.x;
+        p.vx = Math.abs(p.vx);
+      } else if (p.x > maxX) {
+        p.x = 2 * maxX - p.x;
+        p.vx = -Math.abs(p.vx);
+      }
+    }
+
     // 중력
     const prevFeet = h.y;
     h.vy -= CONFIG.physics.gravity * dt;
@@ -360,7 +377,10 @@ export class World {
       const kind = hasCandidate ? "basic" : pickKind(meters, this.rng());
       const x = this.rng() * (CONFIG.view.width - width);
       const id = this.nextId++;
-      this.platforms.push({ id, kind, x, y: this.topY, width, touched: false });
+      // 움직이는 발판: 방향·빠르기는 발판마다 다르게
+      const m = CONFIG.special.moving;
+      const vx = kind === "moving" ? (this.rng() < 0.5 ? -1 : 1) * (m.speedMin + (m.speedMax - m.speedMin) * this.rng()) : undefined;
+      this.platforms.push(vx === undefined ? { id, kind, x, y: this.topY, width, touched: false } : { id, kind, x, y: this.topY, width, touched: false, vx });
       // 후보는 C < M일 때만 생긴다 (M = 0이면 처음부터 없음)
       if (hasCandidate && canOfferCompanion(this.companions, this.companionMax)) {
         this.candidates.push({
