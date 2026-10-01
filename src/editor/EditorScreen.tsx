@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { PixelPreview } from "@/components/PixelPreview";
+import { SpritePreview } from "@/components/SpritePreview";
 import { useKeyValueStore, useSaveData } from "@/components/SaveProvider";
 import { ScreenLayout } from "@/components/screens/ScreenLayout";
 import { Button } from "@/components/ui/Button";
@@ -14,21 +15,25 @@ import { Tabs } from "@/components/ui/Tabs";
 import { useToast } from "@/components/ui/Toast";
 import { CONFIG } from "@/game/config";
 import { CHARACTER_PRESETS, PLATFORM_PRESETS } from "@/game/presets";
-import type { PixelSprite } from "@/lib/schema";
-import { DotCanvas } from "./DotCanvas";
+import type { PixelSprite, Sprite } from "@/lib/schema";
+import { DotCanvas, type Underlay } from "./DotCanvas";
 import { ImageImportScreen } from "./ImageImportScreen";
 import { isLossyDownscale } from "./grid";
 import { Palette } from "./Palette";
 import {
+  applyCompanionToSave,
   applyToSave,
   canRedo,
   canUndo,
   checkCommit,
+  companionDraftKey,
+  createCompanionEditorState,
   createEditorState,
   currentDoc,
   currentSprite,
   DRAFT_KEY,
   editorReducer,
+  isCharacterTab,
   isDirty,
   parseDraft,
   TAB_KEYS,
@@ -46,15 +51,40 @@ type DialogKind = null | "canvas" | "landing" | "leave" | "backup";
 
 const DRAFT_DEBOUNCE_MS = 500;
 
+/** 주인공 가이드 진하기 (기본 그림 깔기보다 옅게) */
+const GUIDE_OPACITY = 0.22;
+
+/** 동료 한 명을 그릴 때 (설정의 슬롯 관리 / 게임 중 후보 선택창) */
+export type CompanionTarget = {
+  /** 1~5 */
+  slot: number;
+  /** 게임 중에 열었는지. 게임 중엔 그만두면 초안을 남기고 후보로 돌아간다 */
+  inGame: boolean;
+  /** 완료(저장)한 뒤 */
+  onSaved: () => void;
+};
+
+type Props = {
+  /** 그만두기·뒤로 (저장하지 않음) */
+  onClose: () => void;
+  /** 있으면 동료 한 명만 그리는 모드 */
+  companion?: CompanionTarget;
+};
+
 /**
  * 도트 에디터. 탭(캐릭터 / 발판 3종)마다 따로 그리고 "완료"를 누르면 한꺼번에 게임에 적용한다.
  * 그리는 동안에는 임시 저장(editor.draft)만 계속 갱신해서, 앱이 닫혀도 다음에 이어서 그릴 수 있다.
+ * companion을 주면 같은 화면이 동료 한 명 그리기(이름 · 주인공 가이드)로 바뀐다.
  */
-export function EditorScreen({ onClose }: { onClose: () => void }) {
+export function EditorScreen({ onClose, companion }: Props) {
   const [data, update] = useSaveData();
   const kv = useKeyValueStore();
   const { show } = useToast();
-  const [state, dispatch] = useReducer(editorReducer, data, createEditorState);
+  const [state, dispatch] = useReducer(editorReducer, data, (d) =>
+    companion ? createCompanionEditorState(d.companionSlots[companion.slot - 1], d.palette) : createEditorState(d),
+  );
+  const draftKey = companion ? companionDraftKey(companion.slot) : DRAFT_KEY;
+  const inGame = companion?.inGame ?? false;
   const [dialog, setDialog] = useState<DialogKind>(null);
   const [draftPrompt, setDraftPrompt] = useState<EditorDraft | null>(null);
   const [draftChecked, setDraftChecked] = useState(false);
@@ -64,13 +94,13 @@ export function EditorScreen({ onClose }: { onClose: () => void }) {
 
   const sprite = currentSprite(state);
   const doc = currentDoc(state);
-  const isHero = state.active === "hero";
+  const isHero = isCharacterTab(state.active);
   const dirty = isDirty(state);
 
   // ── 크래시 복구: 들어올 때 임시 저장본 확인 ──
   useEffect(() => {
     let cancelled = false;
-    kv.get(DRAFT_KEY)
+    kv.get(draftKey)
       .then((raw) => {
         if (cancelled) return;
         const draft = parseDraft(raw);
@@ -81,7 +111,7 @@ export function EditorScreen({ onClose }: { onClose: () => void }) {
     return () => {
       cancelled = true;
     };
-  }, [kv]);
+  }, [kv, draftKey]);
 
   // ── 임시 저장: 바뀐 게 있으면 잠시 뒤 쓰고, 없으면 지운다 ──
   const stateRef = useRef(state);
@@ -89,7 +119,7 @@ export function EditorScreen({ onClose }: { onClose: () => void }) {
   const draftFailed = useRef(false);
   const writeDraft = useCallback(() => {
     const draft = toDraft(stateRef.current);
-    (draft ? kv.set(DRAFT_KEY, draft) : kv.delete(DRAFT_KEY))
+    (draft ? kv.set(draftKey, draft) : kv.delete(draftKey))
       .then(() => {
         draftFailed.current = false;
       })
@@ -97,13 +127,13 @@ export function EditorScreen({ onClose }: { onClose: () => void }) {
         if (!draftFailed.current) show("임시 저장을 하지 못했어요. 완료를 눌러 저장해주세요.", "warning");
         draftFailed.current = true;
       });
-  }, [kv, show]);
+  }, [kv, show, draftKey]);
 
   useEffect(() => {
     if (!draftChecked) return;
     const t = setTimeout(writeDraft, DRAFT_DEBOUNCE_MS);
     return () => clearTimeout(t);
-  }, [state.tabs, state.active, state.frame, draftChecked, writeDraft]);
+  }, [state.tabs, state.active, state.frame, state.name, draftChecked, writeDraft]);
 
   useEffect(() => {
     if (!draftChecked) return;
@@ -126,9 +156,10 @@ export function EditorScreen({ onClose }: { onClose: () => void }) {
       show(check.message, "error");
       return false;
     }
-    const firstTime = data.settings.onboarding.backupReminderAt === null;
+    // 첫 저장이면 백업 안내 (게임 중엔 흐름을 끊지 않도록 다음 기회로 미룬다)
+    const firstTime = !inGame && data.settings.onboarding.backupReminderAt === null;
     update((d) => {
-      const next = applyToSave(state, d);
+      const next = companion ? applyCompanionToSave(state, d, companion.slot) : applyToSave(state, d);
       if (!firstTime) return next;
       return {
         ...next,
@@ -136,18 +167,31 @@ export function EditorScreen({ onClose }: { onClose: () => void }) {
       };
     });
     dispatch({ type: "markSaved" });
-    kv.delete(DRAFT_KEY).catch(() => {});
-    show("저장했어요! 게임에 바로 적용돼요.", "success");
+    kv.delete(draftKey).catch(() => {});
+    if (!inGame) show(companion ? `동료 ${companion.slot}번 그림을 저장했어요.` : "저장했어요! 게임에 바로 적용돼요.", "success");
     if (firstTime) setDialog("backup");
-    else onClose();
+    else finish();
     return true;
-  }, [state, data.settings.onboarding.backupReminderAt, update, kv, show, onClose]);
+  }, [state, data.settings.onboarding.backupReminderAt, update, kv, show, companion, inGame, draftKey]);
 
-  const onDone = () => (dirty ? commit() : onClose());
+  /** 저장을 마치고 나가기: 동료면 저장 뒤 흐름(게임 중엔 합류)으로 */
+  function finish() {
+    if (companion) companion.onSaved();
+    else onClose();
+  }
+
+  // 게임 중 동료는 그림이 그대로여도 "완료" = 이 모습으로 함께 가기
+  const onDone = () => (dirty || inGame ? commit() : onClose());
   const onBack = () => (dirty ? setDialog("leave") : onClose());
 
   const discardAndLeave = () => {
-    kv.delete(DRAFT_KEY).catch(() => {});
+    kv.delete(draftKey).catch(() => {});
+    onClose();
+  };
+
+  /** 게임 중 그만두기: 그림은 초안으로 남기고 후보로 돌아간다 (기획서 7-4) */
+  const keepDraftAndLeave = () => {
+    writeDraft();
     onClose();
   };
 
@@ -174,15 +218,26 @@ export function EditorScreen({ onClose }: { onClose: () => void }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [dialog, draftPrompt]);
 
-  const underlay = isHero && state.frame === 1 && state.onion ? doc.frames[0] : null;
+  // 밑그림: 주인공 가이드(동료만) → 내 기본 그림(착지 프레임 작업 때)
+  const heroGuide = data.hero.frames[0];
+  const onionBase = isHero && state.frame === 1 && state.onion ? doc.frames[0] : null;
+  const underlays = useMemo(() => {
+    const list: Underlay[] = [];
+    if (companion && state.guide) list.push({ sprite: heroGuide, opacity: GUIDE_OPACITY });
+    if (onionBase) list.push({ sprite: onionBase, opacity: state.onionOpacity });
+    return list;
+  }, [companion, state.guide, heroGuide, onionBase, state.onionOpacity]);
   const tabItems = TAB_KEYS.map((k) => ({ id: k, label: TAB_LABEL[k].replace(" 발판", ""), marked: isDirty(state, k) }));
+  const title = companion ? `동료 ${companion.slot} 그리기` : "그리기";
+  const frameName = isHero ? (state.frame === 1 ? " 착지 그림" : " 기본 그림") : "";
 
   return (
     <>
     <div className={styles.root} inert={importing !== null}>
     <ScreenLayout
-      title="그리기"
+      title={title}
       onBack={onBack}
+      backLabel={inGame ? "그만 그리기" : "뒤로"}
       fill
       headerAction={
         <Button variant="primary" icon="check" onClick={onDone}>
@@ -190,19 +245,22 @@ export function EditorScreen({ onClose }: { onClose: () => void }) {
         </Button>
       }
     >
-      <Tabs
-        items={tabItems}
-        value={state.active}
-        onChange={(tab: TabKey) => dispatch({ type: "setTab", tab })}
-        label="그릴 대상"
-        idPrefix="editor-tab"
-        panelId="editor-panel"
-      />
+      {!companion && (
+        <Tabs
+          items={tabItems}
+          value={state.active}
+          onChange={(tab: TabKey) => dispatch({ type: "setTab", tab })}
+          label="그릴 대상"
+          idPrefix="editor-tab"
+          panelId="editor-panel"
+        />
+      )}
 
       <section
         id="editor-panel"
-        role="tabpanel"
-        aria-labelledby={`editor-tab-${state.active}`}
+        role={companion ? undefined : "tabpanel"}
+        aria-labelledby={companion ? undefined : `editor-tab-${state.active}`}
+        aria-label={companion ? title : undefined}
         className={styles.panel}
         onDragOver={(e) => isHero && e.preventDefault()}
         onDrop={(e) => {
@@ -262,9 +320,31 @@ export function EditorScreen({ onClose }: { onClose: () => void }) {
           </button>
         </div>
 
+        {companion && (
+          <div className={styles.companionBar}>
+            <label className={styles.nameField}>
+              <span>이름</span>
+              <input
+                type="text"
+                value={state.name}
+                maxLength={CONFIG.limits.companionNameMax}
+                placeholder="(선택)"
+                autoComplete="off"
+                onChange={(e) => dispatch({ type: "setName", name: e.target.value })}
+              />
+            </label>
+            {/* 주인공 모습을 반투명하게 깔아 크기·위치를 맞추기 쉽게 (기획서 4-4: "내 기본 그림 깔기"와 라벨 구분) */}
+            <Switch label="주인공 가이드" checked={state.guide} onChange={() => dispatch({ type: "toggle", key: "guide" })} />
+          </div>
+        )}
+
         {isHero && state.frame === 1 && (
           <div className={styles.onion}>
-            <Switch label="기본 그림 깔기" checked={state.onion} onChange={() => dispatch({ type: "toggle", key: "onion" })} />
+            <Switch
+              label={companion ? "내 기본 그림 깔기" : "기본 그림 깔기"}
+              checked={state.onion}
+              onChange={() => dispatch({ type: "toggle", key: "onion" })}
+            />
             {state.onion && (
               <label className={styles.opacity}>
                 <span>진하기</span>
@@ -285,12 +365,11 @@ export function EditorScreen({ onClose }: { onClose: () => void }) {
         {sprite.kind === "pixel" ? (
           <DotCanvas
             sprite={sprite}
-            underlay={underlay}
-            underlayOpacity={state.onionOpacity}
+            underlays={underlays}
             showGrid={state.grid}
             symmetry={state.symmetry}
             tool={state.tool}
-            label={`${TAB_LABEL[state.active]}${isHero ? (state.frame === 1 ? " 착지 그림" : " 기본 그림") : ""} 그리기, ${sprite.width}×${sprite.height}칸`}
+            label={`${companion ? `동료 ${companion.slot}` : TAB_LABEL[state.active]}${frameName} 그리기, ${sprite.width}×${sprite.height}칸`}
             onCell={(phase, x, y) => dispatch({ type: "pointer", phase, x, y })}
           />
         ) : (
@@ -415,9 +494,11 @@ export function EditorScreen({ onClose }: { onClose: () => void }) {
         open={dialog === "canvas"}
         tab={state.active}
         sprite={sprite.kind === "pixel" ? sprite : null}
+        hero={heroGuide}
         onClose={() => setDialog(null)}
         onLoad={(s, name) => {
-          dispatch({ type: "loadSprite", sprite: s });
+          // 도트는 기본 그림을 바꾸고(착지 빠짐), 이미지(주인공이 이미지일 때)는 지금 프레임에
+          dispatch(s.kind === "pixel" ? { type: "loadSprite", sprite: s } : { type: "setFrameSprite", sprite: s });
           setDialog(null);
           show(`${name}을(를) 불러왔어요. 되돌리기로 돌아갈 수 있어요.`, "info");
         }}
@@ -429,9 +510,38 @@ export function EditorScreen({ onClose }: { onClose: () => void }) {
       />
 
       <Dialog
-        open={dialog === "leave"}
+        open={dialog === "leave" && inGame}
+        title="그리기를 그만둘까요?"
+        description="그리던 그림은 초안으로 남겨 둬요. 후보는 그 자리에 있어서, 다시 닿으면 이어서 그릴 수 있어요."
+        onClose={() => setDialog(null)}
+        initialFocusRef={stayRef}
+        actions={
+          <>
+            <Button
+              variant="primary"
+              block
+              icon="check"
+              onClick={() => {
+                setDialog(null);
+                commit();
+              }}
+            >
+              완료하고 함께 가기
+            </Button>
+            <Button variant="secondary" block onClick={keepDraftAndLeave}>
+              그만 그리기
+            </Button>
+            <Button ref={stayRef} variant="ghost" block onClick={() => setDialog(null)}>
+              계속 그리기
+            </Button>
+          </>
+        }
+      />
+
+      <Dialog
+        open={dialog === "leave" && !inGame}
         title="저장하지 않은 그림이 있어요"
-        description="완료를 눌러야 게임에 적용돼요."
+        description={companion ? "완료를 눌러야 동료 슬롯에 저장돼요." : "완료를 눌러야 게임에 적용돼요."}
         onClose={() => setDialog(null)}
         initialFocusRef={stayRef}
         actions={
@@ -461,9 +571,9 @@ export function EditorScreen({ onClose }: { onClose: () => void }) {
         open={dialog === "backup"}
         title="그림을 백업해두세요"
         description="그림은 이 브라우저에만 저장돼요. 브라우저 데이터가 지워지면 함께 사라지니, 설정의 데이터 관리에서 내보내기를 해두면 안전해요."
-        onClose={onClose}
+        onClose={finish}
         actions={
-          <Button variant="primary" block data-autofocus onClick={onClose}>
+          <Button variant="primary" block data-autofocus onClick={finish}>
             알겠어요
           </Button>
         }
@@ -499,14 +609,19 @@ type CanvasDialogProps = {
   open: boolean;
   tab: TabKey;
   sprite: PixelSprite | null;
+  /** 주인공 기본 그림 (동료 탭의 "주인공 그림 가져오기") */
+  hero: Sprite;
   onClose: () => void;
-  onLoad: (sprite: PixelSprite, name: string) => void;
+  onLoad: (sprite: Sprite, name: string) => void;
   onResize: (width: number, height: number) => void;
   onImportImage: () => void;
 };
 
-/** 캐릭터: 기본 캐릭터 불러오기 + 칸 크기 / 발판: 기본 발판으로 되돌리기 */
-function CanvasDialog({ open, tab, sprite, onClose, onLoad, onResize, onImportImage }: CanvasDialogProps) {
+/**
+ * 캐릭터: 기본 캐릭터 불러오기 + 칸 크기 / 동료: 주인공 그림 가져오기 + 칸 크기 (동료 기본 세트는 없음)
+ * 발판: 기본 발판으로 되돌리기
+ */
+function CanvasDialog({ open, tab, sprite, hero, onClose, onLoad, onResize, onImportImage }: CanvasDialogProps) {
   const [pendingShrink, setPendingShrink] = useState(false);
   const sizes = CONFIG.character.gridSizes;
 
@@ -514,8 +629,8 @@ function CanvasDialog({ open, tab, sprite, onClose, onLoad, onResize, onImportIm
     if (!open) setPendingShrink(false);
   }, [open]);
 
-  if (tab !== "hero") {
-    const preset = PLATFORM_PRESETS[tab];
+  if (!isCharacterTab(tab)) {
+    const preset = PLATFORM_PRESETS[tab as keyof typeof PLATFORM_PRESETS];
     return (
       <Dialog open={open} title={TAB_LABEL[tab]} onClose={onClose}>
         <div className={styles.platformPreset}>
@@ -538,6 +653,18 @@ function CanvasDialog({ open, tab, sprite, onClose, onLoad, onResize, onImportIm
         <p className={styles.helper}>사진이나 그림 파일을 캐릭터로 써요. 지금 보고 있는 프레임에 들어가요.</p>
       </section>
 
+      {tab === "companion" ? (
+        <section className={styles.dialogSection} aria-labelledby="hero-copy-title">
+          <h3 id="hero-copy-title" className={styles.dialogHeading}>
+            주인공 그림 가져오기
+          </h3>
+          <button type="button" className={styles.preset} onClick={() => onLoad(hero, "주인공 그림")}>
+            <SpritePreview sprite={hero} width={48} height={54} />
+            <span>주인공</span>
+          </button>
+          <p className={styles.helper}>주인공 그림을 복사해서 고쳐 그려요. 지금 그림은 바뀌어요.</p>
+        </section>
+      ) : (
       <section className={styles.dialogSection} aria-labelledby="preset-title">
         <h3 id="preset-title" className={styles.dialogHeading}>
           기본 캐릭터 불러오기
@@ -554,6 +681,7 @@ function CanvasDialog({ open, tab, sprite, onClose, onLoad, onResize, onImportIm
         </ul>
         <p className={styles.helper}>불러오면 지금 그림을 바꿔요. 착지 프레임은 빠져요.</p>
       </section>
+      )}
 
       {sprite && (
         <section className={styles.dialogSection}>

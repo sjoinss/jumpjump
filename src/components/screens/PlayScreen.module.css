@@ -277,3 +277,11 @@
   flex-wrap: wrap;
   gap: var(--spacing-xs);
 }
+
+/* 게임 중 동료 그리기: 게임 장면 위를 덮는다 (게임은 멈춰 있음) */
+.drawing {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  background: var(--color-background);
+}

@@ -118,3 +118,15 @@
   background: var(--color-mint);
   border-color: var(--color-ink);
 }
+
+.root {
+  height: 100%;
+}
+
+/* 동료 그리기: 설정 화면 위를 덮는다 */
+.editor {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: var(--color-background);
+}

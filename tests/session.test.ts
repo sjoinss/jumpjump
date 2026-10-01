@@ -2,8 +2,11 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { getPixel } from "../src/editor/grid";
 import {
+  applyCompanionToSave,
   applyToSave,
   checkCommit,
+  companionDraftKey,
+  createCompanionEditorState,
   createEditorState,
   currentSprite,
   editorReducer,
@@ -51,7 +54,7 @@ test("붓질 취소(핀치)는 붓질 전으로, 다시 하기 기록도 남기�
   let s = run(createEditorState(save()), { type: "clear" }, { type: "setColor", color: R });
   s = run(s, { type: "pointer", phase: "start", x: 2, y: 2 }, { type: "pointer", phase: "cancel", x: 2, y: 2 });
   assert.equal(px(s, 2, 2), "");
-  assert.equal(s.tabs.hero.history.future.length, 0);
+  assert.equal(s.tabs.hero!.history.future.length, 0);
 });
 
 test("스포이드: 색을 집고 펜으로, 빈 칸이면 지우개로", () => {
@@ -68,7 +71,7 @@ test("스포이드: 색을 집고 펜으로, 빈 칸이면 지우개로", () => 
 test("이동 도구: 끄는 동안 원래 그림 기준으로 밀고, 기록은 한 칸", () => {
   let s = run(createEditorState(save()), { type: "clear" }, { type: "setColor", color: R });
   s = run(s, { type: "pointer", phase: "start", x: 0, y: 0 }, { type: "pointer", phase: "end", x: 0, y: 0 });
-  const before = s.tabs.hero.history.past.length;
+  const before = s.tabs.hero!.history.past.length;
   s = run(
     s,
     { type: "setTool", tool: "move" },
@@ -79,18 +82,18 @@ test("이동 도구: 끄는 동안 원래 그림 기준으로 밀고, 기록은 
   );
   assert.equal(px(s, 2, 1), R);
   assert.equal(px(s, 0, 0), "");
-  assert.equal(s.tabs.hero.history.past.length, before + 1);
+  assert.equal(s.tabs.hero!.history.past.length, before + 1);
 });
 
 test("착지 프레임: 복사해서 추가, 삭제는 되돌리기 가능", () => {
   let s = run(createEditorState(save()), { type: "addLanding", copyBase: true });
   assert.equal(s.frame, 1);
-  assert.deepEqual(currentSprite(s), s.tabs.hero.history.present.frames[0]);
+  assert.deepEqual(currentSprite(s), s.tabs.hero!.history.present.frames[0]);
   s = run(s, { type: "removeLanding" });
-  assert.equal(s.tabs.hero.history.present.frames.length, 1);
+  assert.equal(s.tabs.hero!.history.present.frames.length, 1);
   assert.equal(s.frame, 0);
   s = run(s, { type: "undo" });
-  assert.equal(s.tabs.hero.history.present.frames.length, 2);
+  assert.equal(s.tabs.hero!.history.present.frames.length, 2);
   s = run(s, { type: "setFrame", frame: 1 }, { type: "undo" });
   assert.equal(s.frame, 0, "착지 프레임이 사라지면 기본 프레임으로");
 });
@@ -111,7 +114,7 @@ test("격자 크기 바꾸기는 모든 도트 프레임에 적용", () => {
     { type: "addLanding", copyBase: true },
     { type: "resizeGrid", width: 32, height: 36 },
   );
-  for (const f of s.tabs.hero.history.present.frames) assert.equal((f as PixelSprite).width, 32);
+  for (const f of s.tabs.hero!.history.present.frames) assert.equal((f as PixelSprite).width, 32);
 });
 
 test("완료 검사: 빈 그림이 있으면 어느 탭인지 알려준다", () => {
@@ -144,8 +147,8 @@ test("임시 저장: 바뀐 탭만 담고, 검증 후 복구", () => {
   assert.equal(px(restored, 0, 0), R);
   assert.equal(isDirty(restored), true);
   assert.equal(
-    run(restored, { type: "undo" }).tabs.hero.history.present,
-    restored.tabs.hero.baseline,
+    run(restored, { type: "undo" }).tabs.hero!.history.present,
+    restored.tabs.hero!.baseline,
     "복구도 되돌릴 수 있음",
   );
   const broken = { ...draft, docs: { hero: { frames: [{ kind: "pixel", width: 3, height: 3, pixels: [] }] } } };
@@ -164,4 +167,92 @@ test("이미지 넣기: 지금 프레임에, 되돌리기 가능 / 빈 칸 착�
   assert.equal(currentSprite(s).kind, "pixel");
   const onPlatform = run(createEditorState(save()), { type: "setTab", tab: "basic" }, { type: "setFrameSprite", sprite: img });
   assert.equal(currentSprite(onPlatform).kind, "pixel", "발판에는 이미지를 넣지 않음");
+});
+
+// ── 10단계: 동료 그리기 (같은 reducer의 companion 모드) ──
+
+const emptySlot = { character: null };
+
+test("동료: 빈 슬롯은 빈 16×18 한 장에서 시작하고, 탭은 동료 하나뿐", () => {
+  const s = createCompanionEditorState(emptySlot, save().palette);
+  assert.deepEqual(s.keys, ["companion"]);
+  const sprite = currentSprite(s) as PixelSprite;
+  assert.equal(sprite.width, 16);
+  assert.ok(sprite.pixels.every((p) => p === ""));
+  assert.equal(run(s, { type: "setTab", tab: "basic" }).active, "companion", "없는 탭으로는 못 감");
+  const r = checkCommit(s);
+  assert.ok(!r.ok && r.tab === "companion" && r.message.includes("동료 기본 그림"));
+});
+
+test("동료: 착지 프레임·격자 크기·이미지 넣기는 주인공과 같이 된다", () => {
+  let s = run(
+    createCompanionEditorState(emptySlot, save().palette),
+    { type: "setColor", color: R },
+    { type: "pointer", phase: "start", x: 1, y: 1 },
+    { type: "pointer", phase: "end", x: 1, y: 1 },
+    { type: "addLanding", copyBase: true },
+    { type: "resizeGrid", width: 32, height: 36 },
+  );
+  assert.equal(currentDoc2(s).length, 2);
+  for (const f of currentDoc2(s)) assert.equal((f as PixelSprite).width, 32);
+  const r = checkCommit(s);
+  assert.ok(r.ok);
+  const img = { kind: "image" as const, mime: "image/png" as const, data: "AAAA", width: 320 as const, height: 360 as const };
+  s = run(s, { type: "setFrame", frame: 0 }, { type: "setFrameSprite", sprite: img });
+  assert.equal(currentSprite(s).kind, "image");
+});
+
+const currentDoc2 = (s: EditorState) => s.tabs.companion!.history.present.frames;
+
+test("동료 완료: 그 슬롯에만 저장, 이름은 앞뒤 공백을 빼고 비면 이름 없음", () => {
+  const base = save();
+  let s = run(
+    createCompanionEditorState(emptySlot, base.palette),
+    { type: "setColor", color: R },
+    { type: "pointer", phase: "start", x: 0, y: 0 },
+    { type: "pointer", phase: "end", x: 0, y: 0 },
+    { type: "setName", name: "  콩이  " },
+  );
+  let next = applyCompanionToSave(s, base, 3);
+  assert.equal(next.companionSlots[2].name, "콩이");
+  assert.equal((next.companionSlots[2].character!.frames[0] as PixelSprite).pixels[0], R);
+  assert.equal(next.companionSlots[0].character, null, "다른 슬롯은 그대로");
+  assert.equal(next.hero, base.hero, "주인공은 그대로");
+  s = run(s, { type: "setName", name: "   " });
+  next = applyCompanionToSave(s, base, 3);
+  assert.equal("name" in next.companionSlots[2], false);
+});
+
+test("동료 이름: 12자까지, 이름만 바꿔도 dirty, 저장하면 깨끗", () => {
+  const base = save();
+  const slot = { character: base.hero, name: "콩이" };
+  let s = createCompanionEditorState(slot, base.palette);
+  assert.equal(isDirty(s), false);
+  s = run(s, { type: "setName", name: "가나다라마바사아자차카타파하" });
+  assert.equal(s.name.length, 12);
+  assert.equal(isDirty(s), true);
+  assert.equal(isDirty(run(s, { type: "markSaved" })), false);
+  assert.equal(isDirty(run(s, { type: "setName", name: " 콩이 " })), false, "공백만 다르면 같은 이름");
+});
+
+test("동료 임시 저장(초안): 그림·이름을 담고 검증 후 복구, 슬롯마다 다른 키", () => {
+  const base = save();
+  const s = run(
+    createCompanionEditorState(emptySlot, base.palette),
+    { type: "setColor", color: R },
+    { type: "pointer", phase: "start", x: 2, y: 3 },
+    { type: "pointer", phase: "end", x: 2, y: 3 },
+    { type: "setName", name: "별이" },
+  );
+  const draft = parseDraft(JSON.parse(JSON.stringify(toDraft(s))))!;
+  assert.deepEqual(Object.keys(draft.docs), ["companion"]);
+  assert.equal(draft.name, "별이");
+  const restored = run(createCompanionEditorState(emptySlot, base.palette), { type: "restoreDraft", draft });
+  assert.equal(px(restored, 2, 3), R);
+  assert.equal(restored.name, "별이");
+  assert.notEqual(companionDraftKey(1), companionDraftKey(2));
+  assert.equal(parseDraft({ ...draft, name: 3 }), null, "이름 형식이 이상하면 버림");
+  // 주인공·발판 에디터에 동료 초안이 들어와도 아무 탭도 바뀌지 않음
+  const main = run(createEditorState(base), { type: "restoreDraft", draft });
+  assert.equal(isDirty(main), false);
 });

@@ -9,6 +9,7 @@ import type { BestScores, Character } from "@/lib/schema";
 import { CompanionPrompt } from "../CompanionPrompt";
 import { ControlsGuide } from "../ControlsGuide";
 import { applyRefusal } from "@/game/companions";
+import { EditorScreen } from "@/editor/EditorScreen";
 import { GameOverDialog, type GameResult } from "../GameOverDialog";
 import { RegionBanner } from "../RegionBanner";
 import { regionName } from "@/game/regions";
@@ -63,6 +64,7 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
   heroRef.current = data.hero;
   const dataRef = useRef(data);
   dataRef.current = data;
+  const slots = data.companionSlots;
 
   const markRunStart = () => {
     runRef.current = { companionMaxAtStart: dataRef.current.settings.companionMax };
@@ -137,20 +139,58 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
     announce("다시 시작");
   }, [announce]);
 
-  // ── 동료 후보 선택창 (기획서 7-4) ──
-  const [prompt, setPrompt] = useState<{ id: number; slot: number } | null>(null);
+  // ── 동료 후보 선택창 → 그리기 (기획서 7-4) ──
+  type CandidateRef = { id: number; slot: number };
+  const [prompt, setPrompt] = useState<CandidateRef | null>(null);
+  /** 게임 중 동료 그리기 화면. 그리는 동안 게임은 멈춰 있다 */
+  const [drawing, setDrawing] = useState<CandidateRef | null>(null);
 
   const closePrompt = () => {
     setPrompt(null);
     canvasRef.current?.focus({ preventScroll: true });
   };
 
+  /** 합류 (11단계에서 이 앞에 미니게임이 들어간다) */
+  const join = (c: CandidateRef) => {
+    engineRef.current?.acceptCandidate(c.id);
+    announce(`동료 ${c.slot}번이 합류했어요!`);
+  };
+
+  const startDrawing = () => {
+    if (!prompt) return;
+    engineRef.current?.beginDrawing();
+    setDrawing(prompt);
+    setPrompt(null);
+  };
+
+  /** "예": 그림이 있으면 그대로 함께하고, 없으면 그리러 간다 */
   const acceptCompanion = () => {
     if (!prompt) return;
-    // 10단계(그리기)·11단계(미니게임)가 들어오면 여기서 그 흐름으로 넘어간다
-    engineRef.current?.acceptCandidate(prompt.id);
-    announce(`동료 ${prompt.slot}번이 합류했어요!`);
+    if (!slots[prompt.slot - 1]?.character) {
+      startDrawing();
+      return;
+    }
+    join(prompt);
     closePrompt();
+  };
+
+  const closeDrawing = () => {
+    setDrawing(null);
+    canvasRef.current?.focus({ preventScroll: true });
+  };
+
+  /** 그림을 완성함 → 슬롯에 저장된 상태로 합류 */
+  const finishDrawing = () => {
+    if (!drawing) return;
+    join(drawing);
+    closeDrawing();
+  };
+
+  /** 그리다 그만둠: 초안은 에디터가 남기고, 후보는 그 자리에 (거절로 세지 않음) */
+  const cancelDrawing = () => {
+    if (!drawing) return;
+    engineRef.current?.refuseCandidate(drawing.id, false);
+    closeDrawing();
   };
 
   const refuseCompanion = (count: boolean) => {
@@ -173,6 +213,7 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
     setResult(null);
     setRegionBanner(null);
     setPrompt(null);
+    setDrawing(null);
     engineRef.current?.showReady();
     logoRef.current?.focus({ preventScroll: true });
   }, []);
@@ -239,7 +280,6 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
   }, [theme]);
 
   // 동료 슬롯 그림 (후보·대열 모습)
-  const slots = data.companionSlots;
   useEffect(() => {
     engineRef.current?.setCompanionLooks(slots.map((s) => s.character));
   }, [slots]);
@@ -280,7 +320,8 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
   const sceneStyle = { "--ground": `${layout.groundHeight}px`, background: SCENE[theme].cssBackground } as CSSProperties;
 
   return (
-    <main className={styles.screen} style={sceneStyle}>
+    <>
+    <main className={styles.screen} style={sceneStyle} inert={drawing !== null}>
       <canvas
         ref={canvasRef}
         className={styles.canvas}
@@ -385,6 +426,7 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
       <CompanionPrompt
         prompt={prompt && !covered ? { slot: prompt.slot, data: slots[prompt.slot - 1] } : null}
         onYes={acceptCompanion}
+        onEdit={startDrawing}
         onNo={() => refuseCompanion(true)}
         onDismiss={() => refuseCompanion(false)}
       />
@@ -419,6 +461,16 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
         }
       />
     </main>
+
+    {drawing && (
+      <div className={styles.drawing} inert={covered}>
+        <EditorScreen
+          companion={{ slot: drawing.slot, inGame: true, onSaved: finishDrawing }}
+          onClose={cancelDrawing}
+        />
+      </div>
+    )}
+    </>
   );
 }
 

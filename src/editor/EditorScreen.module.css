@@ -76,6 +76,47 @@
   flex: 1 1 auto;
 }
 
+/* 동료 그리기: 이름 + 주인공 가이드 */
+.companionBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-xs) var(--spacing-md);
+}
+
+.companionBar > button {
+  flex: 0 0 auto;
+}
+
+.nameField {
+  display: flex;
+  flex: 1 1 140px;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-bold);
+}
+
+.nameField input {
+  flex: 1;
+  min-width: 0;
+  min-height: var(--touch-target);
+  padding: 0 var(--spacing-sm);
+  border: var(--outline-width) solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font: inherit;
+  font-weight: var(--font-weight-regular);
+  /* iOS에서 입력할 때 확대되지 않도록 16px 이상 */
+  font-size: max(16px, var(--font-size-body));
+}
+
+.nameField input:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
 .opacity {
   display: flex;
   align-items: center;

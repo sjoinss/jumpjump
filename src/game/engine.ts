@@ -152,18 +152,30 @@ export class Engine {
     return this.world.companions;
   }
 
-  /** 선택창 "예" (10·11단계 전까지는 바로 합류). 합류 연출 후 게임을 이어 간다 */
+  /** 선택창 "예"·"수정하기" → 동료 그리기 화면. 그리는 동안에도 게임은 멈춰 있다 */
+  beginDrawing() {
+    if (this.phase === "companionPrompt") this.setPhase("drawing");
+  }
+
+  /** 합류 (11단계 전까지는 미니게임 없이). 합류 연출 후 게임을 이어 간다 */
   acceptCandidate(id: number) {
     this.world.acceptCandidate(id);
     this.joinPop.set(this.world.companions, CONFIG.companion.joinPop);
-    if (this.phase === "companionPrompt") this.setPhase("playing");
+    this.backToPlay();
   }
 
-  /** 선택창 "아니오". count=false면 거절로 세지 않고 닫기만. @returns 이번에 거절로 셌는지 */
+  /**
+   * 선택창 "아니오" 또는 그리기 그만두기. count=false면 거절로 세지 않고 닫기만 (그리기 취소도 세지 않음).
+   * @returns 이번에 거절로 셌는지
+   */
   refuseCandidate(id: number, count = true) {
     const counted = this.world.refuseCandidate(id, count);
-    if (this.phase === "companionPrompt") this.setPhase("playing");
+    this.backToPlay();
     return counted;
+  }
+
+  private backToPlay() {
+    if (this.phase === "companionPrompt" || this.phase === "drawing") this.setPhase("playing");
   }
 
   /** 자동 설정으로 동료 최대 인원이 바로 바뀜 (조건이 사라진 후보는 조용히 사라진다) */

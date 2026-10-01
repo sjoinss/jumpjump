@@ -11,7 +11,10 @@ import styles from "./CompanionPrompt.module.css";
 type Props = {
   /** 열려 있으면 합류할 슬롯 번호(1~5)와 그 슬롯 */
   prompt: { slot: number; data: CompanionSlot } | null;
+  /** 그림 없음: 그리기로 / 그림 있음: 바로 함께하기 (11단계부터 미니게임) */
   onYes: () => void;
+  /** 그림 있음: 고쳐 그린 뒤 함께하기 */
+  onEdit: () => void;
   onNo: () => void;
   /** Esc·닫기: 거절로 세지 않고 닫기만 */
   onDismiss: () => void;
@@ -20,9 +23,10 @@ type Props = {
 /**
  * 동료 후보 선택창 (기획서 7-3, 7-4). 게임은 멈춰 있다.
  * 그림 없음 → "동료를 만드시겠습니까?" / 그림 있음 → "이 동료와 함께하시겠습니까?"
- * 10단계(동료 그리기)·11단계(미니게임) 전까지 "예"는 바로 합류한다.
+ * 그림이 없으면 "예" → 그리기, 있으면 "예" → 그대로 / "수정하기" → 고쳐 그리기 (기획서 7-3).
+ * 11단계(미니게임) 전까지는 그다음 바로 합류한다.
  */
-export function CompanionPrompt({ prompt, onYes, onNo, onDismiss }: Props) {
+export function CompanionPrompt({ prompt, onYes, onEdit, onNo, onDismiss }: Props) {
   const character = prompt?.data.character ?? null;
   const name = prompt?.data.name;
   const title = character ? "이 동료와 함께하시겠습니까?" : "동료를 만드시겠습니까?";
@@ -36,8 +40,13 @@ export function CompanionPrompt({ prompt, onYes, onNo, onDismiss }: Props) {
       actions={
         <>
           <Button variant="primary" size="lg" icon="check" block data-autofocus onClick={onYes}>
-            예
+            {character ? "예" : "예, 그릴래요"}
           </Button>
+          {character && (
+            <Button variant="secondary" icon="pencil" block onClick={onEdit}>
+              수정하기
+            </Button>
+          )}
           <Button variant="ghost" block onClick={onNo}>
             아니오
           </Button>
@@ -59,7 +68,9 @@ export function CompanionPrompt({ prompt, onYes, onNo, onDismiss }: Props) {
             {name && <span className={styles.name}> · {name}</span>}
           </p>
           <InlineMessage tone="info">
-            동료 그리기와 미니게임은 곧 추가돼요. 지금은 &quot;예&quot;를 누르면 바로 합류해요.
+            {character
+              ? "미니게임은 곧 추가돼요. 지금은 “예”를 누르면 바로 합류해요."
+              : "그리는 동안 게임은 멈춰 있어요. 미니게임은 곧 추가돼요. 지금은 그림을 완성하면 바로 합류해요."}
           </InlineMessage>
         </div>
       )}

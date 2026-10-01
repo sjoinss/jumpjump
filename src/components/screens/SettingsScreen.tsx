@@ -1,7 +1,9 @@
 "use client";
 
-import { useRef, type KeyboardEvent } from "react";
+import { useRef, useState, type KeyboardEvent } from "react";
+import { EditorScreen } from "@/editor/EditorScreen";
 import { THEME_IDS, THEMES, type ThemeId } from "@/game/themes";
+import { CompanionSettings } from "../CompanionSettings";
 import { DataManager } from "../DataManager";
 import { useSaveData } from "../SaveProvider";
 import { InlineMessage } from "../ui/InlineMessage";
@@ -10,13 +12,26 @@ import { ScreenLayout } from "./ScreenLayout";
 import styles from "./SettingsScreen.module.css";
 
 /**
- * 설정. 지금은 테마·데이터 관리가 있고, 동료·연출·앱 섹션은 12단계에서 채운다.
+ * 설정. 지금은 동료·테마·데이터 관리가 있고, 연출·앱 섹션은 12단계에서 채운다.
  * 바꾸는 즉시 적용되고 자동 저장된다.
  */
 export function SettingsScreen({ onClose }: { onClose: () => void }) {
   const [data, update] = useSaveData();
   const theme = data.settings.theme;
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
+  /** 그리고 있는 동료 슬롯 (1~5). 에디터를 설정 위에 덮는다 */
+  const [editing, setEditing] = useState<number | null>(null);
+  const returnFocus = useRef<HTMLElement | null>(null);
+
+  const openEditor = (slot: number) => {
+    returnFocus.current = document.activeElement as HTMLElement | null;
+    setEditing(slot);
+  };
+  // 에디터를 닫으면 누른 버튼으로 포커스를 돌려준다 (inert가 풀린 뒤에)
+  const closeEditor = () => {
+    setEditing(null);
+    requestAnimationFrame(() => returnFocus.current?.focus());
+  };
 
   const choose = (id: ThemeId) => update((d) => ({ ...d, settings: { ...d.settings, theme: id } }));
 
@@ -31,8 +46,12 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
   };
 
   return (
+    <>
+    <div className={styles.root} inert={editing !== null}>
     <ScreenLayout title="설정" onBack={onClose}>
       <div className={styles.sections}>
+        <CompanionSettings onEdit={openEditor} />
+
         <section className={styles.section} aria-labelledby="theme-title">
           <h2 id="theme-title" className={styles.sectionTitle}>
             테마
@@ -78,9 +97,20 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
         <DataManager />
 
         <InlineMessage tone="info" title="다른 설정은 곧 추가돼요">
-          동료 최대 인원, 화면 흔들림·효과음 같은 연출은 다음 단계에서 이 화면에 들어와요.
+          화면 흔들림·효과음 같은 연출은 다음 단계에서 이 화면에 들어와요.
         </InlineMessage>
       </div>
     </ScreenLayout>
+    </div>
+
+    {editing !== null && (
+      <div className={styles.editor}>
+        <EditorScreen
+          companion={{ slot: editing, inGame: false, onSaved: closeEditor }}
+          onClose={closeEditor}
+        />
+      </div>
+    )}
+    </>
   );
 }

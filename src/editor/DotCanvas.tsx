@@ -6,11 +6,13 @@ import type { PixelSprite, Sprite } from "@/lib/schema";
 import type { PointerPhase, Tool } from "./session";
 import styles from "./DotCanvas.module.css";
 
+/** 반투명하게 아래 까는 그림 (착지 프레임 작업용 기본 그림 / 동료 그리기의 주인공 가이드) */
+export type Underlay = { sprite: Sprite; opacity: number };
+
 type Props = {
   sprite: PixelSprite;
-  /** 반투명하게 아래 까는 그림 (착지 프레임 작업용 / 동료 그리기의 주인공 가이드) */
-  underlay?: Sprite | null;
-  underlayOpacity?: number;
+  /** 아래에서부터 순서대로 깐다 */
+  underlays?: Underlay[];
   showGrid: boolean;
   symmetry: boolean;
   tool: Tool;
@@ -26,7 +28,7 @@ const CHECKER_B = "#f1e8f4";
  * 누른 채 끌면 연속으로 칠하고, 두 번째 손가락이 닿으면(핀치) 그 붓질을 취소한다.
  * 칸 크기는 들어갈 수 있는 가장 큰 정수 px로 맞춘다.
  */
-export function DotCanvas({ sprite, underlay, underlayOpacity = 0.35, showGrid, symmetry, tool, label, onCell }: Props) {
+export function DotCanvas({ sprite, underlays = [], showGrid, symmetry, tool, label, onCell }: Props) {
   const boxRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [cell, setCell] = useState(12);
@@ -68,9 +70,9 @@ export function DotCanvas({ sprite, underlay, underlayOpacity = 0.35, showGrid, 
       }
     }
 
-    if (underlay) {
-      ctx.globalAlpha = underlayOpacity;
-      drawSprite(ctx, underlay, 0, 0, w, h);
+    for (const u of underlays) {
+      ctx.globalAlpha = u.opacity;
+      drawSprite(ctx, u.sprite, 0, 0, w, h);
       ctx.globalAlpha = 1;
     }
 
@@ -102,7 +104,7 @@ export function DotCanvas({ sprite, underlay, underlayOpacity = 0.35, showGrid, 
       ctx.strokeStyle = "#3d2c5e";
       ctx.strokeRect(cx * cell + 1, cy * cell + 1, cell - 2, cell - 2);
     }
-  }, [sprite, underlay, underlayOpacity, cell, showGrid, symmetry, hover]);
+  }, [sprite, underlays, cell, showGrid, symmetry, hover]);
 
   const cellAt = (e: PointerEvent<HTMLCanvasElement>): [number, number] => {
     // 테두리 두께(clientLeft/Top)를 빼고 안쪽 그림 영역 기준으로 계산

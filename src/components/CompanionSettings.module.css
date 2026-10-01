@@ -1,0 +1,98 @@
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.title {
+  font-size: var(--font-size-section-title);
+}
+
+.subTitle {
+  margin-top: var(--spacing-sm);
+  font-size: var(--font-size-subheading);
+}
+
+.help {
+  color: var(--color-muted);
+  font-size: var(--font-size-caption);
+}
+
+.max {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+/* 자동 설정 안내: 색만이 아니라 글자로 알린다 */
+.auto {
+  align-self: flex-start;
+  padding: 2px var(--spacing-sm);
+  border: 2px solid var(--color-line);
+  border-radius: var(--radius-full);
+  background: var(--color-butter);
+  color: var(--color-ink);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-bold);
+}
+
+.slots {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.slot {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  border: var(--game-outline);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.preview {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 52px;
+  height: 56px;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-alt);
+}
+
+.info {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.slotName {
+  overflow: hidden;
+  font-family: var(--font-display);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nickname {
+  color: var(--color-primary-strong);
+}
+
+.state {
+  color: var(--color-muted);
+  font-size: var(--font-size-caption);
+}
+
+.actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--spacing-xs);
+}
