@@ -1,7 +1,12 @@
 /**
- * 블록 게임 스킨(64×64 또는 예전 64×32 PNG) → 작은 도트 캐릭터 32×36.
- * 스킨 파일은 머리·몸·팔·다리 각 면이 정해진 자리에 펼쳐져 있다. 그중 "앞면"만 떼어 꼬마 비율로 다시 조립한다:
- *   머리 8×8 → 2배(16×16), 그 아래 팔·몸·팔(12줄 그대로), 다리 12줄 → 8줄.
+ * 블록 게임 스킨(64×64 또는 예전 64×32 PNG) → 작은 도트 캐릭터 32×36, 세 모습.
+ * 스킨 파일은 머리·몸·팔·다리 각 면이 정해진 자리에 펼쳐져 있다. 그중 "앞면"만 떼어 꼬마 비율로 다시 조립한다
+ * (사용자 결정: 머리는 크게, 몸은 작게):
+ *   머리 8×8 → 3배(24×24), 몸 8×12 → 8×6, 팔 4×12 → 2×6, 다리 4×12 → 4×6.
+ * 모습 (2026-10-01 사용자 결정)
+ *   - 기본(올라갈 때): 차렷 — 팔을 몸에 붙인다
+ *   - 내려갈 때: 팔을 양옆으로 쭉 벌린 십자
+ *   - 착지: 몸이 한 칸 내려앉고 다리를 짧게 굽혀 살짝 벌린다
  * 덧입는 층(모자·겉옷·소매·바지)은 불투명한 곳만 위에 덮는다. 예전 64×32 스킨은 왼팔·왼다리가 없어 오른쪽을 좌우로 뒤집어 쓴다.
  * 결과는 도트 칸이라 에디터에서 펜·지우개로 바로 고칠 수 있다.
  */
@@ -19,6 +24,8 @@ export function isSkinSize(w: number, h: number) {
 type Src = { rgba: Uint8ClampedArray; width: number; height: number };
 type Face = { x: number; y: number; w: number; h: number };
 
+export type SkinPoses = { base: string[]; fall: string[]; land: string[] };
+
 const hex2 = (n: number) => n.toString(16).padStart(2, "0");
 
 function pixel(src: Src, x: number, y: number): string {
@@ -34,61 +41,125 @@ function fullyOpaque(src: Src, f: Face) {
   return true;
 }
 
-/** 이 면이 전부 투명한지 (얇은 팔 판별용) */
+/** 이 세로줄이 전부 투명한지 (얇은 팔 판별용) */
 function emptyColumn(src: Src, x: number, y: number, h: number) {
   for (let k = 0; k < h; k++) if (pixel(src, x, y + k)) return false;
   return true;
 }
 
-/**
- * @returns 32×36 도트 칸 (왼쪽 위부터, "#rrggbb" 또는 "" 투명)
- */
-export function skinToDots(src: Src): string[] {
-  const { width: W, height: H } = SKIN_OUT;
-  const out: string[] = new Array(W * H).fill("");
+/** 덧입는 층이 있으면 그 색, 없으면 바탕 면의 색 (면 안 좌표 fx, fy) */
+type Part = { face: Face; overlay: Face | null; mirror: boolean };
+function partColor(src: Src, part: Part, fx: number, fy: number) {
+  const x = part.mirror ? part.face.w - 1 - fx : fx;
+  return (part.overlay && pixel(src, part.overlay.x + x, part.overlay.y + fy)) || pixel(src, part.face.x + x, part.face.y + fy);
+}
+
+/** 스킨에서 앞면 부위들을 찾는다 */
+function parts(src: Src) {
   const modern = src.height === 64;
-
-  /**
-   * 면 하나를 out에 옮긴다. sx·sy는 배율(머리 2배), rows는 세로로 몇 줄에 담을지(다리 12→8줄).
-   * mirror면 좌우를 뒤집어 읽는다 (예전 스킨의 왼팔·왼다리).
-   */
-  const put = (face: Face, overlay: Face | null, dx: number, dy: number, scale: number, rows = face.h * scale, mirror = false) => {
-    const cols = face.w * scale;
-    for (let oy = 0; oy < rows; oy++) {
-      const fy = Math.min(face.h - 1, Math.floor((oy * face.h) / rows));
-      for (let ox = 0; ox < cols; ox++) {
-        const fxRaw = Math.floor(ox / scale);
-        const fx = mirror ? face.w - 1 - fxRaw : fxRaw;
-        const top = overlay ? pixel(src, overlay.x + fx, overlay.y + fy) : "";
-        const color = top || pixel(src, face.x + fx, face.y + fy);
-        const tx = dx + ox;
-        const ty = dy + oy;
-        if (color && tx >= 0 && tx < W && ty >= 0 && ty < H) out[ty * W + tx] = color;
-      }
-    }
-  };
-
   // 얇은 팔(3px) 스킨: 64×64에서 굵은 팔의 넷째 줄이 비어 있다
-  const slim = modern && emptyColumn(src, 47, 20, 12);
-  const armW = slim ? 3 : 4;
-
-  // 머리 (앞면 8×8, 모자 층) → 16×16.
+  const armW = modern && emptyColumn(src, 47, 20, 12) ? 3 : 4;
   // 예전 64×32 스킨은 모자 층을 검은색 등으로 꽉 채워 둔 경우가 많다 — 게임도 모자 층 전체(32×16)가 불투명하면 모자가 없는 것으로 본다
-  const hat = { x: 40, y: 8, w: 8, h: 8 };
   const hatUsable = modern || !fullyOpaque(src, { x: 32, y: 0, w: 32, h: 16 });
-  put({ x: 8, y: 8, w: 8, h: 8 }, hatUsable ? hat : null, 8, 0, 2);
-  // 몸 (앞면 8×12, 겉옷 층)
-  put({ x: 20, y: 20, w: 8, h: 12 }, modern ? { x: 20, y: 36, w: 8, h: 12 } : null, 12, 16, 1);
-  // 팔: 화면 왼쪽 = 캐릭터의 오른팔
-  const rightArm = { x: 44, y: 20, w: armW, h: 12 };
-  put(rightArm, modern ? { x: 44, y: 36, w: armW, h: 12 } : null, 12 - armW, 16, 1);
-  if (modern) put({ x: 36, y: 52, w: armW, h: 12 }, { x: 52, y: 52, w: armW, h: 12 }, 20, 16, 1);
-  else put(rightArm, null, 20, 16, 1, 12, true);
-  // 다리: 12줄 → 8줄 (꼬마 비율)
-  const rightLeg = { x: 4, y: 20, w: 4, h: 12 };
-  put(rightLeg, modern ? { x: 4, y: 36, w: 4, h: 12 } : null, 12, 28, 1, 8);
-  if (modern) put({ x: 20, y: 52, w: 4, h: 12 }, { x: 4, y: 52, w: 4, h: 12 }, 16, 28, 1, 8);
-  else put(rightLeg, null, 16, 28, 1, 8, true);
+  const rightArm: Face = { x: 44, y: 20, w: armW, h: 12 };
+  const rightLeg: Face = { x: 4, y: 20, w: 4, h: 12 };
+  return {
+    head: { face: { x: 8, y: 8, w: 8, h: 8 }, overlay: hatUsable ? { x: 40, y: 8, w: 8, h: 8 } : null, mirror: false },
+    body: { face: { x: 20, y: 20, w: 8, h: 12 }, overlay: modern ? { x: 20, y: 36, w: 8, h: 12 } : null, mirror: false },
+    // 화면 왼쪽 = 캐릭터의 오른팔·오른다리
+    armL: { face: rightArm, overlay: modern ? { x: 44, y: 36, w: armW, h: 12 } : null, mirror: false },
+    armR: modern
+      ? { face: { x: 36, y: 52, w: armW, h: 12 }, overlay: { x: 52, y: 52, w: armW, h: 12 }, mirror: false }
+      : { face: rightArm, overlay: null, mirror: true },
+    legL: { face: rightLeg, overlay: modern ? { x: 4, y: 36, w: 4, h: 12 } : null, mirror: false },
+    legR: modern
+      ? { face: { x: 20, y: 52, w: 4, h: 12 }, overlay: { x: 4, y: 52, w: 4, h: 12 }, mirror: false }
+      : { face: rightLeg, overlay: null, mirror: true },
+  } satisfies Record<string, Part>;
+}
 
+const W = SKIN_OUT.width;
+const H = SKIN_OUT.height;
+
+/** 부위 하나를 out의 (dx, dy)부터 dw×dh 크기로 (가장 가까운 픽셀로) 옮긴다 */
+function blit(out: string[], src: Src, part: Part, dx: number, dy: number, dw: number, dh: number) {
+  const { w, h } = part.face;
+  for (let oy = 0; oy < dh; oy++) {
+    const fy = Math.min(h - 1, Math.floor(((oy + 0.5) * h) / dh));
+    for (let ox = 0; ox < dw; ox++) {
+      const fx = Math.min(w - 1, Math.floor(((ox + 0.5) * w) / dw));
+      const color = partColor(src, part, fx, fy);
+      const tx = dx + ox;
+      const ty = dy + oy;
+      if (color && tx >= 0 && tx < W && ty >= 0 && ty < H) out[ty * W + tx] = color;
+    }
+  }
+}
+
+/**
+ * 팔을 옆으로 눕혀 그린다 (십자). 어깨(팔 면의 위쪽)가 몸 쪽, 손이 바깥쪽.
+ * dir = -1이면 왼쪽으로 뻗는다. 길이 len, 두께 thick.
+ */
+function blitArmOut(out: string[], src: Src, part: Part, shoulderX: number, y: number, len: number, thick: number, dir: 1 | -1) {
+  const { w, h } = part.face;
+  for (let i = 0; i < len; i++) {
+    const fy = Math.min(h - 1, Math.floor(((i + 0.5) * h) / len));
+    for (let t = 0; t < thick; t++) {
+      // 팔의 바깥 면이 위로 오게: 왼쪽 팔은 면의 왼쪽 줄이 위
+      const fxRaw = Math.min(w - 1, Math.floor(((t + 0.5) * w) / thick));
+      const fx = dir === -1 ? fxRaw : w - 1 - fxRaw;
+      const color = partColor(src, part, fx, fy);
+      const tx = shoulderX + dir * i;
+      const ty = y + t;
+      if (color && tx >= 0 && tx < W && ty >= 0 && ty < H) out[ty * W + tx] = color;
+    }
+  }
+}
+
+/** 꼬마 비율 크기 (32×36 안) */
+const HEAD = 24;
+const BODY_W = 8;
+const BODY_H = 6;
+const ARM_W = 2;
+const LEG_W = 4;
+const LEG_H = 6;
+const LEFT = (W - BODY_W) / 2; // 몸 왼쪽 x = 12
+
+function pose(src: Src, kind: "base" | "fall" | "land"): string[] {
+  const out: string[] = new Array(W * H).fill("");
+  const p = parts(src);
+  // 착지는 한 칸 내려앉고 다리가 짧아진다 (발끝은 늘 맨 아래 줄)
+  const sink = kind === "land" ? 2 : 0;
+  const legH = LEG_H - sink;
+  const headY = H - HEAD - BODY_H - LEG_H + sink;
+  const bodyY = headY + HEAD;
+  const legY = bodyY + BODY_H;
+
+  // 다리 먼저 (몸 아래), 착지는 살짝 벌린다
+  const spread = kind === "land" ? 1 : 0;
+  blit(out, src, p.legL, LEFT - spread, legY, LEG_W, legH);
+  blit(out, src, p.legR, LEFT + LEG_W + spread, legY, LEG_W, legH);
+  blit(out, src, p.body, LEFT, bodyY, BODY_W, BODY_H);
+  if (kind === "fall") {
+    // 십자: 어깨 높이에서 양옆 끝까지 — 큰 머리(24칸)보다 바깥으로 삐져나와야 팔을 벌린 게 보인다
+    blitArmOut(out, src, p.armL, LEFT - 1, bodyY, LEFT, ARM_W, -1);
+    blitArmOut(out, src, p.armR, LEFT + BODY_W, bodyY, W - LEFT - BODY_W, ARM_W, 1);
+  } else {
+    // 차렷: 몸에 붙인다
+    blit(out, src, p.armL, LEFT - ARM_W, bodyY, ARM_W, BODY_H);
+    blit(out, src, p.armR, LEFT + BODY_W, bodyY, ARM_W, BODY_H);
+  }
+  // 머리는 마지막 (몸 위에 살짝 겹쳐도 얼굴이 보이게)
+  blit(out, src, p.head, (W - HEAD) / 2, headY, HEAD, HEAD);
   return out;
+}
+
+/** 스킨 → 세 모습 (각 32×36 도트 칸, 왼쪽 위부터, "#rrggbb" 또는 "" 투명) */
+export function skinToPoses(src: Src): SkinPoses {
+  return { base: pose(src, "base"), fall: pose(src, "fall"), land: pose(src, "land") };
+}
+
+/** 기본 모습만 (미리보기 등) */
+export function skinToDots(src: Src): string[] {
+  return pose(src, "base");
 }

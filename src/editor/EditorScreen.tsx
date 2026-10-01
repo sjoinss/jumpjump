@@ -583,6 +583,11 @@ export function EditorScreen({ onClose, companion, initialTab }: Props) {
         <ImageImportScreen
           initialFile={importing.file}
           onCancel={() => setImporting(null)}
+          onDoneCharacter={(character) => {
+            dispatch({ type: "loadCharacter", character });
+            setImporting(null);
+            show("스킨으로 세 모습(올라갈 때·내려갈 때·착지)을 만들었어요. 바로 고칠 수 있어요.", "success");
+          }}
           onDone={(sprite) => {
             dispatch({ type: "setFrameSprite", sprite });
             setImporting(null);

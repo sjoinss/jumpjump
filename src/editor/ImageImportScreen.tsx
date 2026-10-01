@@ -10,10 +10,10 @@ import { Switch } from "@/components/ui/Switch";
 import { useMediaQuery } from "@/components/useMediaQuery";
 import { CONFIG } from "@/game/config";
 import { PixelPreview } from "@/components/PixelPreview";
-import type { PixelSprite, Sprite } from "@/lib/schema";
+import type { Character, PixelSprite, Sprite } from "@/lib/schema";
 import { applyBackground, encodeSprite, loadImageFile, type LoadedImage } from "./imageDom";
 import { clampZoom, cornerBackground, fitToBox, imageToDotPixels, NO_ADJUST, placedRect, type Adjust } from "./imageMath";
-import { skinToDots, SKIN_OUT } from "./skin";
+import { skinToPoses, SKIN_OUT } from "./skin";
 import { fetchSkinByName, isValidMcName } from "./skinFetch";
 import styles from "./ImageImportScreen.module.css";
 
@@ -23,6 +23,8 @@ type Props = {
   onCancel: () => void;
   /** 이미지 그림, 또는 도트로 바꾼 그림 */
   onDone: (sprite: Sprite) => void;
+  /** 스킨을 세 모습(차렷·십자·착지) 캐릭터로 바꿨을 때. 없으면 기본 모습만 onDone으로 */
+  onDoneCharacter?: (character: Character) => void;
 };
 
 const BOX = CONFIG.limits.image; // 320×360
@@ -33,7 +35,7 @@ const ACCEPT = "image/png,image/jpeg,image/webp,image/gif";
  * 도트 격자와 같은 크기(16×18, 32×36px)면 먼저 "도트로 바꿔서 고치기 / 이미지 그대로"를 고른다 (사용자 결정).
  * 블록 게임 스킨(64×64·64×32 PNG)이면 앞모습을 떼어 32×36 꼬마 도트 캐릭터로 조립해 같은 방식으로 묻는다.
  */
-export function ImageImportScreen({ initialFile, onCancel, onDone }: Props) {
+export function ImageImportScreen({ initialFile, onCancel, onDone, onDoneCharacter }: Props) {
   const [loaded, setLoaded] = useState<LoadedImage | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -105,12 +107,19 @@ export function ImageImportScreen({ initialFile, onCancel, onDone }: Props) {
   // 도트로 바꾼 결과 (미리보기와 넣기에 같이 쓴다)
   const dotsBackground = loaded?.dots ? cornerBackground(loaded.dots.rgba, loaded.dots.width, loaded.dots.height) : null;
   const isSkin = !!loaded?.skin;
+  /** 스킨: 세 모습 (기본 = 차렷, 내려갈 때 = 십자, 착지 = 다리 굽힘) */
+  const skinPoses = useMemo<Character | null>(() => {
+    if (!loaded?.skin) return null;
+    const p = skinToPoses(loaded.skin);
+    const sprite = (pixels: string[]): PixelSprite => ({ kind: "pixel", ...SKIN_OUT, pixels });
+    return { base: sprite(p.base), fall: sprite(p.fall), land: sprite(p.land) };
+  }, [loaded]);
   const dotSprite = useMemo<PixelSprite | null>(() => {
-    if (loaded?.skin) return { kind: "pixel", ...SKIN_OUT, pixels: skinToDots(loaded.skin) };
+    if (skinPoses) return skinPoses.base as PixelSprite;
     const d = loaded?.dots;
     if (!d) return null;
     return { kind: "pixel", width: d.width, height: d.height, pixels: imageToDotPixels(d.rgba, d.width, d.height, dotsBg) };
-  }, [loaded, dotsBg]);
+  }, [loaded, dotsBg, skinPoses]);
 
   const loadSkinByName = async () => {
     setError(null);
@@ -210,12 +219,31 @@ export function ImageImportScreen({ initialFile, onCancel, onDone }: Props) {
             <h2 id="dots-title" className={styles.dropTitle}>
               {isSkin ? "스킨을 도트 캐릭터로 바꿀까요?" : "도트로 바꿔서 고칠까요?"}
             </h2>
-            <div className={styles.dotsPreview}>
-              <PixelPreview sprite={dotSprite} width={128} height={144} label="도트로 바꾼 미리보기" />
-            </div>
+            {skinPoses ? (
+              <ul className={styles.skinPoses}>
+                {(
+                  [
+                    ["base", "올라갈 때"],
+                    ["fall", "내려갈 때"],
+                    ["land", "착지"],
+                  ] as const
+                ).map(([pose, label]) => (
+                  <li key={pose}>
+                    <span className={styles.dotsPreview}>
+                      <PixelPreview sprite={skinPoses[pose] as PixelSprite} width={80} height={90} label={`${label} 모습`} />
+                    </span>
+                    <span className={styles.helper}>{label}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className={styles.dotsPreview}>
+                <PixelPreview sprite={dotSprite} width={128} height={144} label="도트로 바꾼 미리보기" />
+              </div>
+            )}
             <p className={styles.helper}>
               {isSkin
-                ? `스킨 파일(${loaded.width}×${loaded.height})이에요. 머리·몸·팔·다리 앞모습을 떼어 머리가 큰 꼬마 캐릭터(${dotSprite.width}×${dotSprite.height})로 만들었어요. 바꾼 뒤 펜·지우개로 고칠 수 있어요.`
+                ? `스킨 파일(${loaded.width}×${loaded.height})이에요. 머리가 큰 꼬마 캐릭터(${dotSprite.width}×${dotSprite.height})로 세 모습을 만들었어요 — 올라갈 땐 차렷, 내려갈 땐 팔을 쭉, 착지할 땐 다리를 살짝 굽혀요. 바꾼 뒤 펜·지우개로 고칠 수 있어요.`
                 : `도트 칸과 같은 크기(${dotSprite.width}×${dotSprite.height}px)예요. 도트로 바꾸면 픽셀 하나가 칸 하나가 되어 펜·지우개로 직접 고칠 수 있어요. 이미지 그대로 쓰면 고칠 수는 없어요.`}
             </p>
             {dotsBackground && !isSkin && (
@@ -230,7 +258,7 @@ export function ImageImportScreen({ initialFile, onCancel, onDone }: Props) {
               <Button variant="ghost" onClick={() => setAskDots(false)}>
                 이미지 그대로 쓰기
               </Button>
-              <Button variant="primary" icon="pencil" onClick={() => onDone(dotSprite)}>
+              <Button variant="primary" icon="pencil" onClick={() => (skinPoses && onDoneCharacter ? onDoneCharacter(skinPoses) : onDone(dotSprite))}>
                 {isSkin ? "도트 캐릭터로 바꾸기" : "도트로 바꿔서 고치기"}
               </Button>
             </div>
