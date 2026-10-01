@@ -36,6 +36,35 @@
   color: var(--color-ink);
 }
 
+/* 마인크래프트 아이디로 스킨 받아오기 */
+.skinId {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-md);
+  border: var(--game-outline);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.skinIdRow {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.skinIdInput {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 var(--spacing-sm);
+  border: 2px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-size: 16px;
+}
+
 .dropTitle {
   font-size: var(--font-size-subheading);
 }

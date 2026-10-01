@@ -14,6 +14,7 @@ import type { PixelSprite, Sprite } from "@/lib/schema";
 import { applyBackground, encodeSprite, loadImageFile, type LoadedImage } from "./imageDom";
 import { clampZoom, cornerBackground, fitToBox, imageToDotPixels, NO_ADJUST, placedRect, type Adjust } from "./imageMath";
 import { skinToDots, SKIN_OUT } from "./skin";
+import { fetchSkinByName, isValidMcName } from "./skinFetch";
 import styles from "./ImageImportScreen.module.css";
 
 type Props = {
@@ -46,6 +47,9 @@ export function ImageImportScreen({ initialFile, onCancel, onDone }: Props) {
   /** 도트 크기 이미지: 아직 고르는 중이면 true. "이미지 그대로"를 고르면 원래 흐름으로 */
   const [askDots, setAskDots] = useState(false);
   const [dotsBg, setDotsBg] = useState(true);
+  /** 마인크래프트 아이디로 스킨 받아오기 */
+  const [mcName, setMcName] = useState("");
+  const [fetchingSkin, setFetchingSkin] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const hasMouse = useMediaQuery("(any-pointer: fine)");
 
@@ -108,6 +112,15 @@ export function ImageImportScreen({ initialFile, onCancel, onDone }: Props) {
     return { kind: "pixel", width: d.width, height: d.height, pixels: imageToDotPixels(d.rgba, d.width, d.height, dotsBg) };
   }, [loaded, dotsBg]);
 
+  const loadSkinByName = async () => {
+    setError(null);
+    setFetchingSkin(true);
+    const r = await fetchSkinByName(mcName);
+    setFetchingSkin(false);
+    if (r.ok) await openFile(r.file);
+    else setError(r.message);
+  };
+
   const chooseAgain = () => {
     setLoaded(null);
     setError(null);
@@ -132,6 +145,7 @@ export function ImageImportScreen({ initialFile, onCancel, onDone }: Props) {
 
       <div className={styles.body} onDragOver={(e) => e.preventDefault()} onDrop={onDrop}>
         {!loaded ? (
+          <>
           <section
             className={`${styles.dropzone} ${dragOver ? styles.dragOver : ""}`}
             onDragEnter={() => setDragOver(true)}
@@ -154,6 +168,43 @@ export function ImageImportScreen({ initialFile, onCancel, onDone }: Props) {
             </Button>
             {hasMouse && <p className={styles.helper}>여기에 파일을 끌어다 놓아도 돼요</p>}
           </section>
+
+          <section className={styles.skinId} aria-labelledby="skin-id-title">
+            <h2 id="skin-id-title" className={styles.dropTitle}>
+              마인크래프트 아이디로 불러오기
+            </h2>
+            <form
+              className={styles.skinIdRow}
+              onSubmit={(e) => {
+                e.preventDefault();
+                void loadSkinByName();
+              }}
+            >
+              <label className="visually-hidden" htmlFor="mc-name">
+                마인크래프트 아이디
+              </label>
+              <input
+                id="mc-name"
+                className={styles.skinIdInput}
+                type="text"
+                value={mcName}
+                maxLength={16}
+                placeholder="예: Notch"
+                autoComplete="off"
+                autoCapitalize="off"
+                spellCheck={false}
+                aria-describedby="skin-id-help"
+                onChange={(e) => setMcName(e.target.value)}
+              />
+              <Button type="submit" variant="secondary" icon="download" loading={fetchingSkin} loadingLabel="받는 중…" disabled={!isValidMcName(mcName.trim())}>
+                불러오기
+              </Button>
+            </form>
+            <p id="skin-id-help" className={styles.helper}>
+              그 아이디의 스킨을 받아 작은 도트 캐릭터로 바꿔 줘요. 아이디만 스킨 서비스(minotar.net)로 보내요.
+            </p>
+          </section>
+          </>
         ) : askDots && dotSprite ? (
           <section className={styles.dots} aria-labelledby="dots-title">
             <h2 id="dots-title" className={styles.dropTitle}>

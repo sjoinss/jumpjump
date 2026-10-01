@@ -28,6 +28,12 @@ function pixel(src: Src, x: number, y: number): string {
   return `#${hex2(src.rgba[i])}${hex2(src.rgba[i + 1])}${hex2(src.rgba[i + 2])}`;
 }
 
+/** 면 전체가 불투명한지 */
+function fullyOpaque(src: Src, f: Face) {
+  for (let y = f.y; y < f.y + f.h; y++) for (let x = f.x; x < f.x + f.w; x++) if (!pixel(src, x, y)) return false;
+  return true;
+}
+
 /** 이 면이 전부 투명한지 (얇은 팔 판별용) */
 function emptyColumn(src: Src, x: number, y: number, h: number) {
   for (let k = 0; k < h; k++) if (pixel(src, x, y + k)) return false;
@@ -66,8 +72,11 @@ export function skinToDots(src: Src): string[] {
   const slim = modern && emptyColumn(src, 47, 20, 12);
   const armW = slim ? 3 : 4;
 
-  // 머리 (앞면 8×8, 모자 층) → 16×16
-  put({ x: 8, y: 8, w: 8, h: 8 }, { x: 40, y: 8, w: 8, h: 8 }, 8, 0, 2);
+  // 머리 (앞면 8×8, 모자 층) → 16×16.
+  // 예전 64×32 스킨은 모자 층을 검은색 등으로 꽉 채워 둔 경우가 많다 — 게임도 모자 층 전체(32×16)가 불투명하면 모자가 없는 것으로 본다
+  const hat = { x: 40, y: 8, w: 8, h: 8 };
+  const hatUsable = modern || !fullyOpaque(src, { x: 32, y: 0, w: 32, h: 16 });
+  put({ x: 8, y: 8, w: 8, h: 8 }, hatUsable ? hat : null, 8, 0, 2);
   // 몸 (앞면 8×12, 겉옷 층)
   put({ x: 20, y: 20, w: 8, h: 12 }, modern ? { x: 20, y: 36, w: 8, h: 12 } : null, 12, 16, 1);
   // 팔: 화면 왼쪽 = 캐릭터의 오른팔

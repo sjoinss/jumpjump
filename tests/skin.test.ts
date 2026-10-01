@@ -66,3 +66,11 @@ test("얇은 팔(3px) 스킨: 팔이 몸에 붙고 바깥 한 줄은 비운다",
   assert.equal(at(cells, 22, 16), "#00ffff");
   assert.equal(at(cells, 23, 16), "");
 });
+
+test("예전 64×32 스킨의 꽉 찬 모자 층(검은색 등)은 모자가 없는 것으로 본다", () => {
+  const skin = makeSkin(32);
+  for (let y = 0; y < 16; y++)
+    for (let x = 32; x < 64; x++) skin.rgba.set([0, 0, 0, 255], (y * 64 + x) * 4);
+  const cells = skinToDots(skin);
+  assert.equal(at(cells, 8, 0), "#ff0000", "얼굴이 그대로 보임");
+});
