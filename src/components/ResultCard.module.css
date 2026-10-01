@@ -1,0 +1,71 @@
+.card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  border: 2px dashed var(--color-border-strong);
+  border-radius: var(--radius-lg);
+}
+
+.preview {
+  display: block;
+  flex: 0 0 auto;
+  border-radius: var(--radius-md);
+  image-rendering: pixelated;
+}
+
+.actions {
+  display: flex;
+  flex: 1 1 140px;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  min-width: 0;
+}
+
+/* GIF 진행률: 막대 + 숫자(색만으로 알리지 않음) + 취소 */
+.progress {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.bar {
+  flex: 1;
+  height: 14px;
+  overflow: hidden;
+  border: 2px solid var(--color-line);
+  border-radius: var(--radius-full);
+  background: var(--color-surface-alt);
+}
+
+.bar span {
+  display: block;
+  height: 100%;
+  background: var(--color-primary);
+  transition: width var(--duration-fast) linear;
+}
+
+.percent {
+  min-width: 3ch;
+  font-size: var(--font-size-caption);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.note {
+  flex-basis: 100%;
+  color: var(--color-muted);
+  font-size: var(--font-size-caption);
+}
+
+.full {
+  flex-basis: 100%;
+}
+
+.fallback {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-md);
+}

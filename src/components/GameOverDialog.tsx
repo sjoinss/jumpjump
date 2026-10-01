@@ -1,5 +1,7 @@
 "use client";
 
+import type { CardData } from "@/share/cardRenderer";
+import { ResultCard } from "./ResultCard";
 import { Button } from "./ui/Button";
 import { Dialog } from "./ui/Dialog";
 import { PixelIcon } from "./ui/PixelIcon";
@@ -12,6 +14,8 @@ export type GameResult = {
   isNew: boolean;
   /** 판 시작 때 동료 최대 인원이 1명 이상이었는지 */
   withCompanions: boolean;
+  /** 결과 이미지에 그릴 것 (게임오버 순간의 배경·대열) */
+  card: CardData;
 };
 
 type Props = {
@@ -22,8 +26,7 @@ type Props = {
 };
 
 /**
- * 게임오버 (기획서 9-7). 점수 → 다시 하기가 가장 먼저 보이게.
- * 결과 이미지 미리보기·저장·공유는 13단계에서 이 창에 들어온다.
+ * 게임오버 (기획서 9-7, 13). 점수 → 다시 하기 → 결과 이미지(미리보기 · 저장 · 공유) → 에디터·처음으로 순서.
  */
 export function GameOverDialog({ result, onRetry, onEditor, onHome }: Props) {
   return (
@@ -37,6 +40,7 @@ export function GameOverDialog({ result, onRetry, onEditor, onHome }: Props) {
           <Button variant="primary" size="lg" icon="play" block data-autofocus onClick={onRetry}>
             다시 하기
           </Button>
+          {result && <ResultCard card={result.card} />}
           <Button variant="secondary" icon="pencil" block onClick={onEditor}>
             캐릭터 만들기
           </Button>

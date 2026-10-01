@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { Engine, type Phase, type SceneLayout } from "@/game/engine";
-import { CHARACTER_PRESETS } from "@/game/presets";
+import { CHARACTER_PRESETS, COMPANION_QUESTION } from "@/game/presets";
 import { SCENE } from "@/game/themes";
 import { needsBackupReminder } from "@/lib/dataFile";
 import type { BestScores, Character } from "@/lib/schema";
@@ -14,7 +14,7 @@ import type { MinigameId } from "@/game/minigames";
 import { MinigameScreen } from "../MinigameScreen";
 import { GameOverDialog, type GameResult } from "../GameOverDialog";
 import { RegionBanner } from "../RegionBanner";
-import { regionName } from "@/game/regions";
+import { regionBlendAt, regionIndexAt, regionName } from "@/game/regions";
 import { CONFIG } from "@/game/config";
 import { sfx } from "@/game/audio";
 import { useSaveData, useStorageBanner } from "../SaveProvider";
@@ -165,7 +165,21 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
       const prevBest = dataRef.current.best[key];
       const isNew = final > prevBest;
       if (isNew) update((d) => ({ ...d, best: { ...d.best, [key]: Math.max(d.best[key], final) } }));
-      setResult({ score: final, best: Math.max(prevBest, final), isNew, withCompanions });
+      // 결과 이미지: 게임오버 높이의 배경 + 주인공과 이번 판에 합류한 동료 (기획서 13-1)
+      const d = dataRef.current;
+      const joined = engineRef.current?.companions ?? 0;
+      const members = [d.hero, ...d.companionSlots.slice(0, joined).map((s) => s.character ?? { frames: [COMPANION_QUESTION] as [typeof COMPANION_QUESTION] })];
+      const card = {
+        score: final,
+        isNew,
+        withCompanions,
+        regionName: regionName(regionIndexAt(final)),
+        blend: regionBlendAt(final),
+        members,
+        platform: d.platforms.basic,
+        scene: SCENE[d.settings.theme],
+      };
+      setResult({ score: final, best: Math.max(prevBest, final), isNew, withCompanions, card });
       announce(`게임 끝. ${final}미터${isNew ? ", 최고 기록!" : ""}`);
     },
     [announce, update],
