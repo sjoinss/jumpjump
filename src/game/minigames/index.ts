@@ -53,7 +53,7 @@ export const MINIGAMES: Record<MinigameId, MinigameInfo> = {
   },
   dodge: {
     name: "피하기",
-    goal: `${M.dodge.seconds}초 동안 버텨요`,
+    goal: `폭탄을 피해 ${M.dodge.seconds}초 버텨요`,
     control: "move",
     touch: "좌우로 끌어서 피하기",
     pc: "← → 또는 마우스 이동",

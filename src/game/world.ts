@@ -22,7 +22,10 @@ export type Platform = {
   width: number;
   /** 한 번이라도 밟았는지 (처음 밟았을 때만 착지 이벤트 first) */
   touched: boolean;
-  /** 일회용 발판이 부서진 뒤 지난 시간. 부서진 발판은 밟을 수 없고 잠시 뒤 사라진다 */
+  /**
+   * 부서진 뒤 지난 시간. 부서진 발판은 밟을 수 없고 잠시 뒤 사라진다.
+   * 음수면 무너지기 직전(일회용 아래 발판이 차례를 기다리며 흔들리는 중) — 이때도 밟을 수 없다
+   */
   broken?: number;
   /** 움직이는 발판의 가로 빠르기(px/초, 부호 = 방향). 벽에 닿으면 돌아선다 */
   vx?: number;
@@ -132,11 +135,6 @@ export class World {
   private readonly companionMaxAtStart: number;
   private nextId = 1;
   private topY = 0;
-  /**
-   * 바닥선: 일회용 발판을 밟으면 그 높이가 새 바닥이 된다 (화면 아래 끝이 거기까지 올라온다).
-   * 부서진 발판 아래로 떨어지면 돌아갈 곳 없이 끝 — 갇혀서 계속 튀기만 하는 일이 없다
-   */
-  floorY = -Infinity;
   /** 다음 후보 순번 (candidateHeight(n)) */
   private nextCandidate = 0;
 
@@ -182,7 +180,6 @@ export class World {
     this.candidates = [];
     this.platforms = [{ id: 0, kind: "ground", x: -w, y: 0, width: w * 3, touched: true }];
     this.topY = CONFIG.world.firstPlatformY - gapAt(0);
-    this.floorY = -Infinity;
     this.spawn();
   }
 
@@ -305,7 +302,10 @@ export class World {
         hit.touched = true;
         if (hit.kind === "oneTime") {
           hit.broken = 0;
-          this.floorY = Math.max(this.floorY, hit.y);
+          // 아래 발판은 모두 무너진다 (가까운 것부터 차례로). 놓치면 돌아갈 곳 없이 끝 — 갇혀서 계속 튀기만 하는 일이 없다
+          for (const p of this.platforms) {
+            if (p.broken === undefined && p.y < hit.y) p.broken = -(hit.y - p.y) / CONFIG.special.collapseWaveSpeed;
+          }
         }
         events.push({ type: "land", platform: hit, first });
       }
@@ -327,11 +327,8 @@ export class World {
     // 카메라: 위로만. 맨 아래 줄 발밑이 화면 위에서 (줄 수에 따른) 비율 위치에 오도록
     const target = h.y - this.playHeight * (1 - cameraRatioFor(this.companions));
     if (target > this.cameraY) this.cameraY = target;
-    // 바닥선: 부서진 일회용 발판 바로 아래가 화면 아래 끝이 될 때까지 부드럽게 올라간다
-    const floorCam = this.floorY - CONFIG.special.breakFloorMargin;
-    if (floorCam > this.cameraY) this.cameraY = Math.min(floorCam, this.cameraY + CONFIG.special.breakFloorSpeed * dt);
 
-    // 부서진 일회용 발판: 잠깐 떨어지는 모습을 보여준 뒤 없앤다
+    // 부서진 발판: (차례를 기다렸다가) 잠깐 떨어지는 모습을 보여준 뒤 없앤다
     for (const p of this.platforms) if (p.broken !== undefined) p.broken += dt;
     const breakTime = CONFIG.special.oneTimeBreakDuration;
 

@@ -381,16 +381,23 @@ export class Engine {
         const y = screenY(p.y);
         if (y > vp.logicalHeight || y + height < 0) continue;
         const px = Math.round(vp.playX + p.x + (p.width - width) / 2);
+        const sprites = this.platformSprites;
+        const sprite = p.kind === "highJump" ? sprites.highJump : p.kind === "oneTime" ? sprites.oneTime : p.kind === "moving" ? sprites.moving : sprites.basic;
         if (p.broken !== undefined) {
-          // 부서진 일회용 발판: 떨어지며 흐려진다
-          const k = p.broken / CONFIG.special.oneTimeBreakDuration;
-          ctx.globalAlpha = this.platformAlpha * Math.max(0, 1 - k);
-          drawSprite(ctx, this.platformSprites.oneTime, px, Math.round(y + k * 40), width, height);
+          if (p.broken < 0) {
+            // 무너질 차례를 기다리는 발판: 덜덜 떨린다 (동작 줄이기면 살짝 흐리게만)
+            const shake = this.reducedMotion ? 0 : Math.round(Math.sin(this.time * 70 + p.id) * 2);
+            ctx.globalAlpha = this.platformAlpha * (this.reducedMotion ? 0.6 : 1);
+            drawSprite(ctx, sprite, px + shake, Math.round(y), width, height);
+          } else {
+            // 부서진 발판: 떨어지며 흐려진다
+            const k = p.broken / CONFIG.special.oneTimeBreakDuration;
+            ctx.globalAlpha = this.platformAlpha * Math.max(0, 1 - k);
+            drawSprite(ctx, sprite, px, Math.round(y + k * 40), width, height);
+          }
           ctx.globalAlpha = this.platformAlpha;
           continue;
         }
-        const sprites = this.platformSprites;
-        const sprite = p.kind === "highJump" ? sprites.highJump : p.kind === "oneTime" ? sprites.oneTime : p.kind === "moving" ? sprites.moving : sprites.basic;
         drawSprite(ctx, sprite, px, Math.round(y), width, height);
         if (this.markers) this.drawMarker(p.kind, px + width / 2, Math.round(y));
       }

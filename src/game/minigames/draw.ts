@@ -200,12 +200,40 @@ function pipe(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h:
 function drawDodge(ctx: CanvasRenderingContext2D, g: DodgeGame, looks: MinigameLooks, opts: DrawOptions) {
   ground(ctx, DODGE_GROUND);
   const r = CONFIG.minigame.dodge.radius;
-  for (const f of g.fallers) {
-    outlinedCircle(ctx, f.x, f.y, r, "#ffd36e");
-    // 별 모양 반짝이로 "떨어지는 것"을 색 말고도 알아보게
-    ctx.fillStyle = INK;
-    ctx.fillRect(Math.round(f.x - 1), Math.round(f.y - 6), 2, 12);
-    ctx.fillRect(Math.round(f.x - 6), Math.round(f.y - 1), 12, 2);
-  }
+  for (const [i, f] of g.fallers.entries()) bomb(ctx, f.x, f.y, r, opts.reducedMotion ? 0 : opts.time * 12 + i);
   actor(ctx, looks.companion, g.player.x, DODGE_GROUND - ACTOR.height, blinkAlpha(g, opts));
+}
+
+/**
+ * 폭탄 (피해야 하는 것): 어두운 몸통 + 하이라이트 + 꼭지 + 심지 끝 불꽃. 먹는 것처럼 보이지 않게 모양으로 알린다.
+ * spark는 불꽃 깜빡임 시간 (동작 줄이기면 0 고정)
+ */
+function bomb(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, spark: number) {
+  // 심지 (몸통 뒤): 꼭지에서 오른쪽 위로 휘어짐
+  ctx.beginPath();
+  ctx.moveTo(x + r * 0.35, y - r - 2);
+  ctx.quadraticCurveTo(x + r * 0.5, y - r - 9, x + r * 0.95, y - r - 8);
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = INK;
+  ctx.stroke();
+  outlinedCircle(ctx, x, y, r, "#4b3f72");
+  // 하이라이트
+  ctx.fillStyle = "#8f84c4";
+  ctx.fillRect(Math.round(x - r * 0.55), Math.round(y - r * 0.55), 5, 5);
+  ctx.fillRect(Math.round(x - r * 0.55) + 5, Math.round(y - r * 0.55) - 2, 3, 2);
+  // 꼭지
+  ctx.fillStyle = INK;
+  ctx.fillRect(Math.round(x - 1), Math.round(y - r - 5), 9, 7);
+  ctx.fillStyle = "#9a90c8";
+  ctx.fillRect(Math.round(x + 1), Math.round(y - r - 3), 5, 3);
+  // 불꽃: 노랑·주황 십자가 번갈아 깜빡
+  const fx = Math.round(x + r * 0.95);
+  const fy = Math.round(y - r - 8);
+  const big = Math.floor(spark) % 2 === 0;
+  ctx.fillStyle = big ? "#ff9f43" : "#ffd36e";
+  const s = big ? 4 : 3;
+  ctx.fillRect(fx - s, fy - 1, s * 2 + 1, 3);
+  ctx.fillRect(fx - 1, fy - s, 3, s * 2 + 1);
+  ctx.fillStyle = "#fff7c2";
+  ctx.fillRect(fx, fy, 1, 1);
 }
