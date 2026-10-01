@@ -161,6 +161,69 @@ export const CONFIG = {
     cameraRatioByRows: [0.55, 0.62, 0.7],
   },
 
+  /**
+   * 미니게임 (기획서 8번. 초기 제안 — 처음 해도 대부분 성공하는 게 목표).
+   * 좌표는 미니게임 판(arena) 기준 논리 px, y는 아래로 갈수록 커진다. 화면에는 비율을 지켜 맞춰 넣는다.
+   */
+  minigame: {
+    arena: { width: 360, height: 560 },
+    /** 시작 전(그리고 일시정지 후 다시 시작할 때) 조작법을 보여주는 카운트다운 초 */
+    countdown: 3,
+    /** 판 위 캐릭터 크기 */
+    actor: { width: 48, height: 54 },
+    rope: {
+      goal: 5,
+      lives: 3,
+      /** 줄이 한 바퀴 도는 시간(초). 길수록 느리다 */
+      period: 1.7,
+      /** 점프: 체공 시간 = 2v/g ≈ 0.69초 */
+      jumpVelocity: 520,
+      gravity: 1500,
+      /** 줄이 발밑을 지날 때 발이 이만큼 떠 있으면 성공 */
+      clearance: 10,
+    },
+    shooter: {
+      goal: 10,
+      lives: 3,
+      rows: 2,
+      cols: 5,
+      enemySize: 36,
+      /** 적 무리가 좌우로 흔들리는 폭(px)과 빠르기(초당 왕복 횟수) */
+      swayAmplitude: 40,
+      swaySpeed: 0.45,
+      /** 자동 발사 간격과 탄속 */
+      fireInterval: 0.3,
+      bulletSpeed: 560,
+      /** 적 탄환: 느리고 적게 */
+      enemyFireInterval: 2.0,
+      enemyBulletSpeed: 150,
+      invincible: 1.2,
+    },
+    flappy: {
+      goal: 5,
+      lives: 3,
+      gravity: 900,
+      flapVelocity: 320,
+      pipeSpeed: 110,
+      pipeWidth: 56,
+      /** 통로 높이 (넓게) */
+      pipeGap: 210,
+      /** 기둥 사이 가로 간격 */
+      pipeSpacing: 230,
+      invincible: 1.2,
+    },
+    dodge: {
+      seconds: 15,
+      lives: 3,
+      spawnInterval: 0.65,
+      fallSpeedMin: 140,
+      fallSpeedMax: 210,
+      /** 낙하물 반지름 */
+      radius: 14,
+      invincible: 1.0,
+    },
+  },
+
   /** 저장 데이터 상한. 불러온 데이터가 이를 넘으면 거부하거나 잘라낸다 */
   limits: {
     paletteMax: 24,

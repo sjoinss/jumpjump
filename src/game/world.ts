@@ -210,6 +210,11 @@ export class World {
     return first;
   }
 
+  /** 미니게임 실패: 그 후보는 없어진다. 그린 그림은 슬롯에 남아 다음 후보가 그 모습으로 나온다 (기획서 7-4) */
+  dropCandidate(id: number) {
+    this.candidates = this.candidates.filter((c) => c.id !== id);
+  }
+
   /** 자동 설정 등으로 M이 바뀜. 조건이 거짓이 되면 화면의 후보를 조용히 없앤다 (기획서 7-2) */
   setCompanionMax(m: number) {
     this.companionMax = m;

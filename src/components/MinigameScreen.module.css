@@ -1,0 +1,143 @@
+.screen {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background: var(--color-background);
+}
+
+/* ── 위쪽 정보: 게임 이름 · 진행 · 목숨 · 일시정지 ── */
+.hud {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: calc(var(--spacing-sm) + env(safe-area-inset-top)) calc(var(--spacing-md) + env(safe-area-inset-right))
+    var(--spacing-sm) calc(var(--spacing-md) + env(safe-area-inset-left));
+  border-bottom: var(--game-outline);
+  background: var(--color-surface);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--font-size-subheading);
+}
+
+.progress {
+  flex: 1;
+  font-family: var(--font-display);
+  font-size: var(--font-size-subheading);
+  color: var(--color-primary-strong);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.lives {
+  display: flex;
+  gap: 2px;
+}
+
+.heart {
+  display: inline-flex;
+  color: #e4467a;
+}
+
+.lost {
+  display: inline-flex;
+  border-radius: var(--radius-sm);
+  color: var(--color-border);
+  outline: 1px dashed var(--color-border-strong);
+}
+
+/* ── 판 ── */
+.stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.canvas:focus-visible {
+  outline: 4px solid var(--color-focus);
+  outline-offset: -4px;
+}
+
+/* ── 시작 전 조작법 (카운트다운 동안) ── */
+.intro {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+  width: min(320px, calc(100% - 2 * var(--spacing-md)));
+  padding: var(--spacing-lg) var(--spacing-md);
+  border: var(--game-outline);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+  box-shadow: 0 var(--edge-height) 0 var(--color-line);
+  text-align: center;
+  transform: translate(-50%, -50%);
+}
+
+.introTitle {
+  color: var(--color-muted);
+  font-size: var(--font-size-caption);
+}
+
+.goal {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-family: var(--font-display);
+  font-size: var(--font-size-section-title);
+  color: var(--color-ink);
+}
+
+.ways {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ways li {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  text-align: left;
+}
+
+.count {
+  font-family: var(--font-display);
+  font-size: var(--font-size-display);
+  line-height: 1;
+  color: var(--color-primary-strong);
+  animation: count-pop 0.5s var(--ease-pop);
+}
+
+@keyframes count-pop {
+  from {
+    transform: scale(1.4);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .count {
+    animation: none;
+  }
+}

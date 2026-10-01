@@ -157,7 +157,18 @@ export class Engine {
     if (this.phase === "companionPrompt") this.setPhase("drawing");
   }
 
-  /** 합류 (11단계 전까지는 미니게임 없이). 합류 연출 후 게임을 이어 간다 */
+  /** 그림이 정해지면 미니게임 (게임은 계속 멈춰 있다) */
+  beginMinigame() {
+    if (this.phase === "companionPrompt" || this.phase === "drawing") this.setPhase("minigame");
+  }
+
+  /** 미니게임 실패: 후보는 없어지고(다음 후보로) 게임오버 없이 이어 간다. 거절로 세지 않음 */
+  failCandidate(id: number) {
+    this.world.dropCandidate(id);
+    this.backToPlay();
+  }
+
+  /** 미니게임 성공 → 합류. 합류 연출 후 게임을 이어 간다 */
   acceptCandidate(id: number) {
     this.world.acceptCandidate(id);
     this.joinPop.set(this.world.companions, CONFIG.companion.joinPop);
@@ -175,7 +186,7 @@ export class Engine {
   }
 
   private backToPlay() {
-    if (this.phase === "companionPrompt" || this.phase === "drawing") this.setPhase("playing");
+    if (this.phase === "companionPrompt" || this.phase === "drawing" || this.phase === "minigame") this.setPhase("playing");
   }
 
   /** 자동 설정으로 동료 최대 인원이 바로 바뀜 (조건이 사라진 후보는 조용히 사라진다) */

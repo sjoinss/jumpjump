@@ -10,6 +10,8 @@ import { CompanionPrompt } from "../CompanionPrompt";
 import { ControlsGuide } from "../ControlsGuide";
 import { applyRefusal } from "@/game/companions";
 import { EditorScreen } from "@/editor/EditorScreen";
+import type { MinigameId } from "@/game/minigames";
+import { MinigameScreen } from "../MinigameScreen";
 import { GameOverDialog, type GameResult } from "../GameOverDialog";
 import { RegionBanner } from "../RegionBanner";
 import { regionName } from "@/game/regions";
@@ -139,21 +141,43 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
     announce("다시 시작");
   }, [announce]);
 
-  // ── 동료 후보 선택창 → 그리기 (기획서 7-4) ──
+  // ── 동료 후보 선택창 → 그리기 → 미니게임 (기획서 7-4, 8) ──
   type CandidateRef = { id: number; slot: number };
   const [prompt, setPrompt] = useState<CandidateRef | null>(null);
   /** 게임 중 동료 그리기 화면. 그리는 동안 게임은 멈춰 있다 */
   const [drawing, setDrawing] = useState<CandidateRef | null>(null);
+  /** 미니게임 중인 후보. 끝나면 성공이면 합류, 실패면 후보만 없어진다 */
+  const [minigame, setMinigame] = useState<CandidateRef | null>(null);
+  /** 바로 앞 미니게임 (같은 게임이 연달아 나오지 않게) */
+  const lastMinigame = useRef<MinigameId | null>(null);
 
   const closePrompt = () => {
     setPrompt(null);
     canvasRef.current?.focus({ preventScroll: true });
   };
 
-  /** 합류 (11단계에서 이 앞에 미니게임이 들어간다) */
   const join = (c: CandidateRef) => {
     engineRef.current?.acceptCandidate(c.id);
     announce(`동료 ${c.slot}번이 합류했어요!`);
+  };
+
+  /** 그림이 있는 동료도 자동 합류하지 않고 미니게임을 통과해야 한다 (기획서 7-3) */
+  const startMinigame = (c: CandidateRef) => {
+    engineRef.current?.beginMinigame();
+    setMinigame(c);
+  };
+
+  const finishMinigame = ({ success, id }: { success: boolean; id: MinigameId }) => {
+    if (!minigame) return;
+    lastMinigame.current = id;
+    if (success) join(minigame);
+    else {
+      // 실패: 게임오버 없이 계속. 그림은 슬롯에 남고 다음 후보가 그 모습으로 나온다 (거절로 세지 않음)
+      engineRef.current?.failCandidate(minigame.id);
+      announce("다음 동료 기회에 다시 도전해요");
+    }
+    setMinigame(null);
+    canvasRef.current?.focus({ preventScroll: true });
   };
 
   const startDrawing = () => {
@@ -163,15 +187,15 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
     setPrompt(null);
   };
 
-  /** "예": 그림이 있으면 그대로 함께하고, 없으면 그리러 간다 */
+  /** "예": 그림이 있으면 바로 미니게임, 없으면 그리러 간다 */
   const acceptCompanion = () => {
     if (!prompt) return;
     if (!slots[prompt.slot - 1]?.character) {
       startDrawing();
       return;
     }
-    join(prompt);
-    closePrompt();
+    startMinigame(prompt);
+    setPrompt(null);
   };
 
   const closeDrawing = () => {
@@ -179,11 +203,11 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
     canvasRef.current?.focus({ preventScroll: true });
   };
 
-  /** 그림을 완성함 → 슬롯에 저장된 상태로 합류 */
+  /** 그림을 완성함(슬롯에 저장됨) → 미니게임 */
   const finishDrawing = () => {
     if (!drawing) return;
-    join(drawing);
-    closeDrawing();
+    setDrawing(null);
+    startMinigame(drawing);
   };
 
   /** 그리다 그만둠: 초안은 에디터가 남기고, 후보는 그 자리에 (거절로 세지 않음) */
@@ -214,6 +238,7 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
     setRegionBanner(null);
     setPrompt(null);
     setDrawing(null);
+    setMinigame(null);
     engineRef.current?.showReady();
     logoRef.current?.focus({ preventScroll: true });
   }, []);
@@ -321,7 +346,7 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
 
   return (
     <>
-    <main className={styles.screen} style={sceneStyle} inert={drawing !== null}>
+    <main className={styles.screen} style={sceneStyle} inert={drawing !== null || minigame !== null}>
       <canvas
         ref={canvasRef}
         className={styles.canvas}
@@ -461,6 +486,18 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
         }
       />
     </main>
+
+    {minigame && (
+      <div className={styles.drawing} inert={covered}>
+        <MinigameScreen
+          slot={minigame.slot}
+          hero={data.hero}
+          companion={slots[minigame.slot - 1]?.character ?? null}
+          previous={lastMinigame.current}
+          onDone={finishMinigame}
+        />
+      </div>
+    )}
 
     {drawing && (
       <div className={styles.drawing} inert={covered}>

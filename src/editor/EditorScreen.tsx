@@ -180,7 +180,7 @@ export function EditorScreen({ onClose, companion }: Props) {
     else onClose();
   }
 
-  // 게임 중 동료는 그림이 그대로여도 "완료" = 이 모습으로 함께 가기
+  // 게임 중 동료는 그림이 그대로여도 "완료" = 이 모습으로 미니게임에 도전
   const onDone = () => (dirty || inGame ? commit() : onClose());
   const onBack = () => (dirty ? setDialog("leave") : onClose());
 
@@ -526,7 +526,7 @@ export function EditorScreen({ onClose, companion }: Props) {
                 commit();
               }}
             >
-              완료하고 함께 가기
+              완료하고 미니게임 하기
             </Button>
             <Button variant="secondary" block onClick={keepDraftAndLeave}>
               그만 그리기
