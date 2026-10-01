@@ -1,11 +1,15 @@
 import { CONFIG } from "./config";
+import type { BackgroundState } from "./background";
 import type { RegionStop } from "./regions";
+import type { TileSet } from "./tiles";
+import { BLOCK_TILES } from "./tilesets/blocks";
+import { CANDY_DECOR, CANDY_TILES } from "./tilesets/candy";
 
 /**
  * 테마 목록. UI 색은 styles/tokens.css의 [data-theme]에, 게임 장면 색은 여기 SCENE에 둔다.
  * 테마를 추가할 때는 두 곳 + THEME_IDS에 같은 id로 넣는다.
  */
-export const THEME_IDS = ["dot", "cotton", "dream", "ocean", "blocks"] as const;
+export const THEME_IDS = ["dot", "cotton", "dream", "ocean", "blocks", "candy"] as const;
 export type ThemeId = (typeof THEME_IDS)[number];
 export const DEFAULT_THEME: ThemeId = "dot";
 
@@ -48,6 +52,12 @@ export const THEMES: Record<ThemeId, ThemeInfo> = {
     description: "네모난 블록 세상의 단면. 네더에서 동굴, 지상, 하늘, 우주로.",
     swatches: ["#e4efd9", "#8fd16a", "#c9a27a", "#3b3b3b"],
   },
+  candy: {
+    id: "candy",
+    name: "과자 나라",
+    description: "초코 동굴에서 케이크를 뚫고 솜사탕 구름, 사탕 우주까지.",
+    swatches: ["#fff0f6", "#ff8fbf", "#9fe0ff", "#6b4430"],
+  },
 };
 
 export function isThemeId(v: unknown): v is ThemeId {
@@ -55,7 +65,10 @@ export function isThemeId(v: unknown): v is ThemeId {
 }
 
 /** 지역마다 그리는 장식 종류 (background.ts) */
-export type RegionKey = "cave" | "ground" | "sky" | "space" | "seabed" | "surface" | "nether" | "stone" | "overworld";
+export type RegionKey = string;
+
+/** 테마 전용 장식 (지역 키마다). 기본 장식(동굴 벽·구름·새·별) 대신 그린다 */
+export type DecorFn = (ctx: CanvasRenderingContext2D, p: ScenePalette, w: number, h: number, s: BackgroundState) => void;
 
 /** 테마의 지역 한 칸: 이름·시작 높이 + 하늘(위 → 아래 계단식 띠) 색 + 장식 종류 */
 export type SceneRegion = RegionStop & { key: RegionKey; top: string; bottom: string };
@@ -64,15 +77,19 @@ export type SceneRegion = RegionStop & { key: RegionKey; top: string; bottom: st
  * 배경 방식
  * - classic: 지역 색이 섞이며 바뀌고 장식(동굴 벽·구름·새·별)이 패럴랙스로 흐른다
  * - ocean: 둘째 지역 시작 높이에 실제 수면이 있다. 그 아래는 물(해초·거품·물고기), 위는 하늘
- * - blocks: 세상의 단면. 높이마다 블록 재질(네더랙 → 돌 → 흙·잔디)이 정해져 있고 경계가 실제로 지나간다
+ * - tiles: 세상의 단면 (tiles.ts). 높이마다 타일 재질이 정해져 있고 경계가 실제로 지나간다 — 블록 월드·과자 나라 등
  */
-export type SceneStyle = "classic" | "ocean" | "blocks";
+export type SceneStyle = "classic" | "ocean" | "tiles";
 
 /** 게임 캔버스 장면 색. 지역마다 하늘이 다르고 장식 색은 테마 공통 */
 export type ScenePalette = {
   style: SceneStyle;
   /** 아래(0m)부터 위로. 첫 칸 startM = 0 */
   regions: SceneRegion[];
+  /** style = "tiles"일 때 높이별 타일 */
+  tiles?: TileSet;
+  /** 지역 키별 전용 장식 */
+  decor?: Partial<Record<RegionKey, DecorFn>>;
   cloud: string;
   sparkle: string;
   sparkleCore: string;
@@ -213,7 +230,8 @@ export const SCENE: Record<ThemeId, ScenePalette> = {
     cssBackground: "#4f93d8",
   },
   blocks: {
-    style: "blocks",
+    style: "tiles",
+    tiles: BLOCK_TILES,
     regions: [
       { key: "nether", name: "네더", startM: 0, top: "#7d3540", bottom: "#a8505a" },
       { key: "stone", name: "동굴", startM: 150, top: "#6f7180", bottom: "#9496a3" },
@@ -238,5 +256,33 @@ export const SCENE: Record<ThemeId, ScenePalette> = {
     },
     shadow: "rgba(30,20,20,0.25)",
     cssBackground: "#7d3540",
+  },
+  candy: {
+    style: "tiles",
+    tiles: CANDY_TILES,
+    decor: CANDY_DECOR,
+    regions: [
+      { key: "choco", name: "초코 동굴", startM: 0, top: "#8a5a45", bottom: "#a8705a" },
+      { key: "cake", name: "케이크 층", startM: 300, top: "#ffe3ef", bottom: "#fff4f8" },
+      { key: "cotton", name: "솜사탕 구름", startM: 1000, top: "#ffd6ec", bottom: "#e3f1ff" },
+      { key: "sweetspace", name: "사탕 우주", startM: 2500, top: "#6b52a8", bottom: "#9a7fd0" },
+    ],
+    cloud: "rgba(255,255,255,0.95)",
+    sparkle: "#ffffff",
+    sparkleCore: "#ffd84a",
+    sparkleDensity: 1,
+    accent: "#ffb3cf",
+    moon: "#fff4c7",
+    ground: {
+      top: "#8b5a3c",
+      topEdge: "#6b4430",
+      highlight: "#a8735a",
+      soil: "#7b4a35",
+      pebble: "#5e3626",
+      flower: "#ff8fb8",
+      flowerCore: "#fff6e8",
+    },
+    shadow: "rgba(74,44,34,0.25)",
+    cssBackground: "#8a5a45",
   },
 };

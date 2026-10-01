@@ -303,3 +303,50 @@
   --radius-lg: 8px;
   --radius-xl: 10px;
 }
+
+/* 과자 나라: 딸기우유·민트·초코 외곽선, 말랑하게 둥글게 */
+:root[data-theme="candy"] {
+  --logo-fill: #ff8fbf;
+  --logo-stroke: #6b4430;
+  --color-ink: #4a2c22;
+  --color-text: #4a2c22;
+  --color-muted: #7a5446;
+  --color-line: #6b4430;
+  --outline-width: 3px;
+  --edge-height: 4px;
+
+  --color-background: #fff5f8;
+  --color-background-dot: #ffe1ec;
+  --color-surface: #fffdfb;
+  --color-surface-alt: #fff0f4;
+  --color-border: #f2d9e2;
+  --color-border-strong: #c79aa8;
+
+  --color-primary: #ff8fbf;
+  --color-primary-edge: #e0609a;
+  --color-primary-soft: #ffe1ee;
+  --color-primary-strong: #b02a68;
+  --color-secondary: #9fe0ff;
+  --color-secondary-edge: #5fb8e0;
+  --color-secondary-soft: #e3f6ff;
+  --color-mint: #a8f0d8;
+  --color-mint-edge: #6ccfae;
+  --color-butter: #ffe9a8;
+  --color-butter-edge: #e8c25a;
+  --color-sky: #c9e8ff;
+  --color-sky-edge: #8cc6ee;
+  --color-cream: #fffaf2;
+  --color-cream-edge: #ead8c8;
+  --color-danger-fill: #ff9d94;
+  --color-danger-edge: #d9645b;
+
+  --color-desk-bg: #ffe6f0;
+  --color-desk-bg-2: #e6f6ff;
+  --color-desk-mid-1: #f3f0ff;
+  --color-desk-mid-2: #fff0f6;
+
+  --radius-sm: 12px;
+  --radius-md: 18px;
+  --radius-lg: 26px;
+  --radius-xl: 34px;
+}

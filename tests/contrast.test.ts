@@ -29,6 +29,7 @@ const THEMES: Record<string, Record<string, string>> = {
   꿈나라: { ...ROOT, ...vars(block(':root[data-theme="dream"]')) },
   바닷속: { ...ROOT, ...vars(block(':root[data-theme="ocean"]')) },
   "블록 월드": { ...ROOT, ...vars(block(':root[data-theme="blocks"]')) },
+  "과자 나라": { ...ROOT, ...vars(block(':root[data-theme="candy"]')) },
 };
 
 function resolve(t: Record<string, string>, name: string): string {
