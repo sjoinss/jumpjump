@@ -5,7 +5,7 @@ const C = CONFIG.minigame.rope;
 
 /**
  * 줄넘기: 동료 둘(같은 그림)이 양쪽에서 줄을 돌리고 주인공이 가운데서 넘는다.
- * 탭하면 점프(땅에 있을 때만). 줄이 발밑을 지나는 순간 발이 clearance 이상 떠 있으면 성공, 아니면 목숨 -1.
+ * 탭하면 점프(땅에 있을 때만). 넘을 때마다 줄이 조금씩 빨라진다. 줄이 발밑을 지나는 순간 발이 clearance 이상 떠 있으면 성공, 아니면 목숨 -1.
  */
 export class RopeGame implements MinigameLogic {
   readonly id = "rope" as const;
@@ -19,6 +19,8 @@ export class RopeGame implements MinigameLogic {
   /** 주인공 발이 땅에서 떠 있는 높이 */
   jump = 0;
   vy = 0;
+  /** 지금 줄이 한 바퀴 도는 시간. 넘을 때마다 조금씩 짧아진다 */
+  period: number = C.period;
 
   step(dt: number, input: MiniInput): MiniEvent[] {
     const events: MiniEvent[] = [];
@@ -37,9 +39,12 @@ export class RopeGame implements MinigameLogic {
 
     // 줄이 발밑(phase = k + 0.5)을 지나는 순간 판정
     const prev = this.phase;
-    this.phase += dt / C.period;
+    this.phase += dt / this.period;
     if (Math.floor(prev - 0.5) < Math.floor(this.phase - 0.5)) {
-      if (this.jump >= C.clearance) addProgress(this, events);
+      if (this.jump >= C.clearance) {
+        addProgress(this, events);
+        this.period = Math.max(C.periodMin, this.period - C.periodStep);
+      }
       // 걸린 순간은 깜빡임만 짧게 (줄은 계속 돈다)
       else takeHit(this, 0.4, events);
     }

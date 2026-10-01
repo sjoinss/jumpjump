@@ -1,3 +1,4 @@
+import { CONFIG } from "../config";
 import { DodgeGame } from "./dodge";
 import { FlappyGame } from "./flappy";
 import { RopeGame } from "./rope";
@@ -23,10 +24,12 @@ export type MinigameInfo = {
   progress: (current: number, goal: number) => string;
 };
 
+const M = CONFIG.minigame;
+
 export const MINIGAMES: Record<MinigameId, MinigameInfo> = {
   rope: {
     name: "줄넘기",
-    goal: "줄을 5번 넘어요",
+    goal: `줄을 ${M.rope.goal}번 넘어요`,
     control: "tap",
     touch: "줄이 발밑에 오면 화면을 탭",
     pc: "Space 또는 클릭",
@@ -34,7 +37,7 @@ export const MINIGAMES: Record<MinigameId, MinigameInfo> = {
   },
   shooter: {
     name: "슈팅",
-    goal: "적 10마리를 물리쳐요",
+    goal: `적 ${M.shooter.rows * M.shooter.cols}마리를 물리쳐요`,
     control: "move",
     touch: "좌우로 끌어서 이동 (자동 발사)",
     pc: "← → 또는 마우스 이동 (자동 발사)",
@@ -42,7 +45,7 @@ export const MINIGAMES: Record<MinigameId, MinigameInfo> = {
   },
   flappy: {
     name: "파닥파닥",
-    goal: "기둥 5개를 지나가요",
+    goal: `기둥 ${M.flappy.goal}개를 지나가요`,
     control: "tap",
     touch: "탭할 때마다 날아올라요",
     pc: "Space 또는 클릭",
@@ -50,7 +53,7 @@ export const MINIGAMES: Record<MinigameId, MinigameInfo> = {
   },
   dodge: {
     name: "피하기",
-    goal: "15초 동안 버텨요",
+    goal: `${M.dodge.seconds}초 동안 버텨요`,
     control: "move",
     touch: "좌우로 끌어서 피하기",
     pc: "← → 또는 마우스 이동",

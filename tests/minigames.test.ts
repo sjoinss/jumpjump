@@ -49,24 +49,25 @@ test("끝난 게임은 더 진행되지 않는다 (재도전 없음)", () => {
 /** 줄이 발밑에 오기 약 0.35초 전에 탭 (체공 0.69초의 한가운데) */
 function ropePilot(g: RopeGame): MiniInput {
   const frac = g.phase % 1;
-  const lead = 0.35 / CONFIG.minigame.rope.period;
+  const lead = 0.35 / g.period;
   return frac > 0.5 - lead && frac < 0.5 - lead + 0.02 ? tap : IDLE;
 }
 
-test("줄넘기: 타이밍 맞춰 뛰면 5번 넘고 성공, 목숨은 그대로", () => {
+test("줄넘기: 타이밍 맞춰 뛰면 목표만큼 넘고 성공, 목숨은 그대로, 넘을수록 빨라진다", () => {
   const g = new RopeGame();
   const ev = play(g, 20, ropePilot);
   assert.equal(g.status, "success");
-  assert.equal(g.current, 5);
+  assert.equal(g.current, CONFIG.minigame.rope.goal);
   assert.equal(g.lives, CONFIG.minigame.rope.lives);
+  assert.ok(g.period < CONFIG.minigame.rope.period && g.period >= CONFIG.minigame.rope.periodMin);
   assert.deepEqual(ev.at(-1), { type: "end", success: true });
 });
 
 test("줄넘기: 판정 창이 넓다 (줄이 오기 0.1~0.6초 전 아무 때나 뛰어도 넘음)", () => {
   for (const lead of [0.1, 0.3, 0.6]) {
     const g = new RopeGame();
-    const ahead = lead / CONFIG.minigame.rope.period;
-    play(g, 12, (x) => {
+    play(g, 20, (x) => {
+      const ahead = lead / x.period;
       const frac = x.phase % 1;
       return frac > 0.5 - ahead && frac < 0.5 - ahead + 0.01 ? tap : IDLE;
     });
@@ -103,12 +104,12 @@ function shooterPilot(s: ShooterGame): MiniInput {
   return target ? goTo(s.enemyX(target)) : IDLE;
 }
 
-test("슈팅: 탄을 피하며 적을 따라다니면 10마리 모두 물리치고 성공", () => {
+test("슈팅: 탄을 피하며 적을 따라다니면 모두 물리치고 성공", () => {
   for (const seed of [1, 2, 3]) {
     const g = new ShooterGame(mulberry32(seed));
     play(g, 60, shooterPilot);
     assert.equal(g.status, "success", `seed ${seed}`);
-    assert.equal(g.current, 10);
+    assert.equal(g.current, CONFIG.minigame.shooter.rows * CONFIG.minigame.shooter.cols);
     assert.ok(g.lives > 0);
   }
 });
@@ -140,7 +141,7 @@ test("파닥파닥: 첫 탭 전에는 떠서 기다린다", () => {
   assert.equal(g.status, "playing");
 });
 
-test("파닥파닥: 통로를 따라가면 5개 지나고 성공", () => {
+test("파닥파닥: 통로를 따라가면 목표만큼 지나고 성공", () => {
   for (const seed of [1, 2, 3, 4]) {
     const g = new FlappyGame(mulberry32(seed));
     play(g, 60, flappyPilot);
@@ -193,7 +194,7 @@ test("피하기: 낙하물에 맞으면 목숨 -1", () => {
   assert.deepEqual(ev.filter((e) => e.type === "hit"), [{ type: "hit", lives: 2 }]);
 });
 
-// ── 15단계: 사람처럼 실수해도 대부분 성공 (기획서 8번 "첫 시도 성공률 약 80%") ──
+// ── 사람처럼 실수해도 절반 넘게 성공 (15단계엔 약 90%였는데, 2026-10-01 너무 쉽다는 의견으로 70%대로 올림) ──
 // 반응이 0.24초 늦고 판단이 조금씩 흔들리는 자동 플레이로 여러 판을 돌려 성공 비율을 본다.
 
 function gauss(rng: () => number) {
@@ -257,12 +258,12 @@ function humanDodge(seed: number) {
 
 const rate = (fn: (seed: number) => boolean, n = 80) => Array.from({ length: n }, (_, i) => fn(5000 + i)).filter(Boolean).length / n;
 
-test("밸런스: 파닥파닥은 반응이 느려도 대부분 성공 (75% 이상)", () => {
+test("밸런스: 파닥파닥은 반응이 느려도 꽤 성공 (60~85%)", () => {
   const r = rate(humanFlappy);
-  assert.ok(r >= 0.75, `성공률 ${Math.round(r * 100)}%`);
+  assert.ok(r >= 0.6 && r <= 0.85, `성공률 ${Math.round(r * 100)}%`);
 });
 
-test("밸런스: 피하기는 반응이 느려도 대부분 성공 (75% 이상)", () => {
+test("밸런스: 피하기는 반응이 느려도 꽤 성공 (65~90%)", () => {
   const r = rate(humanDodge);
-  assert.ok(r >= 0.75, `성공률 ${Math.round(r * 100)}%`);
+  assert.ok(r >= 0.65 && r <= 0.9, `성공률 ${Math.round(r * 100)}%`);
 });

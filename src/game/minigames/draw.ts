@@ -6,7 +6,7 @@ import { DodgeGame, DODGE_GROUND } from "./dodge";
 import { FlappyGame, FLAPPY_GROUND } from "./flappy";
 import { RopeGame } from "./rope";
 import { ShooterGame } from "./shooter";
-import { ACTOR, ARENA, type MinigameLogic } from "./types";
+import { ACTOR, ARENA, arenaOf, type MinigameLogic } from "./types";
 
 /**
  * 미니게임 그리기 (판 좌표, y 아래로). 부르는 쪽이 판을 화면에 맞춰 변환해 둔다.
@@ -45,7 +45,8 @@ const INVADER = pixelSprite(
 
 export function drawMinigame(ctx: CanvasRenderingContext2D, g: MinigameLogic, looks: MinigameLooks, opts: DrawOptions) {
   ctx.fillStyle = MINIGAME_BG[g.id];
-  ctx.fillRect(0, 0, ARENA.width, ARENA.height);
+  const size = arenaOf(g.id);
+  ctx.fillRect(0, 0, size.width, size.height);
   if (g instanceof RopeGame) drawRope(ctx, g, looks, opts);
   else if (g instanceof ShooterGame) drawShooter(ctx, g, looks, opts);
   else if (g instanceof FlappyGame) drawFlappy(ctx, g, looks, opts);
@@ -89,7 +90,8 @@ function outlinedCircle(ctx: CanvasRenderingContext2D, x: number, y: number, r: 
 // ── 줄넘기: 양쪽 동료가 줄을 돌리고 가운데 주인공이 넘는다 ──
 
 function drawRope(ctx: CanvasRenderingContext2D, g: RopeGame, looks: MinigameLooks, opts: DrawOptions) {
-  const groundY = ARENA.height - 90;
+  // 줄넘기 판은 낮다 (arenaOf). 땅은 아래 70px
+  const groundY = arenaOf("rope").height - 70;
   ground(ctx, groundY);
   const leftX = 22;
   const rightX = ARENA.width - 22 - ACTOR.width;

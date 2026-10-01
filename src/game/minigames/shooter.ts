@@ -10,7 +10,7 @@ export type Bullet = { x: number; y: number };
 /** 동료가 아래에서 좌우로 움직이며 자동으로 쏜다. 위의 적 무리는 좌우로 흔들리며 가끔 느린 탄을 떨어뜨린다 */
 export class ShooterGame implements MinigameLogic {
   readonly id = "shooter" as const;
-  readonly goal = C.goal;
+  readonly goal = C.rows * C.cols;
   status: MinigameLogic["status"] = "playing";
   lives = C.lives;
   current = 0;
@@ -25,10 +25,11 @@ export class ShooterGame implements MinigameLogic {
   private enemyFireTimer = C.enemyFireInterval;
 
   constructor(private readonly rng: Rng) {
-    const gap = C.enemySize + 20;
+    const gapX = C.enemySize + C.enemyGapX;
+    const gapY = C.enemySize + C.enemyGapY;
     for (let r = 0; r < C.rows; r++) {
       for (let c = 0; c < C.cols; c++) {
-        this.enemies.push({ baseX: ARENA.width / 2 + (c - (C.cols - 1) / 2) * gap, y: 80 + r * (C.enemySize + 16), alive: true });
+        this.enemies.push({ baseX: ARENA.width / 2 + (c - (C.cols - 1) / 2) * gapX, y: 70 + r * gapY, alive: true });
       }
     }
   }

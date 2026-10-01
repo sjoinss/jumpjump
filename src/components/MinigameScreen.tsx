@@ -6,7 +6,7 @@ import { CONFIG } from "@/game/config";
 import { FixedStepLoop } from "@/game/loop";
 import { createMinigame, MINIGAMES, pickMinigame, type MiniEvent, type MinigameId, type MinigameLogic } from "@/game/minigames";
 import { drawMinigame, MINIGAME_BG } from "@/game/minigames/draw";
-import { ARENA } from "@/game/minigames/types";
+import { arenaOf } from "@/game/minigames/types";
 import { COMPANION_QUESTION } from "@/game/presets";
 import { InputController } from "@/input/controller";
 import type { Character } from "@/lib/schema";
@@ -49,6 +49,7 @@ export function MinigameScreen({ slot, hero, companion, previous, onDone }: Prop
   const showPc = fine || !touch;
 
   const boxRef = useRef<HTMLDivElement>(null);
+  const frameRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const phaseRef = useRef<Phase>(phase);
   phaseRef.current = phase;
@@ -88,26 +89,34 @@ export function MinigameScreen({ slot, hero, companion, previous, onDone }: Prop
   useEffect(() => {
     const canvas = canvasRef.current;
     const box = boxRef.current;
+    const frame = frameRef.current;
     const ctx = canvas?.getContext("2d");
-    if (!canvas || !box || !ctx) return;
+    if (!canvas || !box || !frame || !ctx) return;
+    const arena = arenaOf(game.id);
 
-    let view = { scale: 1, ox: 0, oy: 0, dpr: 1, w: 1, h: 1 };
+    let view = { scale: 1, dpr: 1 };
+    // 판은 테두리 두른 창으로 가운데에: 판 밖은 게임과 상관없는 바탕이라 어디까지가 판인지 헷갈리지 않는다
     const fit = () => {
-      const { width, height } = box.getBoundingClientRect();
+      const stage = getComputedStyle(box);
+      const border = parseFloat(getComputedStyle(frame).borderLeftWidth) || 0;
+      const width = box.clientWidth - parseFloat(stage.paddingLeft) - parseFloat(stage.paddingRight) - border * 2;
+      const height = box.clientHeight - parseFloat(stage.paddingTop) - parseFloat(stage.paddingBottom) - border * 2;
       const dpr = Math.min(window.devicePixelRatio || 1, 3);
-      const scale = Math.min(width / ARENA.width, height / ARENA.height);
-      // 판은 아래에 붙인다: 남는 높이는 위쪽 하늘이 된다 (바닥 아래로 하늘색이 비치지 않게)
-      view = { scale, ox: (width - ARENA.width * scale) / 2, oy: height - ARENA.height * scale, dpr, w: width, h: height };
-      canvas.width = Math.max(1, Math.round(width * dpr));
-      canvas.height = Math.max(1, Math.round(height * dpr));
+      const scale = Math.max(0.1, Math.min(width / arena.width, height / arena.height));
+      view = { scale, dpr };
+      canvas.style.width = `${arena.width * scale}px`;
+      canvas.style.height = `${arena.height * scale}px`;
+      canvas.width = Math.max(1, Math.round(arena.width * scale * dpr));
+      canvas.height = Math.max(1, Math.round(arena.height * scale * dpr));
     };
     fit();
     const ro = new ResizeObserver(fit);
     ro.observe(box);
 
     const input = new InputController({
-      element: canvas,
-      clientToLogicalX: (clientX) => (clientX - canvas.getBoundingClientRect().left - view.ox) / view.scale,
+      // 판 밖(창 둘레)을 눌러도 조작되게 판 전체 영역에서 받는다
+      element: box,
+      clientToLogicalX: (clientX) => (clientX - canvas.getBoundingClientRect().left) / view.scale,
       logicalPerCssPx: () => 1 / view.scale,
       onAction: (a) => {
         if (a === "confirm" && phaseRef.current === "playing") tapsRef.current += 1;
@@ -120,7 +129,7 @@ export function MinigameScreen({ slot, hero, companion, previous, onDone }: Prop
       if (e.pointerType === "mouse" && e.button !== 0) return;
       if (phaseRef.current === "playing") tapsRef.current += 1;
     };
-    canvas.addEventListener("pointerdown", onDown);
+    box.addEventListener("pointerdown", onDown);
 
     let time = 0;
     const handle = (events: MiniEvent[]) => {
@@ -152,14 +161,11 @@ export function MinigameScreen({ slot, hero, companion, previous, onDone }: Prop
         handle(game.step(dt, { move: input.consumeIntent(), taps }));
       },
       () => {
-        ctx.setTransform(view.dpr, 0, 0, view.dpr, 0, 0);
-        ctx.fillStyle = MINIGAME_BG[game.id];
-        ctx.fillRect(0, 0, view.w, view.h);
-        ctx.translate(view.ox, view.oy);
-        ctx.scale(view.scale, view.scale);
+        const k = view.dpr * view.scale;
+        ctx.setTransform(k, 0, 0, k, 0, 0);
         ctx.save();
         ctx.beginPath();
-        ctx.rect(0, 0, ARENA.width, ARENA.height);
+        ctx.rect(0, 0, arena.width, arena.height);
         ctx.clip();
         drawMinigame(ctx, game, looksRef.current, { time, reducedMotion: reducedRef.current });
         ctx.restore();
@@ -170,7 +176,7 @@ export function MinigameScreen({ slot, hero, companion, previous, onDone }: Prop
     return () => {
       loop.stop();
       ro.disconnect();
-      canvas.removeEventListener("pointerdown", onDown);
+      box.removeEventListener("pointerdown", onDown);
       input.detach();
     };
   }, [game, info, pause]);
@@ -199,13 +205,15 @@ export function MinigameScreen({ slot, hero, companion, previous, onDone }: Prop
       </header>
 
       <div ref={boxRef} className={styles.stage}>
-        <canvas
-          ref={canvasRef}
-          className={styles.canvas}
-          tabIndex={0}
-          role="application"
-          aria-label={`미니게임 ${info.name}: ${info.goal}. ${info.touch}. 키보드는 ${info.pc}.`}
-        />
+        <div ref={frameRef} className={styles.frame} style={{ background: MINIGAME_BG[game.id] }}>
+          <canvas
+            ref={canvasRef}
+            className={styles.canvas}
+            tabIndex={0}
+            role="application"
+            aria-label={`미니게임 ${info.name}: ${info.goal}. ${info.touch}. 키보드는 ${info.pc}.`}
+          />
+        </div>
 
         {phase === "countdown" && (
           <div className={styles.intro}>

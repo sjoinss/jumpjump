@@ -235,10 +235,14 @@ export const CONFIG = {
     /** 판 위 캐릭터 크기 */
     actor: { width: 48, height: 54 },
     rope: {
-      goal: 5,
+      goal: 7,
       lives: 3,
-      /** 줄이 한 바퀴 도는 시간(초). 길수록 느리다 */
-      period: 1.7,
+      /** 줄넘기 판 높이: 다른 게임보다 낮게 (위쪽 빈 하늘이 길면 집중이 흩어진다) */
+      arenaHeight: 320,
+      /** 줄이 한 바퀴 도는 시간(초). 길수록 느리다. 한 번 넘을 때마다 periodStep씩 빨라진다(periodMin까지) */
+      period: 1.5,
+      periodStep: 0.05,
+      periodMin: 1.2,
       /** 점프: 체공 시간 = 2v/g ≈ 0.69초 */
       jumpVelocity: 520,
       gravity: 1500,
@@ -246,45 +250,48 @@ export const CONFIG = {
       clearance: 10,
     },
     shooter: {
-      goal: 10,
       lives: 3,
-      rows: 2,
-      cols: 5,
-      enemySize: 36,
+      /** 적 무리 (목표 = 모두 물리치기 = rows × cols) */
+      rows: 3,
+      cols: 6,
+      enemySize: 30,
+      /** 적 사이 가로·세로 틈 */
+      enemyGapX: 14,
+      enemyGapY: 12,
       /** 적 무리가 좌우로 흔들리는 폭(px)과 빠르기(초당 왕복 횟수) */
       swayAmplitude: 40,
-      swaySpeed: 0.45,
+      swaySpeed: 0.5,
       /** 자동 발사 간격과 탄속 */
-      fireInterval: 0.3,
+      fireInterval: 0.28,
       bulletSpeed: 560,
-      /** 적 탄환: 느리고 적게 */
-      enemyFireInterval: 2.0,
-      enemyBulletSpeed: 150,
+      /** 적 탄환 */
+      enemyFireInterval: 1.3,
+      enemyBulletSpeed: 190,
       invincible: 1.2,
     },
     flappy: {
-      goal: 5,
+      goal: 6,
       lives: 3,
       /**
-       * 중력·날갯짓을 약하게 (15단계 밸런스): 반응이 0.24초 늦는 자동 플레이도 약 90% 성공하도록.
-       * 900/320일 때는 같은 조건에서 약 20%라 너무 어려웠다
+       * 반응이 0.24초 늦는 자동 플레이 기준 성공률 약 70% (2026-10-01: 느려서 재미없다는 의견으로 기둥을 1.6배 빠르게).
+       * 15단계의 550/240/100은 약 95%, 900/320/100은 약 20%였다
        */
-      gravity: 550,
-      flapVelocity: 240,
-      pipeSpeed: 100,
+      gravity: 600,
+      flapVelocity: 255,
+      pipeSpeed: 160,
       pipeWidth: 56,
-      /** 통로 높이 (넓게) */
-      pipeGap: 225,
+      /** 통로 높이 */
+      pipeGap: 230,
       /** 기둥 사이 가로 간격 */
-      pipeSpacing: 230,
+      pipeSpacing: 240,
       invincible: 1.2,
     },
     dodge: {
       seconds: 15,
       lives: 3,
-      spawnInterval: 0.65,
-      fallSpeedMin: 140,
-      fallSpeedMax: 210,
+      spawnInterval: 0.5,
+      fallSpeedMin: 170,
+      fallSpeedMax: 250,
       /** 낙하물 반지름 */
       radius: 14,
       invincible: 1.0,

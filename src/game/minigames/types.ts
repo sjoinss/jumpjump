@@ -42,6 +42,11 @@ export type Rng = () => number;
 export const ARENA = CONFIG.minigame.arena;
 export const ACTOR = CONFIG.minigame.actor;
 
+/** 게임마다 판 크기. 줄넘기만 낮다 (위가 비어 있으면 집중이 흩어져서) */
+export function arenaOf(id: MinigameId): { width: number; height: number } {
+  return id === "rope" ? { width: ARENA.width, height: CONFIG.minigame.rope.arenaHeight } : ARENA;
+}
+
 export type Box = { x: number; y: number; w: number; h: number };
 
 export function overlaps(a: Box, b: Box) {
