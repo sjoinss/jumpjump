@@ -24,7 +24,7 @@
   cursor: pointer;
 }
 
-.current:focus-within {
+.current:focus-visible {
   outline: 3px solid var(--color-focus);
   outline-offset: 3px;
 }
@@ -35,16 +35,6 @@
   height: 100%;
   border: 2px solid var(--color-line);
   border-radius: 8px;
-}
-
-/* 네이티브 색상 피커는 라벨 전체를 덮는 투명한 입력으로 둔다 (키보드로도 열린다) */
-.picker {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  cursor: pointer;
 }
 
 .swatches {

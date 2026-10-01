@@ -174,12 +174,13 @@
   max-width: 320px;
 }
 
-/* ── 시작 카드: 바닥 위, 캐릭터 좌우 ── */
+/* ── 시작 카드: 화면 세로 가운데, 양 끝 (2026-10-01 바닥 위 → 가운데로) ── */
 .cards {
   position: absolute;
   left: calc(var(--spacing-md) + env(safe-area-inset-left));
   right: calc(var(--spacing-md) + env(safe-area-inset-right));
-  bottom: calc(var(--ground) + var(--spacing-md));
+  top: 50%;
+  transform: translateY(-50%);
   display: flex;
   justify-content: space-between;
   pointer-events: none;
@@ -191,7 +192,7 @@
   align-items: center;
   justify-content: center;
   gap: var(--spacing-xs);
-  /* 가운데 캐릭터(64px) 자리를 비우고 양쪽을 나눠 가진다 */
+  /* 가운데를 비우고 양 끝에 하나씩 */
   width: min(160px, calc((100% - 84px) / 2));
   min-height: 128px;
   padding: var(--spacing-md) var(--spacing-sm) var(--spacing-sm);

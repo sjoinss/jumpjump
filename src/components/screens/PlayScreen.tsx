@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { Engine, type Phase, type SceneLayout } from "@/game/engine";
-import { CHARACTER_PRESETS, COMPANION_QUESTION } from "@/game/presets";
+import { COMPANION_QUESTION } from "@/game/presets";
+import { isPresetHero } from "@/lib/character";
 import { SCENE } from "@/game/themes";
 import { needsBackupReminder } from "@/lib/dataFile";
 import { formatScore, RECORD_LABEL, scoreSize } from "@/lib/records";
@@ -80,6 +81,11 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
   const markRunStart = () => {
     runRef.current = { companionMaxAtStart: dataRef.current.settings.companionMax };
   };
+  /** 엔진에 넘길 이번 판 설정: 동료 최대 인원 + 이번 모드의 최고 기록(최고 기록 선) */
+  const runOptions = () => {
+    const companionMax = runRef.current.companionMaxAtStart;
+    return { companionMax, best: dataRef.current.best[companionMax > 0 ? "withCompanions" : "solo"] };
+  };
 
   /** 일시정지 메뉴에서 "계속하기" 뒤 다시 움직이기까지 남은 초 (기획서 9-6). null이면 세는 중 아님 */
   const [resumeCount, setResumeCount] = useState<number | null>(null);
@@ -147,7 +153,7 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
     const engine = engineRef.current;
     if (!engine || engine.currentPhase !== "ready") return;
     markRunStart();
-    engine.start({ companionMax: runRef.current.companionMaxAtStart });
+    engine.start(runOptions());
     canvasRef.current?.focus({ preventScroll: true });
     announce("게임 시작");
     update((d) =>
@@ -198,7 +204,7 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
   const restart = useCallback(() => {
     setResult(null);
     markRunStart();
-    engineRef.current?.restart({ companionMax: runRef.current.companionMaxAtStart });
+    engineRef.current?.restart(runOptions());
     canvasRef.current?.focus({ preventScroll: true });
     announce("다시 시작");
   }, [announce]);
@@ -644,10 +650,3 @@ function BestBadge({ best }: { best: BestScores }) {
   );
 }
 
-/** 주인공이 기본 캐릭터 그대로인지 (시작 카드 문구용) */
-function isPresetHero(hero: Character) {
-  const f = hero.base;
-  if (f.kind !== "pixel") return false;
-  const key = f.pixels.join(",");
-  return CHARACTER_PRESETS.some((p) => p.sprite.width === f.width && p.sprite.pixels.join(",") === key);
-}

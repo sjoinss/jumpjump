@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CONFIG } from "@/game/config";
 import { PixelIcon } from "@/components/ui/PixelIcon";
+import { ColorPicker } from "./ColorPicker";
 import styles from "./Palette.module.css";
 
 type Props = {
@@ -13,11 +14,12 @@ type Props = {
 };
 
 /**
- * 지금 색(누르면 색상 피커) + 저장한 색들.
+ * 지금 색(누르면 색 고르기 창: 채도·밝기 네모 + 색조 막대) + 저장한 색들.
  * "편집"을 켜면 색을 눌러 지운다. 최대 개수에 닿으면 추가 버튼이 비활성되고 이유를 글로 보여준다.
  */
 export function Palette({ color, palette, onColor, onPaletteChange }: Props) {
   const [editing, setEditing] = useState(false);
+  const [picking, setPicking] = useState(false);
   const max = CONFIG.limits.paletteMax;
   const full = palette.length >= max;
   const has = palette.includes(color);
@@ -25,16 +27,11 @@ export function Palette({ color, palette, onColor, onPaletteChange }: Props) {
   return (
     <div className={styles.palette}>
       <div className={styles.row}>
-        <label className={styles.current} title="색 고르기">
+        <button type="button" className={styles.current} title="색 고르기" aria-haspopup="dialog" onClick={() => setPicking(true)}>
           <span className={styles.currentSwatch} style={{ background: color }} aria-hidden="true" />
           <span className="visually-hidden">지금 색 {color}. 눌러서 다른 색 고르기</span>
-          <input
-            type="color"
-            className={styles.picker}
-            value={color}
-            onChange={(e) => onColor(e.target.value.toLowerCase())}
-          />
-        </label>
+        </button>
+        <ColorPicker open={picking} color={color} onChange={onColor} onClose={() => setPicking(false)} />
 
         <ul className={styles.swatches} aria-label={editing ? "지울 색 고르기" : "저장한 색"}>
           {palette.map((c) => (

@@ -7,6 +7,7 @@ import { BestRecords } from "./BestRecords";
 import { DesktopFrame } from "./DesktopFrame";
 import { InstallButton } from "./InstallButton";
 import { PwaProvider } from "./PwaProvider";
+import { ReceivedCharacter } from "./ShareCharacter";
 import { SaveProvider, useSaveData } from "./SaveProvider";
 import { BootScreen } from "./screens/BootScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
@@ -101,6 +102,7 @@ function Screens() {
           <SettingsScreen onClose={() => setSettingsOpen(false)} />
         </div>
       )}
+      <ReceivedCharacter />
     </DesktopFrame>
   );
 }

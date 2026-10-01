@@ -41,7 +41,11 @@ export type EngineEvents = {
 };
 
 /** 판을 시작할 때 정해지는 값 */
-export type RunOptions = { companionMax: number };
+export type RunOptions = {
+  companionMax: number;
+  /** 이번 판 모드(동료/혼자)의 최고 기록(m). 0보다 크면 그 높이에 "최고 기록 선"을 긋는다 */
+  best?: number;
+};
 
 /**
  * 입력 → World.step(고정 스텝) → 그리기. 게임 규칙은 world.ts에 있고 여기서는 연결과 렌더링만 한다.
@@ -77,6 +81,8 @@ export class Engine {
   /** 화면 흔들림·파티클 (설정에서 각각 끈다) */
   private readonly effects = new Effects();
   private lastFrameAt = 0;
+  /** 최고 기록 선 글씨 (앱 글꼴, 처음 그릴 때 정한다) */
+  private bestFont = "";
 
   constructor(canvas: HTMLCanvasElement, hero: Character, events: EngineEvents = {}) {
     const ctx = canvas.getContext("2d", { alpha: false });
@@ -405,6 +411,7 @@ export class Engine {
     }
 
     // 동료 후보
+    this.drawBestLine(vp.playX, screenY);
     for (const c of world.candidates) this.drawCandidate(c, vp.playX, screenY);
 
     // 대열 (주인공 + 동료). 위 줄부터 그린다
@@ -518,6 +525,50 @@ export class Engine {
       drawSprite(ctx, COMPANION_QUESTION, Math.round(cx - 32), Math.round(bottom - 72), 64, 72);
     }
     ctx.globalAlpha = 1;
+  }
+
+  /**
+   * 최고 기록 선 (Doodle Jump의 최고 점수 선처럼): 이번 모드 최고 높이에 점선 + 오른쪽 끝 깃발 "최고 87m".
+   * 점수는 맨 아래 줄 발밑 높이라 발이 이 선을 넘는 순간 기록과 같아진다. 넘은 뒤에는 금색으로 바뀐다.
+   */
+  private drawBestLine(playX: number, screenY: (y: number) => number) {
+    const best = this.runOptions.best ?? 0;
+    if (best <= 0 || this.phase === "ready") return;
+    const y = Math.round(screenY(best * CONFIG.score.pxPerMeter));
+    if (y < -30 || y > this.viewport.logicalHeight + 4) return;
+    const passed = this.world.score >= best;
+    const w = CONFIG.view.width;
+    const ctx = this.ctx;
+    // 점선: 잉크 그림자 위에 흰색(넘으면 금색) 칸
+    for (let x = 0; x < w; x += 16) {
+      ctx.fillStyle = "rgba(61,44,94,0.55)";
+      ctx.fillRect(playX + x, y - 1, 10, 4);
+      ctx.fillStyle = passed ? "#ffd36e" : "#ffffff";
+      ctx.fillRect(playX + x, y - 1, 10, 2);
+    }
+    // 깃발: 오른쪽 끝, 선 위로
+    if (!this.bestFont) {
+      const family = typeof document === "undefined" ? "" : getComputedStyle(document.body).getPropertyValue("--font-display").trim();
+      this.bestFont = `13px ${family || "sans-serif"}`;
+    }
+    ctx.font = this.bestFont;
+    const label = `최고 ${best.toLocaleString("ko-KR")}m`;
+    const tw = Math.ceil(ctx.measureText(label).width);
+    const bw = tw + 14;
+    const bh = 20;
+    const bx = Math.round(playX + w - bw - 6);
+    const by = y - bh - 4;
+    ctx.fillStyle = "#3d2c5e";
+    ctx.fillRect(bx - 2, by - 2, bw + 4, bh + 4);
+    ctx.fillStyle = passed ? "#ffd36e" : "#ffffff";
+    ctx.fillRect(bx, by, bw, bh);
+    // 깃대
+    ctx.fillStyle = "#3d2c5e";
+    ctx.fillRect(bx + bw - 3, by + bh + 2, 3, y - (by + bh + 2) + 1);
+    ctx.fillStyle = "#3d2c5e";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillText(label, bx + 7, by + bh / 2 + 1);
   }
 
   /**

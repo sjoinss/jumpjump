@@ -35,7 +35,7 @@ export type DataKey = (typeof DATA_KEYS)[number];
 
 export const DATA_LABEL: Record<DataKey, string> = {
   hero: "캐릭터",
-  platforms: "발판 3종",
+  platforms: "발판 4종",
   companionSlots: "동료 그림",
   palette: "팔레트",
   settings: "설정",

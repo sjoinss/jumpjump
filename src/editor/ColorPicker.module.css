@@ -1,0 +1,109 @@
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  width: min(300px, 100%);
+  margin: 0 auto;
+}
+
+/* 채도(가로)·밝기(세로) 네모: 배경은 지금 색조, 위에 흰색→투명(가로), 투명→검정(세로) */
+.sv {
+  position: relative;
+  height: 200px;
+  border: var(--game-outline);
+  border-radius: var(--radius-md);
+  background-image: linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, transparent);
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+}
+
+/* 색조 막대: 손가락으로 잡기 쉽게 두툼하게 */
+.hue {
+  position: relative;
+  height: 32px;
+  border: var(--game-outline);
+  border-radius: var(--radius-full);
+  background: linear-gradient(to right, #f00, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00);
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+}
+
+.sv:focus-visible,
+.hue:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 3px;
+}
+
+/* 손잡이: 흰 테두리 + 잉크 테두리 두 겹이라 어느 색 위에서도 보인다 */
+.thumb {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border: 3px solid #fff;
+  border-radius: var(--radius-full);
+  box-shadow:
+    0 0 0 2px var(--color-line),
+    0 2px 4px rgb(0 0 0 / 0.3);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.compare {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+/* 원래 색 | 고른 색 나란히 */
+.before,
+.after {
+  width: 44px;
+  height: 44px;
+  border: var(--game-outline);
+}
+
+.before {
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+  border-right-width: 0;
+}
+
+.after {
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+.hexField {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  margin-left: var(--spacing-md);
+}
+
+.hexLabel {
+  color: var(--color-muted);
+  font-size: var(--font-size-caption);
+}
+
+.hex {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 var(--spacing-sm);
+  border: 2px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-family: ui-monospace, monospace;
+  font-size: 16px;
+}
+
+.hex[aria-invalid="true"] {
+  border-color: var(--color-error);
+}
+
+.error {
+  margin: 0;
+  color: var(--color-error);
+  font-size: var(--font-size-caption);
+}

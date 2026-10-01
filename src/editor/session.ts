@@ -22,7 +22,7 @@ import { createHistory, pushHistory, redo, replacePresent, undo, type History } 
  * 작업본은 임시 저장(draft)으로만 남는다.
  *
  * 두 가지 모드가 같은 reducer를 쓴다 (기획서 7-7 "같은 에디터 컴포넌트 재사용"):
- * - main: 캐릭터(주인공) + 발판 3종 탭
+ * - main: 캐릭터(주인공) + 발판 4종 탭
  * - companion: 동료 한 명(companion 탭 하나)과 이름
  */
 

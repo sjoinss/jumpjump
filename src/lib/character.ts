@@ -1,3 +1,4 @@
+import { CHARACTER_PRESETS } from "../game/presets";
 import { POSES, type Character, type Pose, type Sprite } from "./schema";
 
 /**
@@ -20,3 +21,11 @@ export const POSE_INFO: Record<Pose, { name: string; when: string }> = {
   fall: { name: "내려갈 때", when: "떨어지는 동안 보여요" },
   land: { name: "착지", when: "발판에 닿는 순간 잠깐(0.2초) 보여요" },
 };
+
+/** 주인공이 기본 캐릭터 그대로인지 (시작 카드 문구, 공유받은 캐릭터로 바꿀 때 경고 여부) */
+export function isPresetHero(hero: Character) {
+  const f = hero.base;
+  if (f.kind !== "pixel") return false;
+  const key = f.pixels.join(",");
+  return CHARACTER_PRESETS.some((p) => p.sprite.width === f.width && p.sprite.pixels.join(",") === key);
+}
