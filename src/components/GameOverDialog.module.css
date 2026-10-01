@@ -70,3 +70,12 @@
   color: var(--color-muted);
   font-size: var(--font-size-caption);
 }
+
+/* 아주 큰 점수: 자릿수가 많으면 글씨를 줄여 창 밖으로 넘치지 않게 */
+.long {
+  font-size: 44px;
+}
+
+.huge {
+  font-size: 32px;
+}

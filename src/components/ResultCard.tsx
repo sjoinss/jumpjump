@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { CONFIG } from "@/game/config";
 import { saveOrShareFile } from "@/lib/fileIO";
 import { cardAltText, drawCard, hasImageMembers, loadCardFont, type CardData } from "@/share/cardRenderer";
 import { cardFileName, exportGif, exportPng } from "@/share/exportCard";
-import { bestFrame, CARD } from "@/share/layout";
+import { CARD } from "@/share/layout";
+import { useSaveData } from "./SaveProvider";
 import { Button } from "./ui/Button";
 import { Dialog } from "./ui/Dialog";
 import { InlineMessage } from "./ui/InlineMessage";
@@ -17,14 +19,21 @@ const PREVIEW = 184;
 type GifState = { kind: "idle" } | { kind: "working"; progress: number } | { kind: "error"; message: string };
 
 /**
- * 게임오버 결과 카드 (기획서 13번): 움직이는 미리보기 + 이미지(PNG) 저장 · GIF 저장 · 공유.
- * 미리보기와 저장 결과는 같은 렌더러(drawCard)로 그린다. 동작 줄이기면 대표 프레임에서 멈춘다.
+ * 게임오버 결과 카드 (기획서 13번): 움직이는 미리보기 + 아래 글씨 입력 + 이미지(PNG) 저장 · GIF 저장 · 공유.
+ * 미리보기와 저장 결과는 같은 렌더러(drawCard)로 그린다. 동작 줄이기면 서 있는 모습(PNG와 같은)에서 멈춘다.
+ * 저장 버튼은 기기에 바로 저장(다운로드)하고, 공유는 공유 버튼으로만 한다 (사용자 요청).
  */
-export function ResultCard({ card }: { card: CardData }) {
+export function ResultCard({ card: base }: { card: CardData }) {
+  // 맨 아래 글씨: 설정에 기억해 두고 다음 판에도 쓴다
+  const [data, update] = useSaveData();
+  const caption = data.settings.cardCaption;
+  const card = useMemo(() => ({ ...base, caption }), [base, caption]);
+  const captionId = useId();
+  const setCaption = (v: string) =>
+    update((d) => ({ ...d, settings: { ...d.settings, cardCaption: v.slice(0, CONFIG.card.captionMax) } }));
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [font, setFont] = useState<string | null>(null);
   const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
-  const coarse = useMediaQuery("(pointer: coarse)");
   const { show } = useToast();
   const [busy, setBusy] = useState<"png" | "share" | null>(null);
   const [gif, setGif] = useState<GifState>({ kind: "idle" });
@@ -57,12 +66,12 @@ export function ResultCard({ card }: { card: CardData }) {
     canvas.width = Math.round(PREVIEW * dpr);
     canvas.height = Math.round(PREVIEW * dpr);
     const k = (PREVIEW * dpr) / CARD.size;
-    const draw = (frame: number) => {
+    const draw = (frame: number | "stand") => {
       ctx.setTransform(k, 0, 0, k, 0, 0);
       drawCard(ctx, card, frame, font);
     };
     if (reducedMotion) {
-      draw(bestFrame(card.members.length));
+      draw("stand");
       return;
     }
     let frame = 0;
@@ -105,7 +114,7 @@ export function ResultCard({ card }: { card: CardData }) {
     try {
       const blob = await exportGif(card, font, (p) => setGif({ kind: "working", progress: p }), ctrl.signal);
       setGif({ kind: "idle" });
-      await deliver(blob, cardFileName(card, "gif"), coarse);
+      await deliver(blob, cardFileName(card, "gif"), false);
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") {
         setGif({ kind: "idle" });
@@ -136,8 +145,20 @@ export function ResultCard({ card }: { card: CardData }) {
         role="img"
         aria-label={cardAltText(card)}
       />
+      <label className={styles.caption} htmlFor={captionId}>
+        <span>이미지 아래 글씨</span>
+        <input
+          id={captionId}
+          type="text"
+          value={caption}
+          maxLength={CONFIG.card.captionMax}
+          placeholder="비우면 안 써요"
+          autoComplete="off"
+          onChange={(e) => setCaption(e.target.value)}
+        />
+      </label>
       <div className={styles.actions}>
-        <Button variant="secondary" icon="image" block onClick={() => savePng(coarse)} loading={busy === "png"} loadingLabel="만드는 중" disabled={!font}>
+        <Button variant="secondary" icon="image" block onClick={() => savePng(false)} loading={busy === "png"} loadingLabel="만드는 중" disabled={!font}>
           이미지 저장
         </Button>
         {working ? (

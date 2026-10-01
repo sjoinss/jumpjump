@@ -120,10 +120,28 @@ test("기록은 최대 개수까지만", () => {
 test("기본 캐릭터 세트: 3~5종, 모두 검증 통과", () => {
   assert.ok(CHARACTER_PRESETS.length >= 3 && CHARACTER_PRESETS.length <= 5);
   for (const p of CHARACTER_PRESETS) {
-    const r = validateCharacter({ frames: [p.sprite] }, p.name);
+    const r = validateCharacter({ base: p.sprite }, p.name);
     assert.ok(r.ok, p.name);
     // 발이 맨 아래 줄에 닿아 있어야 대열·발판 위에서 떠 보이지 않는다
     const bottom = p.sprite.pixels.slice((p.sprite.height - 1) * p.sprite.width);
     assert.ok(bottom.some(Boolean), `${p.name}: 맨 아래 줄이 비어 있음`);
+  }
+});
+
+test("기본 캐릭터는 늘 세 모습(기본·내려갈 때·착지)이 있고, 같은 격자에 발이 바닥에 닿아 있다", () => {
+  for (const p of CHARACTER_PRESETS) {
+    const r = validateCharacter(p.character, p.name);
+    assert.ok(r.ok, p.name);
+    for (const pose of ["base", "fall", "land"] as const) {
+      const s = p.character[pose]!;
+      assert.equal(s.kind, "pixel");
+      if (s.kind !== "pixel") continue;
+      assert.deepEqual([s.width, s.height], [16, 18], `${p.name} ${pose}`);
+      const bottom = s.pixels.slice((s.height - 1) * s.width);
+      assert.ok(bottom.some((c) => c !== ""), `${p.name} ${pose} 발이 맨 아래 줄에`);
+    }
+    assert.notDeepEqual(p.character.fall, p.character.base, `${p.name} 내려갈 때는 기본과 다름`);
+    assert.notDeepEqual(p.character.land, p.character.base, `${p.name} 착지는 기본과 다름`);
+    assert.equal(p.sprite, p.character.base);
   }
 });

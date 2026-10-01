@@ -17,3 +17,13 @@ export const RECORD_HELP = "혼자 모드는 동료 최대 인원을 0명으로 
 export function companionsLabel(count: number) {
   return count > 0 ? `동료 ${count}명과 함께` : "동료 없이";
 }
+
+/** 점수(m) 숫자: 세 자리마다 쉼표. 아주 큰 점수(10만 m 이상 등)도 읽기 쉽게 */
+export function formatScore(n: number) {
+  return Math.max(0, Math.floor(n)).toLocaleString("ko-KR");
+}
+
+/** 자릿수가 많으면 글씨를 줄인다 (잘리거나 넘치지 않게). "" | "long"(6자리~) | "huge"(8자리~) */
+export function scoreSize(n: number): "" | "long" | "huge" {
+  return n >= 1e7 ? "huge" : n >= 1e5 ? "long" : "";
+}

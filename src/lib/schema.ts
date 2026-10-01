@@ -6,7 +6,7 @@
 import type { ThemeId } from "../game/themes";
 
 /** 스키마 버전. 구조를 바꾸면 올리고 migrate.ts에 변환 함수를 추가한다 */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 /** 도트 한 칸의 색: "#rrggbb"(소문자) 또는 투명("") */
 export type PixelColor = string;
@@ -34,8 +34,19 @@ export type ImageSprite = {
 
 export type Sprite = PixelSprite | ImageSprite;
 
-/** 두 번째 프레임이 있으면 착지 프레임 */
-export type Character = { frames: [Sprite] | [Sprite, Sprite] };
+/**
+ * 캐릭터 모습 (v2, 사용자 결정으로 기획서 4-4의 "기본 / 기본+착지"를 셋으로 늘림).
+ * - base: 기본 = 올라갈 때·서 있을 때 (꼭 있음)
+ * - fall: 내려갈 때 (선택)
+ * - land: 발판에 닿는 순간 (선택)
+ * 없는 모습은 기본 그림으로 보여준다. v1의 frames: [기본, 착지?]는 migrate.ts가 바꾼다.
+ */
+export type Character = { base: Sprite; fall?: Sprite; land?: Sprite };
+
+export type Pose = keyof Character;
+
+/** 에디터·목록에 보여주는 순서 */
+export const POSES: Pose[] = ["base", "fall", "land"];
 
 export type CompanionSlot = { character: Character | null; name?: string };
 
@@ -63,6 +74,8 @@ export type Settings = {
   specialPlatformMarker: boolean;
   /** 화면 테마. v1에서 나중에 추가된 항목이라 없으면 기본 테마로 읽는다 (마이그레이션 불필요) */
   theme: ThemeId;
+  /** 결과 이미지 맨 아래 글씨 (빈 문자열이면 안 씀). 나중에 추가된 항목이라 없으면 "점프점프" */
+  cardCaption: string;
   onboarding: {
     firstRunDone: boolean;
     controlsGuideShown: boolean;

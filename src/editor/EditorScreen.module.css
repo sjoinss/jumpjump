@@ -230,3 +230,19 @@
   justify-content: center;
   gap: var(--spacing-sm);
 }
+
+/* 지금 고른 모습이 언제 보이는지 + 삭제 */
+.poseHint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  color: var(--color-muted);
+  font-size: var(--font-size-caption);
+}
+
+.poseHint strong {
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  font-weight: var(--font-weight-regular);
+}

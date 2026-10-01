@@ -1,7 +1,9 @@
 import { CONFIG } from "../game/config";
 import { CHARACTER_PRESETS, PLATFORM_PRESETS } from "../game/presets";
 import { migrate } from "./migrate";
+import { characterSprites, POSE_INFO } from "./character";
 import {
+  POSES,
   SCHEMA_VERSION,
   type BestScores,
   type Character,
@@ -76,7 +78,7 @@ export function exportFileName(now: Date) {
 
 /** 고른 항목에 불러온 이미지(사진일 수 있음)가 들어 있는지 — 공유 전 경고용 (기획서 6-4) */
 export function exportHasImages(save: SaveData, keys: readonly DataKey[]) {
-  const hasImage = (c: Character | null) => !!c && c.frames.some((f) => f.kind === "image");
+  const hasImage = (c: Character | null) => !!c && characterSprites(c).some((f) => f.kind === "image");
   return (keys.includes("hero") && hasImage(save.hero)) || (keys.includes("companionSlots") && save.companionSlots.some((s) => hasImage(s.character)));
 }
 
@@ -174,8 +176,13 @@ export function parseImport(text: string): Result<ParsedImport> {
 /** 이미지 스프라이트 목록 (재인코딩 대상) — 오류 문구용 이름과 함께 */
 export function collectImages(data: ExportData): { label: string; sprite: ImageSprite }[] {
   const out: { label: string; sprite: ImageSprite }[] = [];
-  const add = (c: Character | null | undefined, label: string) =>
-    c?.frames.forEach((f, i) => f.kind === "image" && out.push({ label: i === 1 ? `${label} 착지 프레임` : label, sprite: f }));
+  const add = (c: Character | null | undefined, label: string) => {
+    if (!c) return;
+    for (const pose of POSES) {
+      const f = c[pose];
+      if (f?.kind === "image") out.push({ label: pose === "base" ? label : `${label} ${POSE_INFO[pose].name} 모습`, sprite: f });
+    }
+  };
   add(data.hero, "캐릭터");
   data.companionSlots?.forEach((s, i) => add(s.character, `동료 슬롯 ${i + 1}`));
   return out;
@@ -183,8 +190,14 @@ export function collectImages(data: ExportData): { label: string; sprite: ImageS
 
 /** 이미지를 바꾼 결과로 교체 (같은 객체 기준) */
 export function replaceImages(data: ExportData, map: Map<ImageSprite, ImageSprite>): ExportData {
-  const swap = (c: Character | null): Character | null =>
-    c && { frames: c.frames.map((f: Sprite) => (f.kind === "image" ? (map.get(f) ?? f) : f)) as Character["frames"] };
+  const one = (f: Sprite) => (f.kind === "image" ? (map.get(f) ?? f) : f);
+  const swap = (c: Character | null): Character | null => {
+    if (!c) return null;
+    const out: Character = { base: one(c.base) };
+    if (c.fall) out.fall = one(c.fall);
+    if (c.land) out.land = one(c.land);
+    return out;
+  };
   return {
     ...data,
     hero: data.hero && (swap(data.hero) as Character),
@@ -217,7 +230,14 @@ const pixelsKey = (s: Sprite) => (s.kind === "pixel" ? `${s.width}:${s.pixels.jo
 
 /** 기본 제공 그림에서 바뀐 게 있는지 (내보낼 가치가 있는 그림이 있는지) */
 export function hasCustomArt(save: SaveData) {
-  const presetHero = save.hero.frames.length === 1 && CHARACTER_PRESETS.some((p) => pixelsKey(p.sprite) === pixelsKey(save.hero.frames[0]));
+  // 기본 캐릭터 그대로 (안 그린 모습은 없거나 그 캐릭터의 모습 그대로)
+  const same = (a: Sprite | undefined, b: Sprite | undefined) => !a || (!!b && pixelsKey(a) === pixelsKey(b));
+  const presetHero = CHARACTER_PRESETS.some(
+    (p) =>
+      pixelsKey(p.sprite) === pixelsKey(save.hero.base) &&
+      same(save.hero.fall, p.character.fall) &&
+      same(save.hero.land, p.character.land),
+  );
   const presetPlatforms = (Object.keys(PLATFORM_PRESETS) as (keyof Platforms)[]).every(
     (k) => pixelsKey(save.platforms[k]) === pixelsKey(PLATFORM_PRESETS[k]),
   );

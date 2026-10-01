@@ -141,3 +141,24 @@
   justify-content: flex-end;
   gap: var(--spacing-sm);
 }
+
+/* 도트 크기 이미지: 도트로 바꿀지 고르기 */
+.dots {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  border: var(--game-outline);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.dotsPreview {
+  display: grid;
+  place-items: center;
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-md);
+  background-color: #fffdf8;
+  background-image: conic-gradient(#f1e8f4 25%, transparent 0 50%, #f1e8f4 0 75%, transparent 0);
+  background-size: 16px 16px;
+}

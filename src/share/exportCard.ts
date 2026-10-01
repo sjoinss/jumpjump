@@ -1,15 +1,15 @@
 import { GifEncoder } from "./gif";
 import type { WorkerReply, WorkerRequest } from "./gif.worker";
 import { hasImageMembers, renderCardCanvas, type CardData } from "./cardRenderer";
-import { bestFrame, CARD } from "./layout";
+import { CARD } from "./layout";
 
 /**
  * 결과 이미지 만들기 (기획서 13-2, 13-5).
- * PNG: 대표 프레임 1장을 3배(1080×1080)로. GIF: 32프레임을 2배(720×720)로, Web Worker에서 인코딩.
+ * PNG: 모두 발판에 서 있는 모습 1장을 3배(1080×1080)로. GIF: 32프레임 폴짝 모션을 2배(720×720)로, Web Worker에서 인코딩.
  */
 
 export async function exportPng(d: CardData, font: string): Promise<Blob> {
-  const canvas = renderCardCanvas(d, bestFrame(d.members.length), font, CARD.pngScale);
+  const canvas = renderCardCanvas(d, "stand", font, CARD.pngScale);
   return new Promise((resolve, reject) =>
     canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("PNG로 바꾸지 못했어요"))), "image/png"),
   );

@@ -4,7 +4,7 @@ import { useRef, useState, type KeyboardEvent } from "react";
 import { EditorScreen } from "@/editor/EditorScreen";
 import type { TabKey } from "@/editor/session";
 import { THEME_IDS, THEMES, type ThemeId } from "@/game/themes";
-import { RECORD_HELP, RECORD_LABEL } from "@/lib/records";
+import { formatScore, RECORD_HELP, RECORD_LABEL, scoreSize } from "@/lib/records";
 import type { Settings } from "@/lib/schema";
 import { CompanionSettings } from "../CompanionSettings";
 import { InstallButton } from "../InstallButton";
@@ -28,7 +28,7 @@ type EffectKey = keyof Pick<Settings, "shake" | "particles" | "sfx" | "specialPl
 
 const EFFECTS: { key: EffectKey; label: string; description: string }[] = [
   { key: "shake", label: "화면 흔들림", description: "고점프·부서지는 발판·합류 때 살짝 흔들려요" },
-  { key: "particles", label: "파티클·착지 이펙트", description: "착지 먼지, 반짝이, 발판 조각" },
+  { key: "particles", label: "파티클·착지 이펙트", description: "착지 먼지, 반짝이, 발판 조각, 통통 튀는 점프" },
   { key: "sfx", label: "효과음", description: "8비트 소리. 일시정지 메뉴에서도 끌 수 있어요" },
   { key: "specialPlatformMarker", label: "특수 발판 표식", description: "색약 대응: 고점프는 위 화살표, 일회용은 금 간 표시" },
 ];
@@ -95,7 +95,7 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
           </h2>
           <div className={styles.drawRow}>
             <span className={styles.drawPreview}>
-              <SpritePreview sprite={data.hero.frames[0]} width={40} height={45} />
+              <SpritePreview sprite={data.hero.base} width={40} height={45} />
             </span>
             <Button variant="secondary" icon="pencil" block onClick={() => openEditor({ kind: "main", tab: "hero" })}>
               캐릭터 다시 그리기
@@ -188,7 +188,7 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
             {(["withCompanions", "solo"] as const).map((k) => (
               <div key={k} className={styles.record}>
                 <dt>{RECORD_LABEL[k]}</dt>
-                <dd>{data.best[k]}m</dd>
+                <dd className={scoreSize(data.best[k]) ? styles.recordLong : undefined}>{formatScore(data.best[k])}m</dd>
               </div>
             ))}
           </dl>

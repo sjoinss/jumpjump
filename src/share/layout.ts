@@ -65,8 +65,10 @@ export type Pose = {
   /** 가로·세로 배율 (1 = 원래) */
   sx: number;
   sy: number;
-  /** 착지 단계 (착지 프레임이 있으면 이때 쓴다) */
+  /** 착지 단계 (착지 모습이 있으면 이때 쓴다) */
   landing: boolean;
+  /** 하강 단계 (내려갈 때 모습이 있으면 이때 쓴다) */
+  falling: boolean;
   /** 착지 직후 먼지 진행도 0~1, 없으면 null */
   dust: number | null;
 };
@@ -84,37 +86,44 @@ export function jumpPose(p: number, height: number): Pose {
   const q = ((p % 1) + 1) % 1;
   if (q < 0.1) {
     const t = easeOut(seg(q, 0, 0.1));
-    return { lift: 0, sx: lerp(1, 1.18, t), sy: lerp(1, 0.82, t), landing: false, dust: null };
+    return { lift: 0, sx: lerp(1, 1.18, t), sy: lerp(1, 0.82, t), landing: false, falling: false, dust: null };
   }
   if (q < 0.16) {
     const t = seg(q, 0.1, 0.16);
-    return { lift: lerp(0, height * 0.25, t), sx: lerp(1.18, 0.84, t), sy: lerp(0.82, 1.22, t), landing: false, dust: null };
+    return { lift: lerp(0, height * 0.25, t), sx: lerp(1.18, 0.84, t), sy: lerp(0.82, 1.22, t), landing: false, falling: false, dust: null };
   }
   if (q < 0.4) {
     const t = easeOut(seg(q, 0.16, 0.4));
-    return { lift: lerp(height * 0.25, height, t), sx: lerp(0.84, 1, t), sy: lerp(1.22, 1, t), landing: false, dust: null };
+    return { lift: lerp(height * 0.25, height, t), sx: lerp(0.84, 1, t), sy: lerp(1.22, 1, t), landing: false, falling: false, dust: null };
   }
-  if (q < 0.5) return { lift: height, sx: 1, sy: 1, landing: false, dust: null };
+  if (q < 0.5) return { lift: height, sx: 1, sy: 1, landing: false, falling: false, dust: null };
   if (q < 0.7) {
     const t = easeIn(seg(q, 0.5, 0.7));
-    return { lift: lerp(height, 0, t), sx: lerp(1, 0.93, t), sy: lerp(1, 1.08, t), landing: false, dust: null };
+    return { lift: lerp(height, 0, t), sx: lerp(1, 0.93, t), sy: lerp(1, 1.08, t), landing: false, falling: true, dust: null };
   }
   if (q < 0.82) {
     const t = seg(q, 0.7, 0.82);
     const k = t < 0.35 ? easeOut(t / 0.35) : 1 - easeIn((t - 0.35) / 0.65) * 0.5;
-    return { lift: 0, sx: lerp(1, 1.26, k), sy: lerp(1, 0.76, k), landing: true, dust: t };
+    return { lift: 0, sx: lerp(1, 1.26, k), sy: lerp(1, 0.76, k), landing: true, falling: false, dust: t };
   }
   // 반동: 살짝 늘어났다가 원래대로
   const t = seg(q, 0.82, 1);
   const over = Math.sin(t * Math.PI) * 0.08;
-  return { lift: 0, sx: lerp(1.13, 1, t) - over * 0.5, sy: lerp(0.88, 1, t) + over, landing: false, dust: t < 0.5 ? 1 : null };
+  return { lift: 0, sx: lerp(1.13, 1, t) - over * 0.5, sy: lerp(0.88, 1, t) + over, landing: false, falling: false, dust: t < 0.5 ? 1 : null };
 }
 
 /** 캐릭터마다 위상·높이를 다르게 (동시에 뛰지 않도록). 주기는 모두 한 루프 */
 const PHASES = [0, 0.37, 0.71, 0.18, 0.55, 0.88];
 const HEIGHTS = [44, 34, 40, 30, 38, 32];
 
-export function memberPose(member: number, frame: number, scale = 1): Pose {
+/** PNG에 쓰는 자세: 모두 땅(발판)에 발을 붙이고 원래 비율로 서 있다 */
+export const STANDING: Pose = { lift: 0, sx: 1, sy: 1, landing: false, falling: false, dust: null };
+
+/** 프레임 번호 대신 "stand"를 주면 서 있는 자세 */
+export type CardFrame = number | "stand";
+
+export function memberPose(member: number, frame: CardFrame, scale = 1): Pose {
+  if (frame === "stand") return STANDING;
   const p = frame / CARD.loopFrames + PHASES[member % PHASES.length];
   return jumpPose(p, HEIGHTS[member % HEIGHTS.length] * scale);
 }
@@ -127,27 +136,4 @@ export function snapSize(base: number, scale: number, dots: number | null) {
   const v = base * scale;
   if (!dots) return Math.max(1, Math.round(v));
   return Math.max(dots, Math.round(v / dots) * dots);
-}
-
-/**
- * PNG에 쓸 대표 프레임: 여러 캐릭터가 서로 다른 높이로 떠 있는 프레임 (기획서 13-4).
- * 떠 있는 인원과 높이 차이가 클수록, 착지로 눌린 캐릭터가 적을수록 좋다.
- */
-export function bestFrame(count: number): number {
-  const slots = cardSlots(count);
-  let best = 0;
-  let bestScore = -Infinity;
-  for (let f = 0; f < CARD.loopFrames; f++) {
-    const lifts = slots.map((s) => memberPose(s.member, f).lift);
-    const airborne = lifts.filter((l) => l > 6).length;
-    const squashed = slots.filter((s) => memberPose(s.member, f).sx > 1.1).length;
-    const mean = lifts.reduce((a, b) => a + b, 0) / lifts.length;
-    const spread = Math.sqrt(lifts.reduce((a, l) => a + (l - mean) ** 2, 0) / lifts.length);
-    const score = airborne * 10 + spread + mean * 0.3 - squashed * 6;
-    if (score > bestScore) {
-      bestScore = score;
-      best = f;
-    }
-  }
-  return best;
 }

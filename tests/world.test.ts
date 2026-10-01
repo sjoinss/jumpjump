@@ -230,3 +230,44 @@ test("배경 섞임: 경계 ±25m에서 0→1, 그 밖은 한 지역", () => {
   assert.equal(regionBlendAt(260), 1.5);
   assert.equal(regionBlendAt(2000), 3);
 });
+
+test("일회용 발판을 밟으면 그 높이가 새 바닥: 아래 발판이 있어도 그 아래로 떨어지면 끝", () => {
+  const w = make();
+  w.platforms = [
+    { id: 1, kind: "basic", x: w.hero.x, y: 300, width: 128, touched: true },
+    { id: 2, kind: "oneTime", x: w.hero.x, y: 500, width: 128, touched: false },
+  ];
+  w.hero.y = 501;
+  w.hero.vy = -10;
+  const landed = run(w, 0.1);
+  assert.ok(landed.some((e) => e.type === "land" && e.platform.id === 2));
+  assert.equal(w.floorY, 500, "밟은 일회용 높이가 바닥");
+  // 다음 발판 없이 떨어진다 → 아래 기본 발판(300)까지 가지 못하고 끝
+  const ev = run(w, 5);
+  assert.ok(ev.some((e) => e.type === "gameover"));
+  assert.ok(!ev.some((e) => e.type === "land" && e.platform.id === 1), "아래 발판에 내려앉지 못함");
+});
+
+test("지역을 넘을 때마다 조금씩 빨라진다 (점프 높이는 그대로, 최대 +15%)", () => {
+  const apex = (region: number) => {
+    const w = make();
+    w.region = region;
+    w.platforms = [{ id: 1, kind: "basic", x: w.hero.x, y: 0, width: 128, touched: true }];
+    w.launch();
+    let t = 0;
+    let top = 0;
+    while (w.hero.vy > 0 && t < 3) {
+      w.step(DT, NONE);
+      t += DT;
+      top = Math.max(top, w.hero.y);
+    }
+    return { t, top };
+  };
+  const speeds = CONFIG.regions.speedScale;
+  assert.deepEqual([...speeds].sort((a, b) => a - b), [...speeds], "점점 빨라짐");
+  assert.ok(speeds.at(-1)! <= 1.2, "너무 빨라지지 않음");
+  const cave = apex(0);
+  const space = apex(3);
+  assert.ok(space.t < cave.t, "우주에서 더 빨리 꼭대기");
+  assert.ok(Math.abs(space.top - cave.top) < 3, "점프 높이는 같음");
+});

@@ -40,7 +40,8 @@ export function CompanionSettings({ onEdit }: Props) {
 
   // 같은 값으로 되돌려도 직접 설정으로 본다 (기획서 7-6)
   const setMax = (value: number) =>
-    update((d) => ({ ...d, settings: { ...d.settings, companionMax: value, companionMaxSource: "user" } }));
+    // 직접 바꾸면 거절 횟수는 0부터 다시 센다
+    update((d) => ({ ...d, settings: { ...d.settings, companionMax: value, companionMaxSource: "user", refusalCount: 0 } }));
 
   const remove = (target: number | "all") => {
     const all = target === "all";
@@ -70,7 +71,7 @@ export function CompanionSettings({ onEdit }: Props) {
           바꾼 값은 다음 판부터 적용돼요.
         </p>
         {companionMaxSource === "auto" && (
-          <p className={styles.auto}>자동으로 설정됨 · 동료를 여러 번 거절해서 맞췄어요</p>
+          <p className={styles.auto}>자동으로 설정됨 · 동료를 3번 거절해서 그때 데리고 있던 수로 맞췄어요</p>
         )}
       </div>
 
@@ -84,7 +85,7 @@ export function CompanionSettings({ onEdit }: Props) {
           return (
             <li key={slot} className={styles.slot}>
               <span className={styles.preview}>
-                <SpritePreview sprite={s.character ? s.character.frames[0] : COMPANION_QUESTION} width={40} height={45} />
+                <SpritePreview sprite={s.character ? s.character.base : COMPANION_QUESTION} width={40} height={45} />
               </span>
               <span className={styles.info}>
                 <span className={styles.slotName}>

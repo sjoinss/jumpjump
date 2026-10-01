@@ -2,8 +2,9 @@ import { drawBackground } from "../game/background";
 import { pixelSprite } from "../game/presets";
 import { drawSprite } from "../game/sprites";
 import type { ScenePalette } from "../game/themes";
+import { characterSprites, spriteFor } from "../lib/character";
 import type { Character, PixelSprite, Sprite } from "../lib/schema";
-import { CARD, cardSlots, memberPose, snapSize } from "./layout";
+import { CARD, cardSlots, memberPose, snapSize, type CardFrame } from "./layout";
 
 /**
  * 결과 카드 렌더러 (기획서 13-1~13-3). 미리보기·PNG·GIF가 모두 이 함수 하나로 그린다.
@@ -24,6 +25,8 @@ export type CardData = {
   /** 각자 밑에 까는 기본 발판 */
   platform: PixelSprite;
   scene: ScenePalette;
+  /** 맨 아래 글씨 (빈 문자열이면 안 씀) */
+  caption: string;
 };
 
 const INK = "#3d2c5e";
@@ -43,16 +46,21 @@ const SPARK = pixelSprite([".o.", "oyo", ".o."], { o: INK, y: "#ffffff" });
 
 /** 이미지 캐릭터가 있으면 GIF에서 색이 단순해질 수 있다 (디더링 + 안내) */
 export function hasImageMembers(d: CardData) {
-  return d.members.some((m) => m.frames.some((f) => f.kind === "image"));
+  return d.members.some((m) => characterSprites(m).some((f) => f.kind === "image"));
 }
 
 /** 미리보기 대체 텍스트 */
 export function cardAltText(d: CardData) {
   const companions = d.members.length - 1;
-  return `결과 이미지: ${d.regionName}, ${d.score}m${d.isNew ? ", 최고 기록" : ""}, ${companions > 0 ? `동료 ${companions}명과 함께` : "혼자서"}`;
+  return `결과 이미지: ${d.regionName}, ${formatMeters(d.score)}${d.isNew ? ", 최고 기록" : ""}, ${companions > 0 ? `동료 ${companions}명과 함께` : "동료 없이"}`;
 }
 
-export function drawCard(ctx: CanvasRenderingContext2D, d: CardData, frame: number, font: string) {
+/** 점수 표시: 세 자리마다 쉼표 (아주 큰 점수도 읽기 쉽게) */
+export function formatMeters(n: number) {
+  return `${Math.max(0, Math.floor(n)).toLocaleString("ko-KR")}m`;
+}
+
+export function drawCard(ctx: CanvasRenderingContext2D, d: CardData, frame: CardFrame, font: string) {
   const S = CARD.size;
   ctx.save();
   ctx.fillStyle = OUTSIDE;
@@ -73,8 +81,9 @@ export function drawCard(ctx: CanvasRenderingContext2D, d: CardData, frame: numb
   drawMembers(ctx, d, frame);
   drawHeader(ctx, d, font);
 
-  // 아래쪽 게임 이름 워터마크 (작게)
-  text(ctx, "점프점프", S / 2, S - 16, `13px ${font}`, "center", "#ffffff", 0.9);
+  // 맨 아래 글씨 (기본 "점프점프", 사용자가 바꾼 글씨). 길면 글씨를 줄여 카드 안에 넣는다
+  const caption = d.caption.trim();
+  if (caption) fitText(ctx, caption, S / 2, S - 16, 13, 8, S - 56, font, "#ffffff", 0.95);
   ctx.restore();
 
   // 카드 테두리
@@ -93,7 +102,7 @@ function drawStickers(ctx: CanvasRenderingContext2D) {
   drawSprite(ctx, STAR, 322, 312, 14, 12);
 }
 
-function drawMembers(ctx: CanvasRenderingContext2D, d: CardData, frame: number) {
+function drawMembers(ctx: CanvasRenderingContext2D, d: CardData, frame: CardFrame) {
   const slots = cardSlots(d.members.length);
   for (const slot of slots) {
     const member = d.members[slot.member];
@@ -110,8 +119,8 @@ function drawMembers(ctx: CanvasRenderingContext2D, d: CardData, frame: number) 
     ctx.fillStyle = "rgba(61,44,94,0.22)";
     ctx.fillRect(Math.round(slot.cx - sw / 2), slot.groundY - 3, sw, 4);
 
-    // 착지 단계에서 착지 프레임이 있으면 그걸로
-    const sprite: Sprite = pose.landing && member.frames[1] ? member.frames[1] : member.frames[0];
+    // 단계마다 그 모습 (착지 · 내려갈 때, 없으면 기본)
+    const sprite: Sprite = spriteFor(member, pose.landing ? "land" : pose.falling ? "fall" : "base");
     const dotsW = sprite.kind === "pixel" ? sprite.width : null;
     const dotsH = sprite.kind === "pixel" ? sprite.height : null;
     const w = snapSize(slot.width, pose.sx, dotsW);
@@ -138,30 +147,60 @@ function drawMembers(ctx: CanvasRenderingContext2D, d: CardData, frame: number) 
   }
 }
 
+/** 위쪽: 반투명 판 가운데에 지역 이름과 점수, 그 아래 가운데에 배지 (NEW · 함께한 동료) */
 function drawHeader(ctx: CanvasRenderingContext2D, d: CardData, font: string) {
+  const S = CARD.size;
   // 반투명 판 위에 올려 어느 배경에서도 또렷하게
-  roundRectPath(ctx, 16, 14, CARD.size - 32, 50, 16);
+  roundRectPath(ctx, 16, 14, S - 32, 52, 16);
   ctx.fillStyle = "rgba(255,255,255,0.9)";
   ctx.fill();
   ctx.lineWidth = 3;
   ctx.strokeStyle = INK;
   ctx.stroke();
 
-  text(ctx, d.regionName, 32, 34, `13px ${font}`, "left", "#7a6a99");
-  text(ctx, `${d.score}m`, 32, 58, `26px ${font}`, "left", INK);
+  fitText(ctx, d.regionName, S / 2, 32, 13, 9, S - 64, font, "#7a6a99");
+  // 점수가 아주 커도(예: 100,000m 이상) 판 밖으로 나가지 않게 글씨를 줄인다
+  fitText(ctx, formatMeters(d.score), S / 2, 58, 26, 12, S - 64, font, INK);
 
-  // 오른쪽 배지: NEW(위) / 이번 판에 함께한 동료(아래)
   const companions = d.members.length - 1;
-  const label = companions > 0 ? `동료 ${companions}명` : "동료 없이";
-  pill(ctx, label, CARD.size - 28, d.isNew ? 48 : 39, font, "#e8e0ff");
-  if (d.isNew) pill(ctx, "NEW 최고 기록", CARD.size - 28, 27, font, "#ffd36e");
+  const badges = [...(d.isNew ? [{ label: "NEW 최고 기록", fill: "#ffd36e" }] : []), { label: companions > 0 ? `동료 ${companions}명` : "동료 없이", fill: "#e8e0ff" }];
+  ctx.font = `11px ${font}`;
+  const widths = badges.map((b) => Math.ceil(ctx.measureText(b.label).width) + 16);
+  const gap = 6;
+  let x = S / 2 - (widths.reduce((a, b) => a + b, 0) + gap * (badges.length - 1)) / 2;
+  badges.forEach((b, i) => {
+    pill(ctx, b.label, x, 78, widths[i], font, b.fill);
+    x += widths[i] + gap;
+  });
 }
 
-/** 오른쪽 끝을 맞춰 그린 알약 배지 */
-function pill(ctx: CanvasRenderingContext2D, label: string, right: number, cy: number, font: string, fill: string) {
+/** 가운데 기준으로, 최대 폭을 넘으면 글씨 크기를 줄여서(최소 크기까지) 그린다. 그래도 넘치면 말줄임 */
+function fitText(
+  ctx: CanvasRenderingContext2D,
+  s: string,
+  cx: number,
+  y: number,
+  size: number,
+  minSize: number,
+  maxWidth: number,
+  font: string,
+  fill: string,
+  alpha = 1,
+) {
+  let px = size;
+  ctx.font = `${px}px ${font}`;
+  while (px > minSize && ctx.measureText(s).width > maxWidth) {
+    px -= 1;
+    ctx.font = `${px}px ${font}`;
+  }
+  let out = s;
+  while (out.length > 1 && ctx.measureText(out).width > maxWidth) out = out.slice(0, -2) + "…";
+  text(ctx, out, cx, y, `${px}px ${font}`, "center", fill, alpha);
+}
+
+/** 왼쪽 끝 x에서 폭 w로 그린 알약 배지 */
+function pill(ctx: CanvasRenderingContext2D, label: string, x: number, cy: number, w: number, font: string, fill: string) {
   ctx.font = `11px ${font}`;
-  const w = Math.ceil(ctx.measureText(label).width) + 16;
-  const x = right - w;
   roundRectPath(ctx, x, cy - 9, w, 18, 9);
   ctx.fillStyle = fill;
   ctx.fill();
@@ -224,7 +263,7 @@ export async function loadCardFont(): Promise<string> {
 }
 
 /** 한 프레임을 배율을 걸어 새 캔버스에 그린다 (PNG·GIF 공용) */
-export function renderCardCanvas(d: CardData, frame: number, font: string, scale: number): HTMLCanvasElement {
+export function renderCardCanvas(d: CardData, frame: CardFrame, font: string, scale: number): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   canvas.width = CARD.size * scale;
   canvas.height = CARD.size * scale;

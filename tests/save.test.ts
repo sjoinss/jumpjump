@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { CHARACTER_PRESETS } from "../src/game/presets";
 import { createDefaultSaveData } from "../src/lib/defaults";
 import { migrate } from "../src/lib/migrate";
 import { CORRUPT_BACKUP_KEY, SAVE_KEY, SaveStore, loadSaveData } from "../src/lib/saveStore";
@@ -24,7 +25,7 @@ test("기본값: 동료 슬롯 5칸, 동료 최대 5, 설정 출처 default", ()
   assert.ok(d.companionSlots.every((s) => s.character === null));
   assert.equal(d.settings.companionMax, 5);
   assert.equal(d.settings.companionMaxSource, "default");
-  assert.equal(d.hero.frames.length, 1);
+  assert.deepEqual(Object.keys(d.hero).sort(), ["base", "fall", "land"], "처음 주인공(말랑이)은 세 모습이 다 있음");
 });
 
 test("기본값: 동작 줄이기가 켜져 있으면 흔들림·파티클 꺼진 채 시작", () => {
@@ -37,7 +38,7 @@ test("기본값: 동작 줄이기가 켜져 있으면 흔들림·파티클 꺼�
 test("기본값: 매번 새 객체 (프리셋을 공유하지 않음)", () => {
   const a = createDefaultSaveData(env);
   const b = createDefaultSaveData(env);
-  assert.notEqual(a.hero.frames[0], b.hero.frames[0]);
+  assert.notEqual(a.hero.base, b.hero.base);
   assert.notEqual(a.platforms.basic.pixels, b.platforms.basic.pixels);
 });
 
@@ -49,40 +50,47 @@ test("기본값은 자기 자신의 검증을 통과한다", () => {
 // ── 검증 ──
 
 test("캐릭터: 16×18, 32×36 허용 / 다른 크기 거부", () => {
-  assert.ok(validateCharacter({ frames: [pixel(16, 18)] }, "주인공").ok);
-  assert.ok(validateCharacter({ frames: [pixel(32, 36), pixel(16, 18)] }, "주인공").ok);
-  const bad = validateCharacter({ frames: [pixel(20, 20)] }, "주인공");
+  assert.ok(validateCharacter({ base: pixel(16, 18) }, "주인공").ok);
+  assert.ok(validateCharacter({ base: pixel(32, 36), land: pixel(16, 18) }, "주인공").ok);
+  const bad = validateCharacter({ base: pixel(20, 20) }, "주인공");
   assert.deepEqual(bad, { ok: false, error: "주인공의 그림 크기가 올바르지 않습니다" });
 });
 
 test("캐릭터: pixels 길이가 width×height와 다르면 거부", () => {
   const sprite = { ...pixel(16, 18), pixels: new Array(10).fill("") };
-  assert.equal(validateCharacter({ frames: [sprite] }, "주인공").ok, false);
+  assert.equal(validateCharacter({ base: sprite }, "주인공").ok, false);
 });
 
-test("캐릭터: 프레임 0장·3장 거부", () => {
-  assert.equal(validateCharacter({ frames: [] }, "주인공").ok, false);
-  assert.equal(validateCharacter({ frames: [pixel(16, 18), pixel(16, 18), pixel(16, 18)] }, "주인공").ok, false);
+test("캐릭터: 기본은 꼭, 내려갈 때·착지는 선택. 셋 다 있어도 되고 모르는 항목은 버린다", () => {
+  assert.equal(validateCharacter({}, "주인공").ok, false);
+  assert.equal(validateCharacter({ fall: pixel(16, 18) }, "주인공").ok, false, "기본 없이 안 됨");
+  const all = validateCharacter({ base: pixel(16, 18), fall: pixel(16, 18), land: pixel(32, 36), extra: 1 }, "주인공");
+  assert.ok(all.ok);
+  assert.deepEqual(Object.keys(all.value).sort(), ["base", "fall", "land"]);
+  assert.deepEqual(validateCharacter({ base: pixel(16, 18), fall: pixel(5, 5) }, "주인공"), {
+    ok: false,
+    error: "주인공 내려갈 때 모습의 그림 크기가 올바르지 않습니다",
+  });
 });
 
 test("색: #rrggbb 또는 투명만, 대문자는 소문자로", () => {
-  const r = validateCharacter({ frames: [pixel(16, 18, "#ABCDEF")] }, "주인공");
-  assert.ok(r.ok && r.value.frames[0].kind === "pixel" && r.value.frames[0].pixels[0] === "#abcdef");
+  const r = validateCharacter({ base: pixel(16, 18, "#ABCDEF") }, "주인공");
+  assert.ok(r.ok && r.value.base.kind === "pixel" && r.value.base.pixels[0] === "#abcdef");
   for (const c of ["red", "#fff", "rgb(0,0,0)", "#12345g", null, 5]) {
-    assert.equal(validateCharacter({ frames: [pixel(16, 18, c as string)] }, "주인공").ok, false, String(c));
+    assert.equal(validateCharacter({ base: pixel(16, 18, c as string) }, "주인공").ok, false, String(c));
   }
 });
 
 test("이미지: png/webp만, 320×360, base64", () => {
   const img = { kind: "image", mime: "image/png", data: "iVBORw0KGgo=", width: 320, height: 360 };
-  assert.ok(validateCharacter({ frames: [img] }, "주인공").ok);
-  assert.equal(validateCharacter({ frames: [{ ...img, mime: "image/svg+xml" }] }, "주인공").ok, false);
-  assert.equal(validateCharacter({ frames: [{ ...img, width: 640 }] }, "주인공").ok, false);
-  assert.equal(validateCharacter({ frames: [{ ...img, data: "<script>" }] }, "주인공").ok, false);
+  assert.ok(validateCharacter({ base: img }, "주인공").ok);
+  assert.equal(validateCharacter({ base: { ...img, mime: "image/svg+xml" } }, "주인공").ok, false);
+  assert.equal(validateCharacter({ base: { ...img, width: 640 } }, "주인공").ok, false);
+  assert.equal(validateCharacter({ base: { ...img, data: "<script>" } }, "주인공").ok, false);
 });
 
 test("동료 슬롯: 오류 문구에 슬롯 번호가 들어간다", () => {
-  const slots = [null, null, { character: { frames: [pixel(8, 8)] } }, null, null].map((s) => s ?? { character: null });
+  const slots = [null, null, { character: { base: pixel(8, 8) } }, null, null].map((s) => s ?? { character: null });
   assert.deepEqual(validateCompanionSlots(slots), { ok: false, error: "동료 슬롯 3의 그림 크기가 올바르지 않습니다" });
 });
 
@@ -164,7 +172,7 @@ test("불러오기: 통째로 깨진 데이터는 원본을 보관하고 기본�
 test("불러오기: 일부 손상은 repaired, 고친 값을 다시 저장", async () => {
   const store = new MemoryStore();
   const saved = createDefaultSaveData(env) as unknown as Record<string, unknown>;
-  saved.hero = { frames: [pixel(3, 3)] };
+  saved.hero = { base: pixel(3, 3) };
   await store.set(SAVE_KEY, saved);
   const r = await loadSaveData(store, env);
   assert.equal(r.notice, "repaired");
@@ -244,4 +252,52 @@ test("테마: 없으면 기본 테마로 읽고 손상으로 치지 않음, 모�
   assert.ok(b.issues.includes("settings.theme"));
   raw.settings.theme = "dream";
   assert.equal(normalizeSaveData(raw, env).data.settings.theme, "dream");
+});
+
+// ── v1 → v2: 캐릭터 모습을 순서에서 이름으로 ──
+
+test("마이그레이션 v1→v2: 기본 1장은 base, 2장이면 두 번째가 착지(land)", async () => {
+  const store = new MemoryStore();
+  const v2 = createDefaultSaveData(env);
+  const a = pixel(16, 18, "#ff0000");
+  const b = pixel(16, 18, "#00ff00");
+  const v1 = {
+    ...v2,
+    version: 1,
+    hero: { frames: [a, b] },
+    companionSlots: v2.companionSlots.map((s, i) => (i === 1 ? { character: { frames: [b] }, name: "콩이" } : s)),
+  } as unknown as Record<string, unknown>;
+  await store.set(SAVE_KEY, v1);
+  const r = await loadSaveData(store, env);
+  assert.equal(r.notice, "migrated");
+  assert.equal(r.data.version, SCHEMA_VERSION);
+  assert.deepEqual(r.data.hero, { base: a, land: b });
+  assert.deepEqual(r.data.companionSlots[1], { character: { base: b }, name: "콩이" });
+  assert.equal(r.data.companionSlots[0].character, null);
+});
+
+test("마이그레이션 v1→v2: 손대지 않은 기본 캐릭터는 내려갈 때·착지 모습이 채워진다", async () => {
+  const store = new MemoryStore();
+  const v2 = createDefaultSaveData(env);
+  const tori = CHARACTER_PRESETS[1];
+  const v1 = {
+    ...v2,
+    version: 1,
+    hero: { frames: [tori.sprite] },
+    companionSlots: v2.companionSlots.map((s, i) => (i === 0 ? { character: { frames: [CHARACTER_PRESETS[2].sprite] } } : s)),
+  } as unknown as Record<string, unknown>;
+  await store.set(SAVE_KEY, v1);
+  const r = await loadSaveData(store, env);
+  assert.deepEqual(r.data.hero, tori.character);
+  assert.deepEqual(r.data.companionSlots[0].character, CHARACTER_PRESETS[2].character);
+});
+
+test("아주 큰 점수: 세 자리 쉼표, 자릿수가 많으면 작은 글씨", async () => {
+  const { formatScore, scoreSize } = await import("../src/lib/records");
+  assert.equal(formatScore(87), "87");
+  assert.equal(formatScore(123456), "123,456");
+  assert.equal(formatScore(98765432), "98,765,432");
+  assert.equal(scoreSize(99999), "");
+  assert.equal(scoreSize(100000), "long");
+  assert.equal(scoreSize(10000000), "huge");
 });

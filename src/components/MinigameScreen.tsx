@@ -57,8 +57,8 @@ export function MinigameScreen({ slot, hero, companion, previous, onDone }: Prop
   announceRef.current = announce;
   const reducedRef = useRef(reducedMotion);
   reducedRef.current = reducedMotion;
-  const looksRef = useRef({ hero: hero.frames[0], companion: companion?.frames[0] ?? COMPANION_QUESTION });
-  looksRef.current = { hero: hero.frames[0], companion: companion?.frames[0] ?? COMPANION_QUESTION };
+  const looksRef = useRef({ hero: hero.base, companion: companion?.base ?? COMPANION_QUESTION });
+  looksRef.current = { hero: hero.base, companion: companion?.base ?? COMPANION_QUESTION };
 
   const pause = useCallback(() => {
     if (phaseRef.current === "playing") setPhase("paused");

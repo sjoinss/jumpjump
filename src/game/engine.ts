@@ -10,7 +10,9 @@ import { DEFAULT_THEME, SCENE, type ScenePalette, type ThemeId } from "./themes"
 import { computeViewport, type Viewport } from "./viewport";
 import { mulberry32, World, type Candidate, type Platform } from "./world";
 import { InputController, type InputAction } from "../input/controller";
-import type { Character, Platforms } from "../lib/schema";
+import { spriteFor } from "../lib/character";
+import { snapSize } from "../share/layout";
+import type { Character, Platforms, Pose } from "../lib/schema";
 
 /**
  * 게임 상태 머신 (기획서 2번 + 시작 장면).
@@ -212,6 +214,12 @@ export class Engine {
     return counted;
   }
 
+  /** 그리다 그만둠: 구슬은 남기고 게임으로 (거절로 세지 않음) */
+  keepCandidate(id: number) {
+    this.world.keepCandidate(id);
+    this.backToPlay();
+  }
+
   private backToPlay() {
     if (this.phase === "companionPrompt" || this.phase === "drawing" || this.phase === "minigame") this.setPhase("playing");
   }
@@ -364,9 +372,12 @@ export class Engine {
     // 발판 (바닥 제외). 시작 장면에서는 숨긴다
     if (this.platformSprites && this.platformAlpha > 0) {
       ctx.globalAlpha = this.reducedMotion ? 1 : this.platformAlpha;
-      const { width, height } = CONFIG.platform;
       for (const p of world.platforms) {
         if (p.kind === "ground") continue;
+        // 동료가 늘어 좁아진 발판은 그림도 같은 비율로 작게 (판정 = 보이는 크기, 도트가 찌그러지지 않게).
+        // 혼자 판의 넓은 판정은 보이지 않는 여유라 그림은 기본 크기 그대로
+        const width = Math.min(p.width, CONFIG.platform.width);
+        const height = (CONFIG.platform.height * width) / CONFIG.platform.width;
         const y = screenY(p.y);
         if (y > vp.logicalHeight || y + height < 0) continue;
         const px = Math.round(vp.playX + p.x + (p.width - width) / 2);
@@ -401,18 +412,25 @@ export class Engine {
       ctx.fillRect(Math.round(x + (world.formation.width - shadowW) / 2), Math.round(groundTop - 2), Math.round(shadowW), 6);
     }
 
+    // 대열 전원이 같은 모습 단계: 착지 순간 → 착지, 떨어지는 중 → 내려갈 때, 그 밖(올라갈 때·서 있을 때) → 기본
+    const pose: Pose = this.landingTimer > 0 ? "land" : this.phase !== "ready" && world.hero.vy < 0 ? "fall" : "base";
+    // 통통 튀는 점프 (결과 이미지의 폴짝 모션처럼): 대열 전체가 같이 눌리고 늘어난다
+    const squash = this.phase !== "ready" && !this.reducedMotion && this.effects.particlesOn ? this.jumpSquash() : { sx: 1, sy: 1 };
     for (let m = world.companions; m >= 0; m--) {
       const { col, row } = memberCell(m);
       const look = m === 0 ? this.hero : this.companionLooks[m - 1];
-      const frames = look?.frames ?? [COMPANION_QUESTION];
-      const sprite = this.landingTimer > 0 && frames[1] ? frames[1] : frames[0];
+      const sprite = look ? spriteFor(look, pose) : COMPANION_QUESTION;
       // 합류 연출: 발밑 가운데를 기준으로 작게 시작해 톡 튀어나온다
       const pop = this.joinPop.get(m);
       const s = pop === undefined || this.reducedMotion ? 1 : popScale(1 - pop / CONFIG.companion.joinPop);
-      const w = cw * s;
-      const h = ch * s;
+      // 도트가 뭉개지지 않게 칸 수의 배수로 맞춘다
+      const dotsW = sprite.kind === "pixel" ? sprite.width : null;
+      const dotsH = sprite.kind === "pixel" ? sprite.height : null;
+      const w = snapSize(cw, s * squash.sx, dotsW);
+      const h = snapSize(ch, s * squash.sy, dotsH);
       const baseX = x + col * cw;
-      const bottom = screenY(feet + row * ch);
+      // 위층은 아래층이 눌린 만큼 같이 내려온다
+      const bottom = screenY(feet + row * ch * squash.sy);
       drawSprite(ctx, sprite, Math.round(baseX + (cw - w) / 2), Math.round(bottom - h), w, h);
     }
 
@@ -445,6 +463,26 @@ export class Engine {
   }
 
   /**
+   * 점프 모양 (squash & stretch). 착지 순간 납작하게 눌렸다가(착지 프레임 시간 앞부분) 튀어 오르며 세로로 늘어나고,
+   * 꼭대기로 갈수록 원래대로, 떨어질 때는 살짝 늘어난다.
+   */
+  private jumpSquash(): { sx: number; sy: number } {
+    const c = CONFIG.character.squash;
+    const v0 = CONFIG.physics.jumpVelocity;
+    const vy = this.world.hero.vy;
+    // 날아가는 중: 빠를수록 길쭉하게
+    const a = vy > 0 ? c.stretch * Math.min(1, (vy / v0) ** 2) : c.fall * Math.min(1, -vy / v0);
+    const fly = { sx: 1 - a * 0.6, sy: 1 + a };
+    const dur = CONFIG.character.landingFrameDuration;
+    if (this.landingTimer <= 0) return fly;
+    // 착지 직후: 가장 눌린 모양에서 날아가는 모양으로 넘어간다
+    const p = 1 - this.landingTimer / dur;
+    const k = Math.min(1, p / c.recover);
+    const ease = 1 - (1 - k) * (1 - k);
+    return { sx: 1 + c.squash + (fly.sx - 1 - c.squash) * ease, sy: 1 - c.squash + (fly.sy - 1 + c.squash) * ease };
+  }
+
+  /**
    * 동료 후보 (기획서 7-3). 그림 없는 슬롯은 물음표 방울, 그림이 있으면 동그란 방울 속 그 동료.
    * 색이 아니라 모양(방울 테두리)과 둥실 움직임으로 구분한다.
    */
@@ -467,7 +505,7 @@ export class Engine {
       ctx.arc(cx, bottom - size / 2, size / 2, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
-      drawSprite(ctx, look.frames[0], Math.round(cx - 24), Math.round(bottom - size / 2 - 27), 48, 54);
+      drawSprite(ctx, look.base, Math.round(cx - 24), Math.round(bottom - size / 2 - 27), 48, 54);
     } else {
       drawSprite(ctx, COMPANION_QUESTION, Math.round(cx - 32), Math.round(bottom - 72), 64, 72);
     }

@@ -96,16 +96,21 @@ export function validateSprite(raw: unknown, usage: SpriteUsage, label: string):
   return validatePixelSprite(raw, usage, label);
 }
 
+const POSE_LABEL = { fall: "내려갈 때 모습", land: "착지 모습" } as const;
+
+/** 기본은 꼭, 내려갈 때·착지는 있으면 검사. 모르는 항목은 버린다 */
 export function validateCharacter(raw: unknown, label: string): Result<Character> {
-  if (!isRecord(raw) || !Array.isArray(raw.frames)) return fail(`${label}의 그림 형식이 올바르지 않습니다`);
-  const frames = raw.frames;
-  if (frames.length < 1 || frames.length > 2) return fail(`${label}의 프레임 수가 올바르지 않습니다 (1~2장)`);
-  const base = validateSprite(frames[0], "character", label);
+  if (!isRecord(raw) || raw.base === undefined) return fail(`${label}의 그림 형식이 올바르지 않습니다`);
+  const base = validateSprite(raw.base, "character", label);
   if (!base.ok) return base;
-  if (frames.length === 1) return ok({ frames: [base.value] });
-  const landing = validateSprite(frames[1], "character", `${label} 착지 프레임`);
-  if (!landing.ok) return landing;
-  return ok({ frames: [base.value, landing.value] });
+  const out: Character = { base: base.value };
+  for (const pose of ["fall", "land"] as const) {
+    if (raw[pose] === undefined || raw[pose] === null) continue;
+    const s = validateSprite(raw[pose], "character", `${label} ${POSE_LABEL[pose]}`);
+    if (!s.ok) return s;
+    out[pose] = s.value;
+  }
+  return ok(out);
 }
 
 export function validateCompanionSlots(raw: unknown): Result<CompanionSlot[]> {
@@ -194,6 +199,7 @@ export function normalizeSettings(raw: unknown, env: DefaultEnv): { value: Setti
   const isBool = (v: unknown): v is boolean => typeof v === "boolean";
   const isMax = (v: unknown): v is number => isNonNegativeInt(v) && v <= CONFIG.companion.maxCount;
   const isSource = (v: unknown): v is CompanionMaxSource => SOURCES.includes(v as CompanionMaxSource);
+  const isCaption = (v: unknown): v is string => typeof v === "string" && v.length <= CONFIG.card.captionMax;
 
   const ob = isRecord(raw.onboarding) ? raw.onboarding : {};
   const reminder = ob.backupReminderAt;
@@ -209,6 +215,7 @@ export function normalizeSettings(raw: unknown, env: DefaultEnv): { value: Setti
       sfx: pick("sfx", isBool, def.sfx),
       specialPlatformMarker: pick("specialPlatformMarker", isBool, def.specialPlatformMarker),
       theme: pick("theme", isThemeId, def.theme),
+      cardCaption: pick("cardCaption", isCaption, def.cardCaption),
       onboarding: {
         firstRunDone: isBool(ob.firstRunDone) ? ob.firstRunDone : def.onboarding.firstRunDone,
         controlsGuideShown: isBool(ob.controlsGuideShown) ? ob.controlsGuideShown : def.onboarding.controlsGuideShown,

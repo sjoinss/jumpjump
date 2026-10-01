@@ -334,3 +334,12 @@
 .menuSwitch > button {
   width: 100%;
 }
+
+/* 아주 큰 점수: 자릿수가 많으면 글씨를 줄여 HUD 밖으로 넘치지 않게 */
+.long {
+  font-size: 22px;
+}
+
+.huge {
+  font-size: 17px;
+}

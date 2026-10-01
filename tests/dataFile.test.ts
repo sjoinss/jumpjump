@@ -37,7 +37,7 @@ test("내보내기: 파일 이름은 날짜", () => {
 test("내보내기: 이미지 포함 여부 (고른 항목 기준)", () => {
   const s = save();
   assert.equal(exportHasImages(s, DEFAULT_EXPORT_KEYS), false);
-  s.companionSlots[2] = { character: { frames: [img()] } };
+  s.companionSlots[2] = { character: { base: img() } };
   assert.equal(exportHasImages(s, DEFAULT_EXPORT_KEYS), true);
   assert.equal(exportHasImages(s, ["hero", "palette"]), false, "동료를 빼면 경고 없음");
 });
@@ -70,14 +70,14 @@ test("불러오기: 깨진 JSON, 다른 앱 파일, 새 버전은 원인과 함�
 
 test("불러오기: 하나라도 잘못되면 전체 거부, 오류에 위치가 나온다", () => {
   const f = JSON.parse(roundTrip());
-  f.data.companionSlots[2] = { character: { frames: [{ kind: "pixel", width: 8, height: 8, pixels: new Array(64).fill("") }] } };
+  f.data.companionSlots[2] = { character: { base: { kind: "pixel", width: 8, height: 8, pixels: new Array(64).fill("") } } };
   const r = parseImport(JSON.stringify(f));
   assert.deepEqual(r, { ok: false, error: "동료 슬롯 3의 그림 크기가 올바르지 않습니다" });
 });
 
 test("불러오기: 이미지 형식 제한 (svg 거부)", () => {
   const f = JSON.parse(roundTrip());
-  f.data.hero = { frames: [{ ...img(), mime: "image/svg+xml" }] };
+  f.data.hero = { base: { ...img(), mime: "image/svg+xml" } };
   const r = parseImport(JSON.stringify(f));
   assert.ok(!r.ok && r.error.includes("PNG 또는 WebP"));
 });
@@ -113,13 +113,13 @@ test("적용: 고른 항목만 덮어쓰고, 설정은 직접 설정(user)으로
 test("이미지 모으기·바꾸기", () => {
   const a = img("AAAA");
   const b = img("BBBB");
-  const data = { hero: { frames: [a] as [ImageSprite] }, companionSlots: [{ character: { frames: [save().hero.frames[0], b] as never } }] };
+  const data = { hero: { base: a as ImageSprite }, companionSlots: [{ character: { base: save().hero.base, land: b } }] };
   const found = collectImages(data);
-  assert.deepEqual(found.map((x) => x.label), ["캐릭터", "동료 슬롯 1 착지 프레임"]);
+  assert.deepEqual(found.map((x) => x.label), ["캐릭터", "동료 슬롯 1 착지 모습"]);
   const re = img("CCCC");
   const next = replaceImages(data, new Map([[a, re]]));
-  assert.equal(next.hero!.frames[0], re);
-  assert.equal(next.companionSlots![0].character!.frames[1], b);
+  assert.equal(next.hero!.base, re);
+  assert.equal(next.companionSlots![0].character!.land, b);
 });
 
 test("백업 안내: 직접 그린 게 있고 오래 내보내지 않았을 때만", () => {

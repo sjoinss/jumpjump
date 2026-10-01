@@ -76,8 +76,12 @@ export const CONFIG = {
      * 자동 플레이 시뮬레이션: 보정 0 → 중앙값 약 118m, 24 → 약 195m (동료 1명일 때 약 204m)
      */
     platformWidthBonusSolo: 24,
-    /** 동료 수에 따른 발판 폭 축소 (기본 0) */
-    platformWidthShrinkPerCompanion: 0,
+    /**
+     * 동료 1명이 늘 때마다 발판을 이만큼 좁힌다 (동료가 있으면 착지 폭이 넓어져 너무 쉬워지는 것 보정).
+     * 자동 플레이(동료가 실제처럼 하나씩 합류): 0px → 중앙값 약 201m(혼자와 비슷), 6px → 약 164m.
+     * 좁아진 발판은 그림도 같은 비율로 작게 그려서 보이는 크기와 판정이 같다
+     */
+    platformWidthShrinkPerCompanion: 6,
   },
 
   /** 특수 발판 (기획서 3-4. 초기 제안) */
@@ -86,6 +90,12 @@ export const CONFIG = {
     highJumpVelocityMultiplier: 1.35,
     /** 일회용: 밟은 뒤 부서지며 사라지는 시간 */
     oneTimeBreakDuration: 0.3,
+    /**
+     * 일회용을 밟으면 그 높이가 새 바닥이 된다: 화면 아래 끝이 발판 윗면보다 이만큼 아래까지 이 빠르기(px/초)로 올라온다.
+     * 부서진 발판 아래로 떨어지면 끝 (Doodle Jump처럼 화면은 위로만, 아래로 벗어나면 끝)
+     */
+    breakFloorMargin: 24,
+    breakFloorSpeed: 900,
     /**
      * 높이(m)대별 등장 확률. 발판이 생기는 높이가 from(m) 이상인 마지막 줄이 적용된다. 나머지 확률은 기본 발판.
      * (예전 발판 수 기준 20·40·150번째 발판이 생기던 높이에 맞춘 값)
@@ -118,6 +128,11 @@ export const CONFIG = {
       { id: "space", name: "우주", startM: 600 },
     ],
     blend: 25,
+    /**
+     * 지역별 게임 속도 배율 (동굴·지상·하늘·우주). 들어갈 때마다 살짝 빨라진다 — 너무 빠르지 않게 최대 +15%.
+     * 시간을 빠르게 할 뿐이라 점프 높이·발판 간격은 그대로다
+     */
+    speedScale: [1, 1.05, 1.1, 1.15],
     /** 배경이 목표 지역 색으로 따라가는 속도 (지역 단위/초). 점수가 1m씩 오를 때 뚝뚝 끊기지 않게 */
     followSpeed: 0.8,
     /** 지역 이름 배너 표시 시간(초) */
@@ -127,6 +142,11 @@ export const CONFIG = {
   character: {
     /** 착지 순간 착지 프레임을 보여주는 시간 (0.15~0.25초 조절) */
     landingFrameDuration: 0.2,
+    /**
+     * 게임 중 통통 튀는 점프 (결과 이미지의 폴짝 모션과 같은 느낌).
+     * squash: 착지 순간 눌리는 양, recover: 착지 시간 중 다시 펴지는 데 쓰는 비율, stretch: 튀어 오를 때 늘어나는 양, fall: 떨어질 때
+     */
+    squash: { squash: 0.24, recover: 0.6, stretch: 0.16, fall: 0.06 },
     /** 게임 내 표시 상자. 도트·이미지 캐릭터 모두 같은 크기 */
     width: 64,
     height: 72,
@@ -264,6 +284,13 @@ export const CONFIG = {
       radius: 14,
       invincible: 1.0,
     },
+  },
+
+  /** 결과 이미지 */
+  card: {
+    /** 맨 아래 글씨 기본값과 최대 글자 수 (사용자가 저장 전에 바꿀 수 있다) */
+    defaultCaption: "점프점프",
+    captionMax: 20,
   },
 
   /** 저장 데이터 상한. 불러온 데이터가 이를 넘으면 거부하거나 잘라낸다 */

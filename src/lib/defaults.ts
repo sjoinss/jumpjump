@@ -1,6 +1,6 @@
 import { CONFIG } from "../game/config";
 import { DEFAULT_THEME } from "../game/themes";
-import { DEFAULT_PALETTE, HERO_MALLANG, PLATFORM_PRESETS } from "../game/presets";
+import { CHARACTER_PRESETS, DEFAULT_PALETTE, PLATFORM_PRESETS } from "../game/presets";
 import { COMPANION_SLOT_COUNT, SCHEMA_VERSION, type CompanionSlot, type SaveData, type Settings } from "./schema";
 
 export type DefaultEnv = {
@@ -18,6 +18,7 @@ export function createDefaultSettings(env: DefaultEnv): Settings {
     sfx: true,
     specialPlatformMarker: true,
     theme: DEFAULT_THEME,
+    cardCaption: CONFIG.card.defaultCaption,
     onboarding: { firstRunDone: false, controlsGuideShown: false, backupReminderAt: null, lastExportAt: null },
   };
 }
@@ -30,7 +31,8 @@ export function createEmptyCompanionSlots(): CompanionSlot[] {
 export function createDefaultSaveData(env: DefaultEnv): SaveData {
   return {
     version: SCHEMA_VERSION,
-    hero: structuredClone({ frames: [HERO_MALLANG] }),
+    // 처음 주인공: 말랑이 세 모습(기본·내려갈 때·착지)
+    hero: structuredClone(CHARACTER_PRESETS[0].character),
     platforms: structuredClone(PLATFORM_PRESETS),
     companionSlots: createEmptyCompanionSlots(),
     palette: [...DEFAULT_PALETTE],

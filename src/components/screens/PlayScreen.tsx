@@ -5,7 +5,7 @@ import { Engine, type Phase, type SceneLayout } from "@/game/engine";
 import { CHARACTER_PRESETS, COMPANION_QUESTION } from "@/game/presets";
 import { SCENE } from "@/game/themes";
 import { needsBackupReminder } from "@/lib/dataFile";
-import { RECORD_LABEL } from "@/lib/records";
+import { formatScore, RECORD_LABEL, scoreSize } from "@/lib/records";
 import type { BestScores, Character } from "@/lib/schema";
 import { CompanionPrompt } from "../CompanionPrompt";
 import { ControlsGuide } from "../ControlsGuide";
@@ -175,7 +175,7 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
       // 결과 이미지: 게임오버 높이의 배경 + 주인공과 이번 판에 합류한 동료 (기획서 13-1)
       const d = dataRef.current;
       const joined = engineRef.current?.companions ?? 0;
-      const members = [d.hero, ...d.companionSlots.slice(0, joined).map((s) => s.character ?? { frames: [COMPANION_QUESTION] as [typeof COMPANION_QUESTION] })];
+      const members = [d.hero, ...d.companionSlots.slice(0, joined).map((s) => s.character ?? { base: COMPANION_QUESTION })];
       const card = {
         score: final,
         isNew,
@@ -185,6 +185,7 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
         members,
         platform: d.platforms.basic,
         scene: SCENE[d.settings.theme],
+        caption: d.settings.cardCaption,
       };
       setResult({ score: final, best: Math.max(prevBest, final), isNew, withCompanions, card });
       announce(`게임 끝. ${final}미터${isNew ? ", 최고 기록!" : ""}`);
@@ -274,7 +275,7 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
   /** 그리다 그만둠: 초안은 에디터가 남기고, 후보는 그 자리에 (거절로 세지 않음) */
   const cancelDrawing = () => {
     if (!drawing) return;
-    engineRef.current?.refuseCandidate(drawing.id, false);
+    engineRef.current?.keepCandidate(drawing.id);
     closeDrawing();
   };
 
@@ -439,7 +440,7 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
           {inGame ? (
             <p className={styles.score}>
               <span className="visually-hidden">높이 </span>
-              <span className={styles.scoreValue}>{score}</span>
+              <span className={`${styles.scoreValue} ${scoreSize(score) ? styles[scoreSize(score)] : ""}`}>{formatScore(score)}</span>
               <span className={styles.scoreUnit} aria-hidden="true">m</span>
               <span className="visually-hidden">미터</span>
             </p>
@@ -529,7 +530,7 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
 
       <ControlsGuide
         open={guideOpen && !covered}
-        hero={data.hero.frames[0]}
+        hero={data.hero.base}
         onStart={() => {
           setGuideOpen(false);
           markGuideShown();
@@ -629,13 +630,13 @@ function BestBadge({ best }: { best: BestScores }) {
         {best.withCompanions > 0 && (
           <div>
             <dt>{RECORD_LABEL.withCompanions}</dt>
-            <dd>{best.withCompanions}m</dd>
+            <dd>{formatScore(best.withCompanions)}m</dd>
           </div>
         )}
         {best.solo > 0 && (
           <div>
             <dt>{RECORD_LABEL.solo}</dt>
-            <dd>{best.solo}m</dd>
+            <dd>{formatScore(best.solo)}m</dd>
           </div>
         )}
       </dl>
@@ -645,8 +646,8 @@ function BestBadge({ best }: { best: BestScores }) {
 
 /** 주인공이 기본 캐릭터 그대로인지 (시작 카드 문구용) */
 function isPresetHero(hero: Character) {
-  const f = hero.frames[0];
-  if (hero.frames.length > 1 || f.kind !== "pixel") return false;
+  const f = hero.base;
+  if (f.kind !== "pixel") return false;
   const key = f.pixels.join(",");
   return CHARACTER_PRESETS.some((p) => p.sprite.width === f.width && p.sprite.pixels.join(",") === key);
 }

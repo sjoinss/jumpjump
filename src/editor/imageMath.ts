@@ -191,3 +191,57 @@ export function checkDimensions(w: number, h: number): ImportCheck {
 
 export const UNSUPPORTED_MESSAGE = "PNG, JPEG, WebP, GIF 이미지만 쓸 수 있어요. SVG나 다른 파일은 안 돼요.";
 export const DECODE_FAIL_MESSAGE = "이미지를 열 수 없습니다. 다른 파일을 선택해주세요.";
+
+// ── 도트 크기 이미지 → 도트 칸 (사용자 결정: 도트 격자와 같은 px인 이미지만 불러온 뒤 직접 고칠 수 있게) ──
+
+/** 반투명은 이 값 이상이면 불투명 칸, 아니면 빈 칸 */
+const ALPHA_CUT = 128;
+
+/**
+ * 이미지 크기가 도트 격자(16×18 또는 32×36)와 정확히 같으면 그 격자, 아니면 null.
+ * 다른 크기는 줄이거나 늘리지 않고 이미지로만 쓴다.
+ */
+export function dotGridFor(w: number, h: number): { width: number; height: number } | null {
+  return CONFIG.character.gridSizes.find((g) => g.width === w && g.height === h) ?? null;
+}
+
+const toHex = (r: number, g: number, b: number) => `#${((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1)}`;
+
+/** 네 모서리가 같은 불투명 색이면 그 색 (배경으로 보이는 색), 아니면 null */
+export function cornerBackground(rgba: Uint8ClampedArray, w: number, h: number): string | null {
+  const at = (x: number, y: number) => (y * w + x) * 4;
+  const corners = [at(0, 0), at(w - 1, 0), at(0, h - 1), at(w - 1, h - 1)];
+  if (corners.some((i) => rgba[i + 3] < ALPHA_CUT)) return null;
+  const same = (i: number) => rgba[i] === rgba[corners[0]] && rgba[i + 1] === rgba[corners[0] + 1] && rgba[i + 2] === rgba[corners[0] + 2];
+  if (!corners.every(same)) return null;
+  return toHex(rgba[corners[0]], rgba[corners[0] + 1], rgba[corners[0] + 2]);
+}
+
+/**
+ * 도트 크기 이미지를 도트 칸으로 (픽셀 하나 = 칸 하나). 반투명은 ALPHA_CUT 기준으로 칸을 채우거나 비운다.
+ * removeBackground면 테두리에서 이어진 모서리 색 칸만 비운다 (그림 안쪽의 같은 색은 남긴다).
+ */
+export function imageToDotPixels(rgba: Uint8ClampedArray, w: number, h: number, removeBackground: boolean): string[] {
+  const cells: string[] = [];
+  for (let i = 0; i < w * h; i++) {
+    const j = i * 4;
+    cells.push(rgba[j + 3] < ALPHA_CUT ? "" : toHex(rgba[j], rgba[j + 1], rgba[j + 2]));
+  }
+  const bg = removeBackground ? cornerBackground(rgba, w, h) : null;
+  if (bg) {
+    const stack: number[] = [];
+    for (let x = 0; x < w; x++) stack.push(x, (h - 1) * w + x);
+    for (let y = 0; y < h; y++) stack.push(y * w, y * w + w - 1);
+    while (stack.length) {
+      const i = stack.pop()!;
+      if (cells[i] !== bg) continue;
+      cells[i] = "";
+      const x = i % w;
+      if (x > 0) stack.push(i - 1);
+      if (x < w - 1) stack.push(i + 1);
+      if (i >= w) stack.push(i - w);
+      if (i < (h - 1) * w) stack.push(i + w);
+    }
+  }
+  return cells;
+}

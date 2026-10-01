@@ -208,3 +208,7 @@
   padding-top: var(--spacing-sm);
   border-top: 2px dashed var(--color-border);
 }
+
+.record dd.recordLong {
+  font-size: var(--font-size-body);
+}

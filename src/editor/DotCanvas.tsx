@@ -6,7 +6,7 @@ import type { PixelSprite, Sprite } from "@/lib/schema";
 import type { PointerPhase, Tool } from "./session";
 import styles from "./DotCanvas.module.css";
 
-/** 반투명하게 아래 까는 그림 (착지 프레임 작업용 기본 그림 / 동료 그리기의 주인공 가이드) */
+/** 반투명하게 아래 까는 그림 (내려갈 때·착지 모습 작업용 기본 그림 / 동료 그리기의 주인공 가이드) */
 export type Underlay = { sprite: Sprite; opacity: number };
 
 type Props = {

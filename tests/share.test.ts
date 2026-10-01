@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { GifEncoder, lzwEncode, medianCut } from "../src/share/gif";
-import { bestFrame, CARD, cardSlots, jumpPose, memberPose, snapSize } from "../src/share/layout";
+import { CARD, cardSlots, jumpPose, memberPose, snapSize, STANDING } from "../src/share/layout";
 
 // ── 배치 ──
 
@@ -78,13 +78,9 @@ test("크기 스냅: 도트 그림은 칸 수의 배수(한 칸이 정수 px), �
   assert.equal(snapSize(96, 1.18, null), 113);
 });
 
-test("PNG 대표 프레임: 여러 명이 서로 다른 높이로 떠 있다", () => {
-  for (const n of [3, 6]) {
-    const f = bestFrame(n);
-    const lifts = cardSlots(n).map((s) => memberPose(s.member, f).lift);
-    assert.ok(lifts.filter((l) => l > 6).length >= Math.ceil(n / 2), `${n}명: ${lifts}`);
-    assert.ok(new Set(lifts.map(Math.round)).size >= Math.min(n, 3));
-  }
+test("PNG는 모두 발판에 서 있는 자세 (뜨거나 눌리지 않음)", () => {
+  for (let m = 0; m < 6; m++) assert.deepEqual(memberPose(m, "stand"), STANDING);
+  assert.deepEqual([STANDING.lift, STANDING.sx, STANDING.sy, STANDING.landing, STANDING.falling], [0, 1, 1, false, false]);
 });
 
 // ── GIF ──

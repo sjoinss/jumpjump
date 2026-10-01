@@ -1,6 +1,7 @@
 import { CONFIG } from "../game/config";
-import type { Character, CompanionSlot, PixelSprite, Platforms, SaveData, Sprite } from "../lib/schema";
-import { validateCharacter, validatePixelSprite } from "../lib/validate";
+import { POSE_INFO } from "../lib/character";
+import { POSES, type Character, type CompanionSlot, type PixelSprite, type Platforms, type Pose, type SaveData, type Sprite } from "../lib/schema";
+import { validatePixelSprite, validateSprite } from "../lib/validate";
 import {
   blankSprite,
   flipHorizontal,
@@ -37,13 +38,37 @@ export const TAB_LABEL: Record<TabKey, string> = {
   oneTime: "일회용 발판",
 };
 
-/** 캐릭터(1~2장, 도트·이미지)를 그리는 탭인지. 발판 탭은 도트 1장 */
+/** 캐릭터(기본 + 내려갈 때·착지 선택, 도트·이미지)를 그리는 탭인지. 발판 탭은 도트 1장 */
 export function isCharacterTab(k: TabKey) {
   return k === "hero" || k === "companion";
 }
 
-/** 탭 하나의 그림. 캐릭터는 1~2장(두 번째가 착지), 발판은 도트 1장 */
-export type Doc = { frames: Sprite[] };
+/**
+ * 탭 하나의 그림.
+ * - 캐릭터: 항상 3칸 [기본, 내려갈 때, 착지] (POSES 순서). 그리지 않은 모습은 null. 기본은 꼭 있다
+ * - 발판: 도트 1칸
+ */
+export type Doc = { frames: (Sprite | null)[] };
+
+/** 캐릭터 → 에디터 3칸 */
+export function characterDoc(c: Character): Doc {
+  return { frames: POSES.map((pose) => c[pose] ?? null) };
+}
+
+/** 에디터 3칸 → 캐릭터 (없는 모습은 빼고) */
+export function docCharacter(doc: Doc): Character {
+  const out: Character = { base: doc.frames[0]! };
+  POSES.forEach((pose, i) => {
+    const f = doc.frames[i];
+    if (pose !== "base" && f) out[pose] = f;
+  });
+  return out;
+}
+
+/** 칸 번호 ↔ 모습 */
+export function poseAt(frame: number): Pose {
+  return POSES[frame] ?? "base";
+}
 
 export type TabState = { history: History<Doc>; baseline: Doc };
 
@@ -59,7 +84,7 @@ export type EditorState = {
   /** 동료 이름 (companion 모드만). 저장된 이름과 다르면 바뀐 것으로 본다 */
   name: string;
   savedName: string;
-  /** 0 = 기본, 1 = 착지 */
+  /** 캐릭터 탭: 0 = 기본, 1 = 내려갈 때, 2 = 착지 (POSES 순서). 발판 탭은 0 */
   frame: number;
   tool: Tool;
   color: string;
@@ -87,10 +112,14 @@ export type EditorAction =
   | { type: "clear" }
   | { type: "undo" }
   | { type: "redo" }
-  | { type: "addLanding"; copyBase: boolean }
-  | { type: "removeLanding" }
+  /** 내려갈 때·착지 모습 추가 (기본 그림 복사 또는 빈 칸에서) */
+  | { type: "addPose"; pose: Exclude<Pose, "base">; copyBase: boolean }
+  /** 지금 보고 있는 모습 삭제 (기본은 지울 수 없음) */
+  | { type: "removePose" }
   | { type: "resizeGrid"; width: number; height: number }
   | { type: "loadSprite"; sprite: PixelSprite }
+  /** 기본 캐릭터·주인공 그림을 세 모습 그대로 불러온다 (캐릭터 탭만) */
+  | { type: "loadCharacter"; character: Character }
   /** 이미지 불러오기 결과를 지금 프레임에 넣는다 (캐릭터 탭만) */
   | { type: "setFrameSprite"; sprite: Sprite }
   | { type: "restoreDraft"; draft: EditorDraft }
@@ -125,7 +154,7 @@ export function createEditorState(save: Pick<SaveData, "hero" | "platforms" | "p
     ...baseState(save.palette),
     keys: TAB_KEYS,
     tabs: {
-      hero: tab({ frames: [...save.hero.frames] }),
+      hero: tab(characterDoc(save.hero)),
       basic: tab({ frames: [save.platforms.basic] }),
       highJump: tab({ frames: [save.platforms.highJump] }),
       oneTime: tab({ frames: [save.platforms.oneTime] }),
@@ -136,14 +165,12 @@ export function createEditorState(save: Pick<SaveData, "hero" | "platforms" | "p
 
 /** 동료 한 명 편집. 그림이 없는 슬롯은 빈 16×18에서 시작한다 */
 export function createCompanionEditorState(slot: CompanionSlot, palette: string[]): EditorState {
-  const frames: Sprite[] = slot.character
-    ? [...slot.character.frames]
-    : [blankSprite(DEFAULT_GRID.width, DEFAULT_GRID.height)];
+  const doc = slot.character ? characterDoc(slot.character) : characterDoc({ base: blankSprite(DEFAULT_GRID.width, DEFAULT_GRID.height) });
   const name = slot.name ?? "";
   return {
     ...baseState(palette),
     keys: ["companion"],
-    tabs: { companion: tab({ frames }) },
+    tabs: { companion: tab(doc) },
     active: "companion",
     name,
     savedName: name,
@@ -165,7 +192,8 @@ export function currentDoc(s: EditorState): Doc {
 
 export function currentSprite(s: EditorState): Sprite {
   const doc = currentDoc(s);
-  return doc.frames[Math.min(s.frame, doc.frames.length - 1)];
+  // 보고 있는 칸이 비었으면(되돌리기 등) 기본
+  return doc.frames[s.frame] ?? doc.frames[0]!;
 }
 
 /** 그림이 바뀌었는지. 탭을 정하지 않으면 모든 탭 + 동료 이름까지 */
@@ -279,7 +307,7 @@ function onPointer(s: EditorState, phase: PointerPhase, x: number, y: number): E
       }
       if (!s.stroke) return s;
       const baseSprite = s.stroke.base.frames[s.frame];
-      if (baseSprite.kind !== "pixel") return s;
+      if (baseSprite?.kind !== "pixel") return s;
       const moved = shift(baseSprite, x - s.stroke.origin[0], y - s.stroke.origin[1]);
       return strokeApply(s, withFrame(s.stroke.base, s.frame, moved));
     }
@@ -291,8 +319,9 @@ export function editorReducer(s: EditorState, a: EditorAction): EditorState {
     case "setTab":
       return a.tab === s.active || !s.tabs[a.tab] ? s : { ...s, active: a.tab, frame: 0, stroke: null };
     case "setFrame": {
-      const count = currentDoc(s).frames.length;
-      return { ...s, frame: Math.max(0, Math.min(count - 1, a.frame)), stroke: null };
+      // 그린 모습으로만 옮긴다
+      if (!currentDoc(s).frames[a.frame]) return s;
+      return { ...s, frame: a.frame, stroke: null };
     }
     case "setTool":
       return { ...s, tool: a.tool };
@@ -319,30 +348,37 @@ export function editorReducer(s: EditorState, a: EditorAction): EditorState {
       return { ...setTabHistory(s, undo(tabState(s).history)), stroke: null, frame: clampFrame(s, undo) };
     case "redo":
       return { ...setTabHistory(s, redo(tabState(s).history)), stroke: null, frame: clampFrame(s, redo) };
-    case "addLanding": {
+    case "addPose": {
       if (!isCharacterTab(s.active)) return s;
       const doc = currentDoc(s);
-      if (doc.frames.length >= 2) return { ...s, frame: 1 };
-      const base = doc.frames[0];
+      const index = POSES.indexOf(a.pose);
+      if (doc.frames[index]) return { ...s, frame: index, stroke: null };
+      const base = doc.frames[0]!;
+      // 빈 칸은 기본 그림과 같은 격자로 (이미지면 기본 격자)
       const empty = base.kind === "pixel" ? blankSprite(base.width, base.height) : blankSprite(DEFAULT_GRID.width, DEFAULT_GRID.height);
-      const landing = a.copyBase ? base : empty;
-      return { ...commit(s, { frames: [base, landing] }), frame: 1 };
+      return { ...commit(s, withFrame(doc, index, a.copyBase ? base : empty)), frame: index, stroke: null };
     }
-    case "removeLanding": {
+    case "removePose": {
       const doc = currentDoc(s);
-      if (!isCharacterTab(s.active) || doc.frames.length < 2) return s;
-      return { ...commit(s, { frames: [doc.frames[0]] }), frame: 0 };
+      if (!isCharacterTab(s.active) || s.frame === 0 || !doc.frames[s.frame]) return s;
+      const frames = doc.frames.slice();
+      frames[s.frame] = null;
+      return { ...commit(s, { frames }), frame: 0, stroke: null };
     }
     case "resizeGrid": {
       if (!isCharacterTab(s.active)) return s;
       const doc = currentDoc(s);
-      const frames = doc.frames.map((f) => (f.kind === "pixel" ? resizeSprite(f, a.width, a.height) : f));
+      const frames = doc.frames.map((f) => (f?.kind === "pixel" ? resizeSprite(f, a.width, a.height) : f));
       return commit(s, { frames });
     }
     case "loadSprite": {
-      // 캐릭터 탭은 기본 그림을 바꾸고 착지 프레임은 뺀다 (다른 캐릭터의 착지 그림이 남지 않게)
-      if (isCharacterTab(s.active)) return { ...commit(s, { frames: [a.sprite] }), frame: 0 };
+      // 캐릭터 탭은 기본 그림을 바꾸고 내려갈 때·착지 모습은 뺀다 (다른 캐릭터의 그림이 남지 않게)
+      if (isCharacterTab(s.active)) return { ...commit(s, characterDoc({ base: a.sprite })), frame: 0 };
       return commit(s, { frames: [a.sprite] });
+    }
+    case "loadCharacter": {
+      if (!isCharacterTab(s.active)) return s;
+      return { ...commit(s, characterDoc(a.character)), frame: 0, stroke: null };
     }
     case "setFrameSprite": {
       if (!isCharacterTab(s.active)) return s;
@@ -356,10 +392,10 @@ export function editorReducer(s: EditorState, a: EditorAction): EditorState {
         if (doc && t) tabs[k] = { ...t, history: pushHistory(t.history, doc) };
       }
       const next = { ...s, tabs, active: tabs[a.draft.active] ? a.draft.active : s.active };
-      const frames = currentDoc(next).frames.length;
       // 이름은 동료 모드에만 있다
       const name = s.tabs.companion ? (a.draft.name ?? s.name) : s.name;
-      return { ...next, name, frame: Math.min(a.draft.frame, frames - 1), stroke: null };
+      const frame = currentDoc(next).frames[a.draft.frame] ? a.draft.frame : 0;
+      return { ...next, name, frame, stroke: null };
     }
     case "markSaved": {
       const tabs = { ...s.tabs };
@@ -372,10 +408,9 @@ export function editorReducer(s: EditorState, a: EditorAction): EditorState {
   }
 }
 
-/** 되돌리기로 착지 프레임이 사라질 수 있어서 프레임 번호를 맞춘다 */
+/** 되돌리기로 보고 있던 모습이 사라질 수 있어서, 없으면 기본으로 */
 function clampFrame(s: EditorState, op: (h: History<Doc>) => History<Doc>) {
-  const count = op(tabState(s).history).present.frames.length;
-  return Math.min(s.frame, count - 1);
+  return op(tabState(s).history).present.frames[s.frame] ? s.frame : 0;
 }
 
 // ── 완료(저장) ──
@@ -388,9 +423,10 @@ export function checkCommit(s: EditorState): CommitCheck {
     const frames = tabState(s, k).history.present.frames;
     for (let i = 0; i < frames.length; i++) {
       const f = frames[i];
-      if (f.kind === "pixel" && isEmptySprite(f)) {
-        const what = isCharacterTab(k) ? `${TAB_LABEL[k]} ${i === 0 ? "기본" : "착지"} 그림` : `${TAB_LABEL[k]} 그림`;
-        const hint = isCharacterTab(k) && i === 1 ? " 그리거나 착지 프레임을 삭제해주세요." : " 한 칸 이상 그려주세요.";
+      if (f?.kind === "pixel" && isEmptySprite(f)) {
+        const pose = POSE_INFO[poseAt(i)].name;
+        const what = isCharacterTab(k) ? `${TAB_LABEL[k]} ${pose} 그림` : `${TAB_LABEL[k]} 그림`;
+        const hint = isCharacterTab(k) && i > 0 ? ` 그리거나 ${pose} 모습을 삭제해주세요.` : " 한 칸 이상 그려주세요.";
         return { ok: false, tab: k, frame: i, message: `${what}이 비어 있어요.${hint}` };
       }
     }
@@ -400,19 +436,19 @@ export function checkCommit(s: EditorState): CommitCheck {
 
 /** 동료 슬롯에 저장할 값 (companion 모드). slot은 1~5. 이름이 비어 있으면 이름 없음 */
 export function applyCompanionToSave(s: EditorState, save: SaveData, slot: number): SaveData {
-  const frames = tabState(s, "companion").history.present.frames as Character["frames"];
+  const character = docCharacter(tabState(s, "companion").history.present);
   const name = s.name.trim();
-  const next: CompanionSlot = name ? { character: { frames }, name } : { character: { frames } };
+  const next: CompanionSlot = name ? { character, name } : { character };
   return { ...save, companionSlots: save.companionSlots.map((c, i) => (i === slot - 1 ? next : c)) };
 }
 
 /** 저장 데이터에 반영할 값 (main 모드) */
 export function applyToSave(s: EditorState, save: SaveData): SaveData {
-  const hero = tabState(s, "hero").history.present.frames as Character["frames"];
+  const hero = docCharacter(tabState(s, "hero").history.present);
   const plat = (k: keyof Platforms) => tabState(s, k).history.present.frames[0] as PixelSprite;
   return {
     ...save,
-    hero: { frames: hero },
+    hero,
     platforms: { basic: plat("basic"), highJump: plat("highJump"), oneTime: plat("oneTime") },
   };
 }
@@ -426,7 +462,11 @@ export function companionDraftKey(slot: number) {
   return `editor.draft.companion.${slot}`;
 }
 
+/** 임시 저장본 형식 버전. 2 = 캐릭터 3칸 [기본, 내려갈 때, 착지]. 없으면 예전 [기본, 착지?] */
+const DRAFT_VERSION = 2;
+
 export type EditorDraft = {
+  v?: number;
   savedAt: number;
   active: TabKey;
   frame: number;
@@ -441,7 +481,7 @@ export function toDraft(s: EditorState): EditorDraft | null {
   for (const k of s.keys) if (isDirty(s, k)) docs[k] = tabState(s, k).history.present;
   const named = nameChanged(s);
   if (Object.keys(docs).length === 0 && !named) return null;
-  const draft: EditorDraft = { savedAt: Date.now(), active: s.active, frame: s.frame, docs };
+  const draft: EditorDraft = { v: DRAFT_VERSION, savedAt: Date.now(), active: s.active, frame: s.frame, docs };
   if (named) draft.name = s.name;
   return draft;
 }
@@ -452,14 +492,28 @@ export function parseDraft(raw: unknown): EditorDraft | null {
   const r = raw as Record<string, unknown>;
   if (!ALL_KEYS.includes(r.active as TabKey) || typeof r.savedAt !== "number") return null;
   if (typeof r.docs !== "object" || r.docs === null) return null;
+  const legacy = r.v !== DRAFT_VERSION;
   const docs: Partial<Record<TabKey, Doc>> = {};
   for (const k of ALL_KEYS) {
     const d = (r.docs as Record<string, unknown>)[k];
     if (d === undefined) continue;
     if (isCharacterTab(k)) {
-      const c = validateCharacter(d, "임시 저장 캐릭터");
-      if (!c.ok) return null;
-      docs[k] = { frames: [...c.value.frames] };
+      const raw = (d as { frames?: unknown[] })?.frames;
+      if (!Array.isArray(raw)) return null;
+      // 예전 임시 저장본은 [기본, 착지?] → [기본, 없음, 착지?]
+      const slots = legacy ? [raw[0], null, raw[1] ?? null] : raw;
+      if (slots.length !== POSES.length) return null;
+      const frames: (Sprite | null)[] = [];
+      for (let i = 0; i < slots.length; i++) {
+        if (i > 0 && (slots[i] === null || slots[i] === undefined)) {
+          frames.push(null);
+          continue;
+        }
+        const v = validateSprite(slots[i], "character", "임시 저장 캐릭터");
+        if (!v.ok) return null;
+        frames.push(v.value);
+      }
+      docs[k] = { frames };
     } else {
       const frames = (d as { frames?: unknown[] })?.frames;
       const p = validatePixelSprite(Array.isArray(frames) ? frames[0] : null, "platform", "임시 저장 발판");
@@ -470,8 +524,9 @@ export function parseDraft(raw: unknown): EditorDraft | null {
   if (r.name !== undefined && typeof r.name !== "string") return null;
   const name = typeof r.name === "string" ? r.name.slice(0, CONFIG.limits.companionNameMax) : undefined;
   if (Object.keys(docs).length === 0 && name === undefined) return null;
-  const frame = typeof r.frame === "number" && Number.isInteger(r.frame) && r.frame >= 0 ? r.frame : 0;
-  const draft: EditorDraft = { savedAt: r.savedAt, active: r.active as TabKey, frame, docs };
+  let frame = typeof r.frame === "number" && Number.isInteger(r.frame) && r.frame >= 0 && r.frame < POSES.length ? r.frame : 0;
+  if (legacy && frame === 1) frame = 2; // 예전 1번 = 착지
+  const draft: EditorDraft = { v: DRAFT_VERSION, savedAt: r.savedAt, active: r.active as TabKey, frame, docs };
   if (name !== undefined) draft.name = name;
   return draft;
 }

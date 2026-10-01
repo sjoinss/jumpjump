@@ -25,15 +25,15 @@ export type RefusalOutcome = {
 
 /**
  * 후보 선택창에서 "아니오"를 눌렀을 때 (같은 후보 블록은 한 번만 센다 — 부르는 쪽 책임).
- * 설정을 직접 건드린 적이 없을 때('default')만 세고, 한도에 닿으면 그 시점의 동료 수로 최대 인원을 맞춘다.
- * 카운트는 판이 끝나도 유지되고 수락해도 줄지 않는다.
+ * 한도(3번)에 닿으면 그 시점의 동료 수로 최대 인원을 맞춘다 → 더는 후보가 나오지 않는다.
+ * 사용자 요청으로 설정을 직접 바꾼 적이 있어도 센다 (기획서 7-6의 "직접 설정하면 자동 설정 끔"을 바꿈).
+ * 카운트는 판이 끝나도 이어지고 수락해도 줄지 않으며, 자동 설정되거나 설정에서 최대 인원을 바꾸면 0부터 다시.
  */
 export function applyRefusal(settings: Settings, companionsNow: number): RefusalOutcome {
-  if (settings.companionMaxSource !== "default") return { settings, autoSetTo: null };
   const refusalCount = settings.refusalCount + 1;
   if (refusalCount >= CONFIG.companion.refusalLimit) {
     return {
-      settings: { ...settings, refusalCount, companionMax: companionsNow, companionMaxSource: "auto" },
+      settings: { ...settings, refusalCount: 0, companionMax: companionsNow, companionMaxSource: "auto" },
       autoSetTo: companionsNow,
     };
   }

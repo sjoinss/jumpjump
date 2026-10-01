@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import type { Settings } from "../src/lib/schema";
 import { applyRefusal, canOfferCompanion, candidateHeight } from "../src/game/companions";
 import { CONFIG } from "../src/game/config";
 import { cameraRatioFor, formationSize, memberCell } from "../src/game/formation";
@@ -125,16 +126,27 @@ test("후보에 닿으면 선택창 이벤트 (합류할 슬롯 번호 포함), 
   assert.equal(run(w, 0.05).filter((e) => e.type === "candidate").length, 0);
 });
 
-test("거절: 같은 블록은 한 번만 세고, 대열이 떨어졌다 다시 닿으면 다시 묻는다", () => {
+test("거절: 그 구슬은 조용히 사라지고 다시 묻지 않는다 (한 번만 셈)", () => {
   const w = make();
   const c = withCandidateAbove(w);
   w.launch();
   run(w, 0.2);
   assert.equal(w.refuseCandidate(c.id), true, "처음 거절");
-  // 제자리 점프를 몇 번 하는 동안 떨어졌다 다시 닿는다
+  assert.equal(c.state, "fading");
   const again = run(w, 3).filter((e) => e.type === "candidate");
-  assert.ok(again.length >= 1, "다시 물어봄");
-  assert.equal(w.refuseCandidate(c.id), false, "같은 블록 두 번째 거절은 세지 않음");
+  assert.equal(again.length, 0, "다시 묻지 않음");
+  assert.equal(w.candidates.length, 0, "사라짐");
+  assert.equal(w.refuseCandidate(c.id), false);
+});
+
+test("그리다 그만두면 구슬은 남아서 다시 닿으면 또 묻는다", () => {
+  const w = make();
+  const c = withCandidateAbove(w);
+  w.launch();
+  run(w, 0.2);
+  w.keepCandidate(c.id);
+  const again = run(w, 3).filter((e) => e.type === "candidate");
+  assert.ok(again.length >= 1);
 });
 
 test("M이 C 이하로 바뀌면 화면의 후보는 조용히 사라진다", () => {
@@ -163,7 +175,7 @@ test("합류: 후보가 없어지고 동료 수가 는다. 5명이 차면 남은
 
 // ── 거절 누적·자동 설정 ──
 
-test("거절 누적: 'default'일 때만 세고, 3번째에 그때 동료 수로 자동 설정", () => {
+test("거절 누적: 3번째에 그때 데리고 있는 동료 수로 자동 설정 (최대 5명이어도 2명이면 2명)", () => {
   let s = createDefaultSettings({ reducedMotion: false });
   let r = applyRefusal(s, 2);
   assert.equal(r.settings.refusalCount, 1);
@@ -173,15 +185,15 @@ test("거절 누적: 'default'일 때만 세고, 3번째에 그때 동료 수로
   assert.equal(r.autoSetTo, 2);
   assert.equal(r.settings.companionMax, 2);
   assert.equal(r.settings.companionMaxSource, "auto");
-  // 자동 설정 뒤에는 더 세지 않음
-  assert.equal(applyRefusal(r.settings, 0).settings.refusalCount, 3);
+  assert.equal(r.settings.refusalCount, 0, "자동 설정되면 0부터 다시");
 });
 
-test("직접 설정한 적이 있으면 거절을 세지 않는다", () => {
-  const s = { ...createDefaultSettings({ reducedMotion: false }), companionMaxSource: "user" as const };
+test("설정을 직접 바꾼 적이 있어도 거절을 센다", () => {
+  let s: Settings = { ...createDefaultSettings({ reducedMotion: false }), companionMaxSource: "user", companionMax: 5 };
+  for (let i = 0; i < 2; i++) s = applyRefusal(s, 1).settings;
   const r = applyRefusal(s, 1);
-  assert.equal(r.settings, s);
-  assert.equal(r.autoSetTo, null);
+  assert.equal(r.autoSetTo, 1);
+  assert.equal(r.settings.companionMax, 1);
 });
 
 test("동료 최대 인원 0으로 시작한 판은 발판 판정 폭이 넓다 (혼자 하는 사람 보정)", () => {

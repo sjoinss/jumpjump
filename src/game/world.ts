@@ -129,6 +129,11 @@ export class World {
   private readonly companionMaxAtStart: number;
   private nextId = 1;
   private topY = 0;
+  /**
+   * 바닥선: 일회용 발판을 밟으면 그 높이가 새 바닥이 된다 (화면 아래 끝이 거기까지 올라온다).
+   * 부서진 발판 아래로 떨어지면 돌아갈 곳 없이 끝 — 갇혀서 계속 튀기만 하는 일이 없다
+   */
+  floorY = -Infinity;
   /** 다음 후보 순번 (candidateHeight(n)) */
   private nextCandidate = 0;
 
@@ -174,6 +179,7 @@ export class World {
     this.candidates = [];
     this.platforms = [{ id: 0, kind: "ground", x: -w, y: 0, width: w * 3, touched: true }];
     this.topY = CONFIG.world.firstPlatformY - gapAt(0);
+    this.floorY = -Infinity;
     this.spawn();
   }
 
@@ -196,18 +202,25 @@ export class World {
   }
 
   /**
-   * 선택창 "아니오": 후보는 그 자리에 남고, 대열이 한 번 떨어졌다가 다시 닿으면 다시 물어본다.
+   * 선택창 "아니오"(또는 닫기): 그 구슬은 사라진다.
    * @param count 거절로 셀지 (Esc·닫기처럼 명시적으로 "아니오"를 고르지 않은 경우는 false)
    * @returns 이번에 거절로 새로 셌는지 (같은 블록은 한 번만)
    */
   refuseCandidate(id: number, count = true): boolean {
     const c = this.candidates.find((x) => x.id === id);
     if (!c) return false;
-    c.state = "dismissed";
+    // 거절한 구슬은 조용히 사라진다 (같은 구슬이 다시 묻지 않게, 사용자 요청)
+    c.state = "fading";
     if (!count) return false;
     const first = !c.refusalCounted;
     c.refusalCounted = true;
     return first;
+  }
+
+  /** 그리다 그만둠: 구슬은 그 자리에 남는다 (다시 닿으면 초안을 이어 그릴 수 있게) */
+  keepCandidate(id: number) {
+    const c = this.candidates.find((x) => x.id === id);
+    if (c) c.state = "dismissed";
   }
 
   /** 미니게임 실패: 그 후보는 없어진다. 그린 그림은 슬롯에 남아 다음 후보가 그 모습으로 나온다 (기획서 7-4) */
@@ -233,8 +246,18 @@ export class World {
     return h.x < c.x + size / 2 && h.x + f.width > c.x - size / 2 && h.y < c.y + size && h.y + f.height > c.y;
   }
 
-  step(dt: number, intent: MoveIntent): WorldEvent[] {
+  /**
+   * 게임 속도 배율: 새 지역에 들어갈 때마다 조금씩 빨라진다 (난이도). 시간을 빠르게 흘려서
+   * 점프 높이·발판 간격(= 닿을 수 있는 거리)은 그대로이고 반응할 시간만 줄어든다.
+   */
+  get speed() {
+    const list = CONFIG.regions.speedScale;
+    return list[Math.min(this.region, list.length - 1)];
+  }
+
+  step(realDt: number, intent: MoveIntent): WorldEvent[] {
     if (this.over) return [];
+    const dt = realDt * this.speed;
     const events: WorldEvent[] = [];
     const h = this.hero;
     const f = this.formation;
@@ -263,7 +286,10 @@ export class World {
         h.vy = CONFIG.physics.jumpVelocity * boost;
         const first = !hit.touched;
         hit.touched = true;
-        if (hit.kind === "oneTime") hit.broken = 0;
+        if (hit.kind === "oneTime") {
+          hit.broken = 0;
+          this.floorY = Math.max(this.floorY, hit.y);
+        }
         events.push({ type: "land", platform: hit, first });
       }
     }
@@ -284,6 +310,9 @@ export class World {
     // 카메라: 위로만. 맨 아래 줄 발밑이 화면 위에서 (줄 수에 따른) 비율 위치에 오도록
     const target = h.y - this.playHeight * (1 - cameraRatioFor(this.companions));
     if (target > this.cameraY) this.cameraY = target;
+    // 바닥선: 부서진 일회용 발판 바로 아래가 화면 아래 끝이 될 때까지 부드럽게 올라간다
+    const floorCam = this.floorY - CONFIG.special.breakFloorMargin;
+    if (floorCam > this.cameraY) this.cameraY = Math.min(floorCam, this.cameraY + CONFIG.special.breakFloorSpeed * dt);
 
     // 부서진 일회용 발판: 잠깐 떨어지는 모습을 보여준 뒤 없앤다
     for (const p of this.platforms) if (p.broken !== undefined) p.broken += dt;
@@ -324,13 +353,13 @@ export class World {
       const width = this.platformWidth;
       const gap = gapAt(this.topY) * (1 - CONFIG.world.gapJitter * this.rng());
       this.topY += gap;
-      const x = this.rng() * (CONFIG.view.width - width);
-      const id = this.nextId++;
       const meters = toMeters(this.topY);
       const hasCandidate = meters >= candidateHeight(this.nextCandidate);
       while (meters >= candidateHeight(this.nextCandidate)) this.nextCandidate += 1;
       // 후보가 올라가는 발판은 부서지지 않는 기본 발판으로
       const kind = hasCandidate ? "basic" : pickKind(meters, this.rng());
+      const x = this.rng() * (CONFIG.view.width - width);
+      const id = this.nextId++;
       this.platforms.push({ id, kind, x, y: this.topY, width, touched: false });
       // 후보는 C < M일 때만 생긴다 (M = 0이면 처음부터 없음)
       if (hasCandidate && canOfferCompanion(this.companions, this.companionMax)) {

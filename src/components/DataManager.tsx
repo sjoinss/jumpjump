@@ -17,7 +17,7 @@ import {
   type ParsedImport,
 } from "@/lib/dataFile";
 import { saveOrShareFile } from "@/lib/fileIO";
-import { RECORD_LABEL } from "@/lib/records";
+import { formatScore, RECORD_LABEL } from "@/lib/records";
 import { verifyImages } from "@/lib/imageVerify";
 import type { SaveData } from "@/lib/schema";
 import { PixelPreview } from "./PixelPreview";
@@ -236,7 +236,7 @@ function same(a: readonly DataKey[], b: readonly DataKey[]) {
 function summary(d: Partial<SaveData>, k: DataKey) {
   switch (k) {
     case "hero":
-      return d.hero && <SpritePreview sprite={d.hero.frames[0]} width={24} height={27} />;
+      return d.hero && <SpritePreview sprite={d.hero.base} width={24} height={27} />;
     case "platforms":
       return (
         d.platforms && (
@@ -254,7 +254,7 @@ function summary(d: Partial<SaveData>, k: DataKey) {
     case "settings":
       return d.settings && `${THEMES[d.settings.theme].name} · 동료 최대 ${d.settings.companionMax}명`;
     case "best":
-      return d.best && `${RECORD_LABEL.withCompanions} ${d.best.withCompanions}m · ${RECORD_LABEL.solo} ${d.best.solo}m`;
+      return d.best && `${RECORD_LABEL.withCompanions} ${formatScore(d.best.withCompanions)}m · ${RECORD_LABEL.solo} ${formatScore(d.best.solo)}m`;
   }
 }
 

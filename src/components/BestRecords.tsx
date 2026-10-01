@@ -1,7 +1,7 @@
 "use client";
 
 import { useId } from "react";
-import { RECORD_HELP, RECORD_LABEL } from "@/lib/records";
+import { formatScore, RECORD_HELP, RECORD_LABEL } from "@/lib/records";
 import type { BestScores } from "@/lib/schema";
 import { PixelIcon } from "./ui/PixelIcon";
 import styles from "./BestRecords.module.css";
@@ -28,11 +28,11 @@ export function BestRecords({ best }: Props) {
         <dl className={styles.list}>
           <div className={styles.row}>
             <dt>{RECORD_LABEL.withCompanions}</dt>
-            <dd>{best.withCompanions}m</dd>
+            <dd>{formatScore(best.withCompanions)}m</dd>
           </div>
           <div className={styles.row}>
             <dt>{RECORD_LABEL.solo}</dt>
-            <dd>{best.solo}m</dd>
+            <dd>{formatScore(best.solo)}m</dd>
           </div>
         </dl>
       )}

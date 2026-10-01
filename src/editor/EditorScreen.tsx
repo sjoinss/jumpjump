@@ -16,7 +16,8 @@ import { Tabs } from "@/components/ui/Tabs";
 import { useToast } from "@/components/ui/Toast";
 import { CONFIG } from "@/game/config";
 import { CHARACTER_PRESETS, PLATFORM_PRESETS } from "@/game/presets";
-import type { PixelSprite, Sprite } from "@/lib/schema";
+import { POSE_INFO } from "@/lib/character";
+import { POSES, type Character, type PixelSprite } from "@/lib/schema";
 import { DotCanvas, type Underlay } from "./DotCanvas";
 import { ImageImportScreen } from "./ImageImportScreen";
 import { isLossyDownscale } from "./grid";
@@ -37,6 +38,7 @@ import {
   editorTabItems,
   isCharacterTab,
   isDirty,
+  poseAt,
   parseDraft,
   TAB_LABEL,
   toDraft,
@@ -48,7 +50,7 @@ import { TOOLS } from "./Toolbar";
 import { Toolbar } from "./Toolbar";
 import styles from "./EditorScreen.module.css";
 
-type DialogKind = null | "canvas" | "landing" | "leave" | "backup";
+type DialogKind = null | "canvas" | "addFall" | "addLand" | "leave" | "backup";
 
 const DRAFT_DEBOUNCE_MS = 500;
 
@@ -225,9 +227,9 @@ export function EditorScreen({ onClose, companion, initialTab }: Props) {
     return () => window.removeEventListener("keydown", onKey);
   }, [dialog, draftPrompt]);
 
-  // 밑그림: 주인공 가이드(동료만) → 내 기본 그림(착지 프레임 작업 때)
-  const heroGuide = data.hero.frames[0];
-  const onionBase = isHero && state.frame === 1 && state.onion ? doc.frames[0] : null;
+  // 밑그림: 주인공 가이드(동료만) → 내 기본 그림(내려갈 때·착지 모습 작업 때)
+  const heroGuide = data.hero.base;
+  const onionBase = isHero && state.frame > 0 && state.onion ? doc.frames[0] : null;
   const underlays = useMemo(() => {
     const list: Underlay[] = [];
     if (companion && state.guide) list.push({ sprite: heroGuide, opacity: GUIDE_OPACITY });
@@ -236,7 +238,8 @@ export function EditorScreen({ onClose, companion, initialTab }: Props) {
   }, [companion, state.guide, heroGuide, onionBase, state.onionOpacity]);
   const tabItems = editorTabItems(state);
   const title = companion ? `동료 ${companion.slot} 그리기` : "그리기";
-  const frameName = isHero ? (state.frame === 1 ? " 착지 그림" : " 기본 그림") : "";
+  const pose = poseAt(state.frame);
+  const frameName = isHero ? ` ${POSE_INFO[pose].name} 그림` : "";
 
   return (
     <>
@@ -280,42 +283,31 @@ export function EditorScreen({ onClose, companion, initialTab }: Props) {
       >
         <div className={styles.frameBar}>
           {isHero ? (
-            <div className={styles.frames} role="group" aria-label="프레임">
-              <button
-                type="button"
-                className={styles.chip}
-                aria-pressed={state.frame === 0}
-                onClick={() => dispatch({ type: "setFrame", frame: 0 })}
-              >
-                기본
-              </button>
-              {doc.frames.length > 1 ? (
-                <>
+            <div className={styles.frames} role="group" aria-label="모습">
+              {/* 기본은 늘 있고, 내려갈 때·착지는 그린 것만 칩, 아직 없으면 "+ 추가" (어디까지 그릴지 고른다) */}
+              {POSES.map((p, i) =>
+                doc.frames[i] ? (
                   <button
+                    key={p}
                     type="button"
                     className={styles.chip}
-                    aria-pressed={state.frame === 1}
-                    onClick={() => dispatch({ type: "setFrame", frame: 1 })}
+                    aria-pressed={state.frame === i}
+                    onClick={() => dispatch({ type: "setFrame", frame: i })}
                   >
-                    착지
+                    {POSE_INFO[p].name}
                   </button>
-                  {state.frame === 1 && (
-                    <button
-                      type="button"
-                      className={styles.chipGhost}
-                      onClick={() => dispatch({ type: "removeLanding" })}
-                      title="착지 프레임 삭제 (되돌리기 가능)"
-                    >
-                      <PixelIcon name="trash" size={12} />
-                      착지 삭제
-                    </button>
-                  )}
-                </>
-              ) : (
-                <button type="button" className={styles.chipGhost} onClick={() => setDialog("landing")}>
-                  <PixelIcon name="plus" size={12} />
-                  착지 추가
-                </button>
+                ) : (
+                  <button
+                    key={p}
+                    type="button"
+                    className={styles.chipGhost}
+                    onClick={() => setDialog(p === "fall" ? "addFall" : "addLand")}
+                    aria-label={`${POSE_INFO[p].name} 모습 추가`}
+                  >
+                    <PixelIcon name="plus" size={12} />
+                    {POSE_INFO[p].name}
+                  </button>
+                ),
               )}
             </div>
           ) : (
@@ -323,9 +315,24 @@ export function EditorScreen({ onClose, companion, initialTab }: Props) {
           )}
           <button type="button" className={styles.chipGhost} onClick={() => setDialog("canvas")}>
             <PixelIcon name="grid" size={12} />
-            {isHero ? "불러오기·크기" : "기본 발판"}
+            {isHero ? "불러오기" : "기본 발판"}
           </button>
         </div>
+
+        {isHero && (
+          <div className={styles.poseHint}>
+            <p>
+              <strong>{POSE_INFO[pose].name}</strong> · {POSE_INFO[pose].when}
+              {pose !== "base" && " 안 그리면 기본 그림이 나와요."}
+            </p>
+            {pose !== "base" && (
+              <button type="button" className={styles.chipGhost} onClick={() => dispatch({ type: "removePose" })}>
+                <PixelIcon name="trash" size={12} />
+                {POSE_INFO[pose].name} 삭제
+              </button>
+            )}
+          </div>
+        )}
 
         {companion && (
           <div className={styles.companionBar}>
@@ -345,7 +352,7 @@ export function EditorScreen({ onClose, companion, initialTab }: Props) {
           </div>
         )}
 
-        {isHero && state.frame === 1 && (
+        {isHero && state.frame > 0 && (
           <div className={styles.onion}>
             <Switch
               label={companion ? "내 기본 그림 깔기" : "기본 그림 깔기"}
@@ -465,47 +472,30 @@ export function EditorScreen({ onClose, companion, initialTab }: Props) {
         }
       />
 
-      <Dialog
-        open={dialog === "landing"}
-        title="착지 프레임 추가"
-        description="발판에 착지하는 순간 잠깐(0.2초) 보이는 그림이에요. 눈을 감거나 찌그러진 모습을 그려보세요!"
+      <AddPoseDialog
+        pose={dialog === "addFall" ? "fall" : dialog === "addLand" ? "land" : null}
         onClose={() => setDialog(null)}
-        actions={
-          <>
-            <Button
-              variant="primary"
-              block
-              data-autofocus
-              onClick={() => {
-                dispatch({ type: "addLanding", copyBase: true });
-                setDialog(null);
-              }}
-            >
-              기본 그림 복사해서 시작
-            </Button>
-            <Button
-              variant="secondary"
-              block
-              onClick={() => {
-                dispatch({ type: "addLanding", copyBase: false });
-                setDialog(null);
-              }}
-            >
-              빈 칸에서 시작
-            </Button>
-          </>
-        }
+        onAdd={(p, copyBase) => {
+          dispatch({ type: "addPose", pose: p, copyBase });
+          setDialog(null);
+        }}
       />
 
       <CanvasDialog
         open={dialog === "canvas"}
         tab={state.active}
         sprite={sprite.kind === "pixel" ? sprite : null}
-        hero={heroGuide}
+        hero={data.hero}
         onClose={() => setDialog(null)}
         onLoad={(s, name) => {
-          // 도트는 기본 그림을 바꾸고(착지 빠짐), 이미지(주인공이 이미지일 때)는 지금 프레임에
-          dispatch(s.kind === "pixel" ? { type: "loadSprite", sprite: s } : { type: "setFrameSprite", sprite: s });
+          // 발판: 기본 발판으로 되돌리기
+          dispatch({ type: "loadSprite", sprite: s });
+          setDialog(null);
+          show(`${name}을(를) 불러왔어요. 되돌리기로 돌아갈 수 있어요.`, "info");
+        }}
+        onLoadCharacter={(c, name) => {
+          // 기본 캐릭터·주인공 그림은 세 모습을 그대로
+          dispatch({ type: "loadCharacter", character: c });
           setDialog(null);
           show(`${name}을(를) 불러왔어요. 되돌리기로 돌아갈 수 있어요.`, "info");
         }}
@@ -596,12 +586,52 @@ export function EditorScreen({ onClose, companion, initialTab }: Props) {
           onDone={(sprite) => {
             dispatch({ type: "setFrameSprite", sprite });
             setImporting(null);
-            show("이미지를 넣었어요. 완료를 누르면 게임에 적용돼요.", "success");
+            show(
+              sprite.kind === "pixel" ? "도트로 바꿨어요. 바로 고칠 수 있어요." : "이미지를 넣었어요. 완료를 누르면 게임에 적용돼요.",
+              "success",
+            );
           }}
         />
       </div>
     )}
     </>
+  );
+}
+
+const POSE_TIP = {
+  fall: "떨어지는 동안 보이는 그림이에요. 팔을 위로 들거나 놀란 표정을 그려보세요!",
+  land: "발판에 닿는 순간 잠깐(0.2초) 보이는 그림이에요. 눈을 감거나 찌그러진 모습을 그려보세요!",
+} as const;
+
+/** 내려갈 때·착지 모습 추가: 기본 그림을 복사해서 고치거나 빈 칸에서 */
+function AddPoseDialog({
+  pose,
+  onClose,
+  onAdd,
+}: {
+  pose: "fall" | "land" | null;
+  onClose: () => void;
+  onAdd: (pose: "fall" | "land", copyBase: boolean) => void;
+}) {
+  return (
+    <Dialog
+      open={pose !== null}
+      title={pose ? `${POSE_INFO[pose].name} 모습 추가` : ""}
+      description={pose ? POSE_TIP[pose] : undefined}
+      onClose={onClose}
+      actions={
+        pose && (
+          <>
+            <Button variant="primary" block data-autofocus onClick={() => onAdd(pose, true)}>
+              기본 그림 복사해서 시작
+            </Button>
+            <Button variant="secondary" block onClick={() => onAdd(pose, false)}>
+              빈 칸에서 시작
+            </Button>
+          </>
+        )
+      }
+    />
   );
 }
 
@@ -616,10 +646,13 @@ type CanvasDialogProps = {
   open: boolean;
   tab: TabKey;
   sprite: PixelSprite | null;
-  /** 주인공 기본 그림 (동료 탭의 "주인공 그림 가져오기") */
-  hero: Sprite;
+  /** 주인공 (동료 탭의 "주인공 그림 가져오기") */
+  hero: Character;
   onClose: () => void;
-  onLoad: (sprite: Sprite, name: string) => void;
+  /** 발판 기본 그림 */
+  onLoad: (sprite: PixelSprite, name: string) => void;
+  /** 기본 캐릭터·주인공 그림 (세 모습) */
+  onLoadCharacter: (character: Character, name: string) => void;
   onResize: (width: number, height: number) => void;
   onImportImage: () => void;
 };
@@ -628,7 +661,7 @@ type CanvasDialogProps = {
  * 캐릭터: 기본 캐릭터 불러오기 + 칸 크기 / 동료: 주인공 그림 가져오기 + 칸 크기 (동료 기본 세트는 없음)
  * 발판: 기본 발판으로 되돌리기
  */
-function CanvasDialog({ open, tab, sprite, hero, onClose, onLoad, onResize, onImportImage }: CanvasDialogProps) {
+function CanvasDialog({ open, tab, sprite, hero, onClose, onLoad, onLoadCharacter, onResize, onImportImage }: CanvasDialogProps) {
   const [pendingShrink, setPendingShrink] = useState(false);
   const sizes = CONFIG.character.gridSizes;
 
@@ -660,35 +693,33 @@ function CanvasDialog({ open, tab, sprite, hero, onClose, onLoad, onResize, onIm
         <p className={styles.helper}>사진이나 그림 파일을 캐릭터로 써요. 지금 보고 있는 프레임에 들어가요.</p>
       </section>
 
-      {tab === "companion" ? (
-        <section className={styles.dialogSection} aria-labelledby="hero-copy-title">
-          <h3 id="hero-copy-title" className={styles.dialogHeading}>
-            주인공 그림 가져오기
-          </h3>
-          <button type="button" className={styles.preset} onClick={() => onLoad(hero, "주인공 그림")}>
-            <SpritePreview sprite={hero} width={48} height={54} />
-            <span>주인공</span>
-          </button>
-          <p className={styles.helper}>주인공 그림을 복사해서 고쳐 그려요. 지금 그림은 바뀌어요.</p>
-        </section>
-      ) : (
       <section className={styles.dialogSection} aria-labelledby="preset-title">
         <h3 id="preset-title" className={styles.dialogHeading}>
           기본 캐릭터 불러오기
         </h3>
         <ul className={styles.presets}>
+          {/* 동료는 주인공 그림도 가져올 수 있다 */}
+          {tab === "companion" && (
+            <li>
+              <button type="button" className={styles.preset} onClick={() => onLoadCharacter(hero, "주인공 그림")}>
+                <SpritePreview sprite={hero.base} width={48} height={54} />
+                <span>주인공</span>
+              </button>
+            </li>
+          )}
           {CHARACTER_PRESETS.map((p) => (
             <li key={p.id}>
-              <button type="button" className={styles.preset} onClick={() => onLoad(p.sprite, p.name)}>
+              <button type="button" className={styles.preset} onClick={() => onLoadCharacter(p.character, p.name)}>
                 <PixelPreview sprite={p.sprite} width={48} height={54} />
                 <span>{p.name}</span>
               </button>
             </li>
           ))}
         </ul>
-        <p className={styles.helper}>불러오면 지금 그림을 바꿔요. 착지 프레임은 빠져요.</p>
+        <p className={styles.helper}>
+          기본 캐릭터는 기본 · 내려갈 때 · 착지 세 모습이 다 들어 있어서 그대로 쓰거나 참고해서 고쳐 그릴 수 있어요. 불러오면 지금 그림은 바뀌어요.
+        </p>
       </section>
-      )}
 
       {sprite && (
         <section className={styles.dialogSection}>

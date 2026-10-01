@@ -9,16 +9,18 @@ import { Segmented } from "@/components/ui/Segmented";
 import { Switch } from "@/components/ui/Switch";
 import { useMediaQuery } from "@/components/useMediaQuery";
 import { CONFIG } from "@/game/config";
-import type { ImageSprite } from "@/lib/schema";
+import { PixelPreview } from "@/components/PixelPreview";
+import type { PixelSprite, Sprite } from "@/lib/schema";
 import { applyBackground, encodeSprite, loadImageFile, type LoadedImage } from "./imageDom";
-import { clampZoom, fitToBox, NO_ADJUST, placedRect, type Adjust } from "./imageMath";
+import { clampZoom, cornerBackground, fitToBox, imageToDotPixels, NO_ADJUST, placedRect, type Adjust } from "./imageMath";
 import styles from "./ImageImportScreen.module.css";
 
 type Props = {
   /** 에디터에 끌어다 놓은 파일이 있으면 바로 연다 */
   initialFile?: File | null;
   onCancel: () => void;
-  onDone: (sprite: ImageSprite) => void;
+  /** 이미지 그림, 또는 도트로 바꾼 그림 */
+  onDone: (sprite: Sprite) => void;
 };
 
 const BOX = CONFIG.limits.image; // 320×360
@@ -26,6 +28,7 @@ const ACCEPT = "image/png,image/jpeg,image/webp,image/gif";
 
 /**
  * 이미지 불러오기 (기획서 6번): 고르기 → 상자에 맞추기·이동·확대 → 배경 제거 → 다시 인코딩해서 저장.
+ * 도트 격자와 같은 크기(16×18, 32×36px)면 먼저 "도트로 바꿔서 고치기 / 이미지 그대로"를 고른다 (사용자 결정).
  */
 export function ImageImportScreen({ initialFile, onCancel, onDone }: Props) {
   const [loaded, setLoaded] = useState<LoadedImage | null>(null);
@@ -38,6 +41,9 @@ export function ImageImportScreen({ initialFile, onCancel, onDone }: Props) {
   const [soften, setSoften] = useState(true);
   const [view, setView] = useState<"result" | "original">("result");
   const [dragOver, setDragOver] = useState(false);
+  /** 도트 크기 이미지: 아직 고르는 중이면 true. "이미지 그대로"를 고르면 원래 흐름으로 */
+  const [askDots, setAskDots] = useState(false);
+  const [dotsBg, setDotsBg] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
   const hasMouse = useMediaQuery("(any-pointer: fine)");
 
@@ -51,6 +57,8 @@ export function ImageImportScreen({ initialFile, onCancel, onDone }: Props) {
       return;
     }
     setLoaded(r.value);
+    setAskDots(r.value.dots !== null);
+    setDotsBg(!r.value.hasAlpha);
     setAdjust(NO_ADJUST);
     setView("result");
     // 이미 투명 배경이 있으면 배경 제거는 건너뛴다 (기획서 6-3)
@@ -87,6 +95,14 @@ export function ImageImportScreen({ initialFile, onCancel, onDone }: Props) {
     if (r.ok) onDone(r.value);
     else setError(r.message);
   };
+
+  // 도트로 바꾼 결과 (미리보기와 넣기에 같이 쓴다)
+  const dotsBackground = loaded?.dots ? cornerBackground(loaded.dots.rgba, loaded.dots.width, loaded.dots.height) : null;
+  const dotSprite = useMemo<PixelSprite | null>(() => {
+    const d = loaded?.dots;
+    if (!d) return null;
+    return { kind: "pixel", width: d.width, height: d.height, pixels: imageToDotPixels(d.rgba, d.width, d.height, dotsBg) };
+  }, [loaded, dotsBg]);
 
   const chooseAgain = () => {
     setLoaded(null);
@@ -132,6 +148,35 @@ export function ImageImportScreen({ initialFile, onCancel, onDone }: Props) {
               파일 고르기
             </Button>
             {hasMouse && <p className={styles.helper}>여기에 파일을 끌어다 놓아도 돼요</p>}
+          </section>
+        ) : askDots && dotSprite ? (
+          <section className={styles.dots} aria-labelledby="dots-title">
+            <h2 id="dots-title" className={styles.dropTitle}>
+              도트로 바꿔서 고칠까요?
+            </h2>
+            <div className={styles.dotsPreview}>
+              <PixelPreview sprite={dotSprite} width={128} height={144} label="도트로 바꾼 미리보기" />
+            </div>
+            <p className={styles.helper}>
+              도트 칸과 같은 크기({dotSprite.width}×{dotSprite.height}px)예요. 도트로 바꾸면 픽셀 하나가 칸 하나가 되어 펜·지우개로 직접 고칠 수
+              있어요. 이미지 그대로 쓰면 고칠 수는 없어요.
+            </p>
+            {dotsBackground && (
+              <Switch
+                label="배경색 지우기"
+                checked={dotsBg}
+                onChange={setDotsBg}
+                description="테두리와 이어진 모서리 색 칸을 비워요"
+              />
+            )}
+            <div className={styles.actions}>
+              <Button variant="ghost" onClick={() => setAskDots(false)}>
+                이미지 그대로 쓰기
+              </Button>
+              <Button variant="primary" icon="pencil" onClick={() => onDone(dotSprite)}>
+                도트로 바꿔서 고치기
+              </Button>
+            </div>
           </section>
         ) : (
           <>
@@ -243,7 +288,7 @@ export function ImageImportScreen({ initialFile, onCancel, onDone }: Props) {
           <PixelIcon name="check" size={12} /> 파일은 이 기기 안에서만 처리하고 어디에도 보내지 않아요. 원본은 저장하지 않아요.
         </p>
 
-        {loaded && (
+        {loaded && !(askDots && dotSprite) && (
           <div className={styles.actions}>
             <Button variant="ghost" onClick={chooseAgain} disabled={saving}>
               다른 이미지

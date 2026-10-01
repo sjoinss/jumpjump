@@ -57,7 +57,7 @@ export function CompanionPrompt({ prompt, onYes, onEdit, onNo, onDismiss }: Prop
         <div className={styles.body}>
           <div className={styles.bubble}>
             <SpritePreview
-              sprite={character ? character.frames[0] : COMPANION_QUESTION}
+              sprite={character ? character.base : COMPANION_QUESTION}
               width={64}
               height={72}
               label={character ? `동료 후보: ${name ?? `동료 ${prompt.slot}`}` : "동료 후보: 아직 그림 없음"}

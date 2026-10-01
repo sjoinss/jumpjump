@@ -5,6 +5,7 @@ import {
   checkFileSize,
   DECODE_FAIL_MESSAGE,
   detectFormat,
+  dotGridFor,
   hasTransparency,
   hasVisiblePixel,
   posterize,
@@ -26,6 +27,8 @@ export type LoadedImage = {
   width: number;
   height: number;
   hasAlpha: boolean;
+  /** 도트 격자와 같은 크기(16×18, 32×36)면 원본 픽셀 — 도트로 바꿔 고칠 수 있다. 아니면 null */
+  dots: { width: number; height: number; rgba: Uint8ClampedArray } | null;
 };
 
 export type Result<T> = { ok: true; value: T } | { ok: false; message: string };
@@ -78,12 +81,17 @@ export async function loadImageFile(file: File): Promise<Result<LoadedImage>> {
   ctx.drawImage(img, 0, 0, w, h);
 
   let hasAlpha = false;
+  let dots: LoadedImage["dots"] = null;
   try {
-    hasAlpha = format !== "jpeg" && hasTransparency(ctx.getImageData(0, 0, w, h).data);
+    const data = ctx.getImageData(0, 0, w, h).data;
+    hasAlpha = format !== "jpeg" && hasTransparency(data);
+    // 작은 이미지는 작업본이 원본과 같은 크기(1:1)라 픽셀이 그대로다
+    const grid = dotGridFor(width, height);
+    if (grid && w === width && h === height) dots = { ...grid, rgba: data };
   } catch {
     return { ok: false, message: DECODE_FAIL_MESSAGE };
   }
-  return { ok: true, value: { work, width, height, hasAlpha } };
+  return { ok: true, value: { work, width, height, hasAlpha, dots } };
 }
 
 export type BackgroundOptions = { enabled: boolean; tolerance: number; soften: boolean };
@@ -155,3 +163,4 @@ export async function encodeSprite(source: HTMLCanvasElement, rect: Rect): Promi
   }
   return { ok: false, message: "이미지가 너무 복잡해서 작게 줄이지 못했어요. 더 단순한 이미지를 골라주세요." };
 }
+

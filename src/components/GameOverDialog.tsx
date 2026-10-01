@@ -1,6 +1,6 @@
 "use client";
 
-import { companionsLabel, RECORD_LABEL } from "@/lib/records";
+import { companionsLabel, formatScore, RECORD_LABEL, scoreSize } from "@/lib/records";
 import type { CardData } from "@/share/cardRenderer";
 import { ResultCard } from "./ResultCard";
 import { Button } from "./ui/Button";
@@ -54,7 +54,7 @@ export function GameOverDialog({ result, onRetry, onEditor, onHome }: Props) {
       {result && (
         <div className={styles.result}>
           <p className={styles.score}>
-            <span className={styles.value}>{result.score}</span>
+            <span className={`${styles.value} ${scoreSize(result.score) ? styles[scoreSize(result.score)] : ""}`}>{formatScore(result.score)}</span>
             <span className={styles.unit}>m</span>
           </p>
           <div className={styles.badges}>
@@ -70,7 +70,7 @@ export function GameOverDialog({ result, onRetry, onEditor, onHome }: Props) {
           <p className={styles.best}>
             {result.isNew
               ? `${RECORD_LABEL[result.withCompanions ? "withCompanions" : "solo"]}에서 가장 높이 올라갔어요!`
-              : `${RECORD_LABEL[result.withCompanions ? "withCompanions" : "solo"]} 최고 기록 ${result.best}m`}
+              : `${RECORD_LABEL[result.withCompanions ? "withCompanions" : "solo"]} 최고 기록 ${formatScore(result.best)}m`}
           </p>
         </div>
       )}

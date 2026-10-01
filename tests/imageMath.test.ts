@@ -9,8 +9,7 @@ import {
   placedRect,
   posterize,
   removeBackground,
-  workingSize,
-} from "../src/editor/imageMath";
+  workingSize, cornerBackground, dotGridFor, imageToDotPixels } from "../src/editor/imageMath";
 
 const bytes = (...b: number[]) => new Uint8Array([...b, ...new Array(16).fill(0)]);
 
@@ -104,4 +103,44 @@ test("투명도 판별, 색 줄이기", () => {
   assert.equal(hasTransparency(t), true);
   const p = posterize(new Uint8ClampedArray([255, 129, 7, 200]), 4);
   assert.deepEqual([...p], [240, 128, 0, 200], "알파는 건드리지 않음");
+});
+
+// ── 도트 크기 이미지 → 도트 칸 ──
+
+function rgbaOf(w: number, h: number, cell: (x: number, y: number) => [number, number, number, number]) {
+  const out = new Uint8ClampedArray(w * h * 4);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) out.set(cell(x, y), (y * w + x) * 4);
+  return out;
+}
+const INKC: [number, number, number, number] = [61, 44, 94, 255];
+const PINK: [number, number, number, number] = [255, 143, 171, 255];
+const WHITE: [number, number, number, number] = [255, 255, 255, 255];
+
+test("도트로 고칠 수 있는 건 도트 격자와 같은 크기(16×18, 32×36)뿐, 나머지는 이미지로만", () => {
+  assert.deepEqual(dotGridFor(16, 18), { width: 16, height: 18 });
+  assert.deepEqual(dotGridFor(32, 36), { width: 32, height: 36 });
+  for (const [w, h] of [[16, 16], [32, 32], [64, 72], [18, 16], [320, 360]]) assert.equal(dotGridFor(w, h), null, `${w}×${h}`);
+});
+
+test("도트 칸으로: 픽셀 하나 = 칸 하나, 반투명은 128 기준", () => {
+  const src = rgbaOf(16, 18, (x, y) => (x === 0 && y === 0 ? [10, 20, 30, 200] : x === 1 && y === 0 ? [10, 20, 30, 100] : PINK));
+  const px = imageToDotPixels(src, 16, 18, false);
+  assert.equal(px.length, 16 * 18);
+  assert.equal(px[0], "#0a141e");
+  assert.equal(px[1], "");
+  assert.equal(px[2], "#ff8fab");
+});
+
+test("배경 지우기: 테두리와 이어진 모서리 색만 비우고, 그림 안쪽의 같은 색은 남긴다", () => {
+  const src = rgbaOf(16, 18, (x, y) => {
+    if (x >= 4 && x <= 11 && y >= 4 && y <= 11) return x === 4 || x === 11 || y === 4 || y === 11 ? INKC : x === 7 && y === 7 ? WHITE : PINK;
+    return WHITE;
+  });
+  assert.equal(cornerBackground(src, 16, 18), "#ffffff");
+  const px = imageToDotPixels(src, 16, 18, true);
+  const at = (x: number, y: number) => px[y * 16 + x];
+  assert.equal(at(0, 0), "", "바깥 흰색은 지움");
+  assert.equal(at(4, 4), "#3d2c5e");
+  assert.equal(at(7, 7), "#ffffff", "안쪽 흰 눈은 남김");
+  assert.equal(cornerBackground(rgbaOf(16, 18, (x, y) => ((x + y) % 2 ? INKC : PINK)), 16, 18), null, "모서리 색이 다르면 배경 없음");
 });
