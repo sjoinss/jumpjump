@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { sfx } from "@/game/audio";
 import { CONFIG } from "@/game/config";
 import { FixedStepLoop } from "@/game/loop";
 import { createMinigame, MINIGAMES, pickMinigame, type MiniEvent, type MinigameId, type MinigameLogic } from "@/game/minigames";
@@ -67,6 +68,7 @@ export function MinigameScreen({ slot, hero, companion, previous, onDone }: Prop
   useEffect(() => {
     if (phase !== "countdown") return;
     announceRef.current(count > 0 ? String(count) : "시작!");
+    sfx.play(count > 0 ? "countdown" : "go");
     if (count === 0) {
       setPhase("playing");
       setCount(CONFIG.minigame.countdown);
@@ -130,6 +132,7 @@ export function MinigameScreen({ slot, hero, companion, previous, onDone }: Prop
           if (e.lives > 0) announceRef.current(`앗! 목숨 ${e.lives}개 남았어요`);
         } else if (e.type === "end") {
           setPhase("result");
+          sfx.play(e.success ? "success" : "fail");
           announceRef.current(e.success ? "성공!" : "실패");
         }
       }

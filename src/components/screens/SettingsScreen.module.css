@@ -130,3 +130,27 @@
   z-index: 10;
   background: var(--color-background);
 }
+
+/* 캐릭터 · 발판: 지금 그림 미리보기 + 그리러 가기 */
+.drawRow {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.drawPreview {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-alt);
+}
+
+.switches {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}

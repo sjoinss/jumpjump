@@ -2,36 +2,60 @@
 
 import { useRef, useState, type KeyboardEvent } from "react";
 import { EditorScreen } from "@/editor/EditorScreen";
+import type { TabKey } from "@/editor/session";
 import { THEME_IDS, THEMES, type ThemeId } from "@/game/themes";
+import type { Settings } from "@/lib/schema";
 import { CompanionSettings } from "../CompanionSettings";
 import { DataManager } from "../DataManager";
 import { useSaveData } from "../SaveProvider";
-import { InlineMessage } from "../ui/InlineMessage";
+import { SpritePreview } from "../SpritePreview";
+import { Button } from "../ui/Button";
+import { Dialog } from "../ui/Dialog";
 import { PixelIcon } from "../ui/PixelIcon";
+import { Switch } from "../ui/Switch";
+import { useToast } from "../ui/Toast";
+import { useMediaQuery } from "../useMediaQuery";
 import { ScreenLayout } from "./ScreenLayout";
 import styles from "./SettingsScreen.module.css";
 
+/** 설정 위에 덮어 여는 에디터: 동료 한 명 / 주인공·발판 */
+type Editing = { kind: "companion"; slot: number } | { kind: "main"; tab: TabKey };
+
+type EffectKey = keyof Pick<Settings, "shake" | "particles" | "sfx" | "specialPlatformMarker">;
+
+const EFFECTS: { key: EffectKey; label: string; description: string }[] = [
+  { key: "shake", label: "화면 흔들림", description: "고점프·부서지는 발판·합류 때 살짝 흔들려요" },
+  { key: "particles", label: "파티클·착지 이펙트", description: "착지 먼지, 반짝이, 발판 조각" },
+  { key: "sfx", label: "효과음", description: "8비트 소리. 일시정지 메뉴에서도 끌 수 있어요" },
+  { key: "specialPlatformMarker", label: "특수 발판 표식", description: "색약 대응: 고점프는 위 화살표, 일회용은 금 간 표시" },
+];
+
 /**
- * 설정. 지금은 동료·테마·데이터 관리가 있고, 연출·앱 섹션은 12단계에서 채운다.
- * 바꾸는 즉시 적용되고 자동 저장된다.
+ * 설정 (기획서 11번). 섹션: 동료 | 캐릭터·발판 | 연출 | 테마 | 데이터 관리 | 앱.
+ * 바꾸는 즉시 적용되고 자동 저장된다. 에디터는 설정 위에 덮어서 열어 게임이 진행 중이어도 끊기지 않는다.
  */
 export function SettingsScreen({ onClose }: { onClose: () => void }) {
   const [data, update] = useSaveData();
+  const { show } = useToast();
   const theme = data.settings.theme;
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
-  /** 그리고 있는 동료 슬롯 (1~5). 에디터를 설정 위에 덮는다 */
-  const [editing, setEditing] = useState<number | null>(null);
+  const [editing, setEditing] = useState<Editing | null>(null);
   const returnFocus = useRef<HTMLElement | null>(null);
+  const [confirmReset, setConfirmReset] = useState(false);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const osReducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
 
-  const openEditor = (slot: number) => {
+  const openEditor = (next: Editing) => {
     returnFocus.current = document.activeElement as HTMLElement | null;
-    setEditing(slot);
+    setEditing(next);
   };
   // 에디터를 닫으면 누른 버튼으로 포커스를 돌려준다 (inert가 풀린 뒤에)
   const closeEditor = () => {
     setEditing(null);
     requestAnimationFrame(() => returnFocus.current?.focus());
   };
+
+  const setEffect = (key: EffectKey, on: boolean) => update((d) => ({ ...d, settings: { ...d.settings, [key]: on } }));
 
   const choose = (id: ThemeId) => update((d) => ({ ...d, settings: { ...d.settings, theme: id } }));
 
@@ -45,12 +69,63 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
     refs.current[next]?.focus();
   };
 
+  const hasRecords = data.best.withCompanions > 0 || data.best.solo > 0;
+  const resetBest = () => {
+    update((d) => ({ ...d, best: { withCompanions: 0, solo: 0 } }));
+    setConfirmReset(false);
+    show("최고 기록을 초기화했어요.", "info");
+  };
+
   return (
     <>
     <div className={styles.root} inert={editing !== null}>
     <ScreenLayout title="설정" onBack={onClose}>
       <div className={styles.sections}>
-        <CompanionSettings onEdit={openEditor} />
+        <CompanionSettings onEdit={(slot) => openEditor({ kind: "companion", slot })} />
+
+        <section className={styles.section} aria-labelledby="draw-title">
+          <h2 id="draw-title" className={styles.sectionTitle}>
+            캐릭터 · 발판
+          </h2>
+          <div className={styles.drawRow}>
+            <span className={styles.drawPreview}>
+              <SpritePreview sprite={data.hero.frames[0]} width={40} height={45} />
+            </span>
+            <Button variant="secondary" icon="pencil" block onClick={() => openEditor({ kind: "main", tab: "hero" })}>
+              캐릭터 다시 그리기
+            </Button>
+          </div>
+          <div className={styles.drawRow}>
+            <span className={styles.drawPreview}>
+              <SpritePreview sprite={data.platforms.basic} width={48} height={12} />
+            </span>
+            <Button variant="secondary" icon="grid" block onClick={() => openEditor({ kind: "main", tab: "basic" })}>
+              발판 만들기 (기본 · 고점프 · 일회용)
+            </Button>
+          </div>
+        </section>
+
+        <section className={styles.section} aria-labelledby="effects-title">
+          <h2 id="effects-title" className={styles.sectionTitle}>
+            연출
+          </h2>
+          {osReducedMotion && (
+            <p className={styles.sectionHelp}>
+              기기에서 &quot;동작 줄이기&quot;가 켜져 있어요. 처음엔 흔들림·파티클이 꺼진 채로 시작하고, 여기서 바꾼 값이 우선이에요.
+            </p>
+          )}
+          <div className={styles.switches}>
+            {EFFECTS.map((e) => (
+              <Switch
+                key={e.key}
+                label={e.label}
+                description={e.description}
+                checked={data.settings[e.key]}
+                onChange={(on) => setEffect(e.key, on)}
+              />
+            ))}
+          </div>
+        </section>
 
         <section className={styles.section} aria-labelledby="theme-title">
           <h2 id="theme-title" className={styles.sectionTitle}>
@@ -96,19 +171,47 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
 
         <DataManager />
 
-        <InlineMessage tone="info" title="다른 설정은 곧 추가돼요">
-          화면 흔들림·효과음 같은 연출은 다음 단계에서 이 화면에 들어와요.
-        </InlineMessage>
+        <section className={styles.section} aria-labelledby="app-title">
+          <h2 id="app-title" className={styles.sectionTitle}>
+            앱
+          </h2>
+          <p className={styles.sectionHelp}>
+            최고 기록: 동료와 함께 {data.best.withCompanions}m · 혼자서 {data.best.solo}m
+          </p>
+          <Button variant="danger" icon="trash" block disabled={!hasRecords} onClick={() => setConfirmReset(true)}>
+            최고 기록 초기화
+          </Button>
+          <p className={styles.sectionHelp}>앱으로 설치하는 기능은 다음 업데이트에서 들어와요.</p>
+        </section>
       </div>
     </ScreenLayout>
     </div>
 
+    <Dialog
+      open={confirmReset}
+      title="최고 기록을 초기화할까요?"
+      description="동료와 함께 · 혼자서 기록이 모두 0m가 돼요. 되돌릴 수 없어요."
+      onClose={() => setConfirmReset(false)}
+      initialFocusRef={cancelRef}
+      actions={
+        <>
+          <Button variant="danger" icon="trash" block onClick={resetBest}>
+            초기화
+          </Button>
+          <Button ref={cancelRef} variant="ghost" block onClick={() => setConfirmReset(false)}>
+            취소
+          </Button>
+        </>
+      }
+    />
+
     {editing !== null && (
       <div className={styles.editor}>
-        <EditorScreen
-          companion={{ slot: editing, inGame: false, onSaved: closeEditor }}
-          onClose={closeEditor}
-        />
+        {editing.kind === "companion" ? (
+          <EditorScreen companion={{ slot: editing.slot, inGame: false, onSaved: closeEditor }} onClose={closeEditor} />
+        ) : (
+          <EditorScreen initialTab={editing.tab} onClose={closeEditor} />
+        )}
       </div>
     )}
     </>

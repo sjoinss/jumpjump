@@ -16,10 +16,12 @@ import { GameOverDialog, type GameResult } from "../GameOverDialog";
 import { RegionBanner } from "../RegionBanner";
 import { regionName } from "@/game/regions";
 import { CONFIG } from "@/game/config";
+import { sfx } from "@/game/audio";
 import { useSaveData, useStorageBanner } from "../SaveProvider";
 import { Button, IconButton } from "../ui/Button";
 import { Dialog } from "../ui/Dialog";
 import { InlineMessage } from "../ui/InlineMessage";
+import { Switch } from "../ui/Switch";
 import { PixelIcon } from "../ui/PixelIcon";
 import { useToast } from "../ui/Toast";
 import styles from "./PlayScreen.module.css";
@@ -72,17 +74,55 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
     runRef.current = { companionMaxAtStart: dataRef.current.settings.companionMax };
   };
 
+  /** 일시정지 메뉴에서 "계속하기" 뒤 다시 움직이기까지 남은 초 (기획서 9-6). null이면 세는 중 아님 */
+  const [resumeCount, setResumeCount] = useState<number | null>(null);
+
   const openMenu = useCallback(() => {
     engineRef.current?.pause();
+    setResumeCount(null);
     setMenuOpen(true);
   }, []);
 
   const resume = useCallback(() => {
     setMenuOpen(false);
-    // 재개 3초 카운트다운은 12단계에서 붙인다
-    engineRef.current?.resume();
+    setResumeCount(CONFIG.resumeCountdown);
     canvasRef.current?.focus({ preventScroll: true });
   }, []);
+
+  // 재개 카운트다운: 숫자를 크게 보여주고 스크린리더에도 읽어 준다. 끝나면 다시 움직인다
+  useEffect(() => {
+    if (resumeCount === null) return;
+    if (resumeCount === 0) {
+      setResumeCount(null);
+      sfx.play("go");
+      announce("시작");
+      engineRef.current?.resume();
+      return;
+    }
+    sfx.play("countdown");
+    announce(String(resumeCount));
+    const t = setTimeout(() => setResumeCount((n) => (n === null ? null : n - 1)), 1000);
+    return () => clearTimeout(t);
+  }, [resumeCount, announce]);
+
+  // 세는 도중 창을 벗어나면 다시 일시정지 메뉴로
+  useEffect(() => {
+    if (resumeCount === null) return;
+    const back = () => {
+      setResumeCount(null);
+      setMenuOpen(true);
+    };
+    const onVisibility = () => document.visibilityState === "hidden" && back();
+    window.addEventListener("blur", back);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("blur", back);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [resumeCount]);
+
+  const sfxOn = data.settings.sfx;
+  const toggleSfx = (on: boolean) => update((d) => ({ ...d, settings: { ...d.settings, sfx: on } }));
 
   const [guideOpen, setGuideOpen] = useState(false);
   const guideShown = data.settings.onboarding.controlsGuideShown;
@@ -244,8 +284,9 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
   }, []);
 
   const openSettings = useCallback(() => {
-    // 게임 중이면 멈추고, 설정을 닫으면 일시정지 메뉴로 돌아온다
-    if (engineRef.current?.currentPhase === "playing") openMenu();
+    // 게임 중(재개 카운트다운 중 포함)이면 멈추고, 설정을 닫으면 일시정지 메뉴로 돌아온다
+    const p = engineRef.current?.currentPhase;
+    if (p === "playing" || p === "paused") openMenu();
     onOpenSettings();
   }, [onOpenSettings, openMenu]);
 
@@ -262,9 +303,16 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
         const every = CONFIG.score.announceEvery;
         if (s > 0 && s % every === 0) announceRef.current(`${s}미터`);
       },
-      onGameOver: (s) => onGameOverRef.current(s),
-      onCandidate: (c) => setPrompt(c),
+      onGameOver: (s) => {
+        sfx.play("gameover");
+        onGameOverRef.current(s);
+      },
+      onCandidate: (c) => {
+        sfx.play("candidate");
+        setPrompt(c);
+      },
       onRegion: (index) => {
+        if (index > 0) sfx.play("region");
         const name = regionName(index);
         setRegionBanner((prev) => ({ id: (prev?.id ?? 0) + 1, name }));
         announceRef.current(name);
@@ -273,6 +321,10 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
       },
     });
     engine.setPlatformSprites(dataRef.current.platforms);
+    // 효과음도 착지 이벤트를 듣는다 (착지 프레임·파티클과 같은 훅)
+    engine.onLand(({ platform }) => {
+      sfx.play(platform.kind === "highJump" ? "highJump" : platform.kind === "oneTime" ? "break" : "land");
+    });
     // 개발 중 디버깅용 (배포 빌드에는 들어가지 않음)
     if (process.env.NODE_ENV === "development") (window as unknown as { __engine?: Engine }).__engine = engine;
     engineRef.current = engine;
@@ -308,6 +360,12 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
   useEffect(() => {
     engineRef.current?.setCompanionLooks(slots.map((s) => s.character));
   }, [slots]);
+
+  // 연출 설정: 화면 흔들림 / 파티클·착지 이펙트 (각각 따로)
+  const { shake, particles } = data.settings;
+  useEffect(() => {
+    engineRef.current?.setEffects({ shake, particles });
+  }, [shake, particles]);
 
   // 특수 발판 표식 (색약 대응) 설정
   const markers = data.settings.specialPlatformMarker;
@@ -448,6 +506,12 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
 
       {regionBanner && !ready && <RegionBanner id={regionBanner.id} name={regionBanner.name} />}
 
+      {resumeCount !== null && resumeCount > 0 && (
+        <div className={styles.resumeCount} aria-hidden="true">
+          <span key={resumeCount}>{resumeCount}</span>
+        </div>
+      )}
+
       <CompanionPrompt
         prompt={prompt && !covered ? { slot: prompt.slot, data: slots[prompt.slot - 1] } : null}
         onYes={acceptCompanion}
@@ -476,6 +540,8 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
             <Button ref={resumeRef} variant="primary" size="lg" icon="play" block onClick={resume}>
               계속하기
             </Button>
+            {/* 효과음은 일시정지 메뉴에서 바로 끌 수 있다 (기획서 12번) */}
+            <Switch label="효과음" checked={sfxOn} onChange={toggleSfx} />
             <Button variant="secondary" icon="gear" block onClick={onOpenSettings}>
               설정
             </Button>

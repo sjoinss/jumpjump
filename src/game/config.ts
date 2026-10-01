@@ -161,6 +161,38 @@ export const CONFIG = {
     cameraRatioByRows: [0.55, 0.62, 0.7],
   },
 
+  /** 연출 (기획서 12번. 초기 제안). 흔들림·파티클은 설정에서 각각 끌 수 있다 */
+  effects: {
+    /** 한 화면에 동시에 있을 수 있는 파티클 수 */
+    maxParticles: 120,
+    /** 파티클이 받는 중력 (세계 좌표, 위가 +) */
+    gravity: 520,
+    /** 착지 먼지 / 고점프 반짝이 / 일회용 조각 / 합류 별 */
+    dust: { count: 5, speed: 70, life: 0.35 },
+    sparkle: { count: 8, speed: 160, life: 0.5 },
+    shard: { count: 7, speed: 140, life: 0.55 },
+    star: { count: 10, speed: 120, life: 0.6 },
+    /** 화면 흔들림: 약하게 (세기 px, 시간 s) */
+    shake: {
+      highJump: { magnitude: 2, duration: 0.14 },
+      break: { magnitude: 3, duration: 0.18 },
+      join: { magnitude: 2, duration: 0.2 },
+    },
+    /** 프레임이 이보다 오래 걸리는 게 이어지면 파티클을 줄인다 (기획서 18 성능 저하 대응) */
+    slowFrameMs: 24,
+    /** 느린 프레임 비율이 이 이상이면 파티클 절반 */
+    slowFrameRatio: 0.3,
+  },
+
+  /** 효과음 (Web Audio로 만드는 8비트 소리, 기획서 12번) */
+  sfx: {
+    /** 전체 볼륨 (0~1). 작게 시작한다 */
+    volume: 0.12,
+  },
+
+  /** 일시정지 메뉴에서 "계속하기"를 누른 뒤 다시 움직이기까지 세는 초 */
+  resumeCountdown: 3,
+
   /**
    * 미니게임 (기획서 8번. 초기 제안 — 처음 해도 대부분 성공하는 게 목표).
    * 좌표는 미니게임 판(arena) 기준 논리 px, y는 아래로 갈수록 커진다. 화면에는 비율을 지켜 맞춰 넣는다.

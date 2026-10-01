@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { sfx } from "@/game/audio";
 import { applyTheme } from "@/lib/theme";
 import { BestRecords } from "./BestRecords";
 import { DesktopFrame } from "./DesktopFrame";
@@ -48,6 +49,25 @@ function Screens() {
   useEffect(() => {
     applyTheme(theme);
   }, [theme]);
+
+  // 효과음: 설정을 따르고, 첫 터치·클릭·키 입력에서 켜고(브라우저 정책), 백그라운드에선 멈춘다
+  const sfxOn = data.settings.sfx;
+  useEffect(() => {
+    sfx.setEnabled(sfxOn);
+  }, [sfxOn]);
+
+  useEffect(() => {
+    const unlock = () => sfx.unlock();
+    const onVisibility = () => sfx.setHidden(document.visibilityState === "hidden");
+    window.addEventListener("pointerdown", unlock, true);
+    window.addEventListener("keydown", unlock, true);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("pointerdown", unlock, true);
+      window.removeEventListener("keydown", unlock, true);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, []);
 
   return (
     <DesktopFrame side={<BestRecords best={data.best} />}>

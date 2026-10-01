@@ -1,5 +1,6 @@
 import { drawBackground, drawGround } from "./background";
 import { CONFIG } from "./config";
+import { Effects, type Particle } from "./effects";
 import { FixedStepLoop } from "./loop";
 import { regionBlendAt } from "./regions";
 import { memberCell } from "./formation";
@@ -71,6 +72,9 @@ export class Engine {
   /** 합류 연출: 대열 몇 번째 멤버가 몇 초 남았는지 */
   private joinPop = new Map<number, number>();
   private runOptions: RunOptions = { companionMax: CONFIG.companion.defaultMax };
+  /** 화면 흔들림·파티클 (설정에서 각각 끈다) */
+  private readonly effects = new Effects();
+  private lastFrameAt = 0;
 
   constructor(canvas: HTMLCanvasElement, hero: Character, events: EngineEvents = {}) {
     const ctx = canvas.getContext("2d", { alpha: false });
@@ -92,9 +96,20 @@ export class Engine {
       logicalPerCssPx: () => 1 / this.viewport.scale,
       onAction: this.onAction,
     });
-    // 착지 프레임도 착지 이벤트를 듣는 쪽 중 하나
-    this.onLand(() => {
+    // 착지 프레임과 연출도 착지 이벤트를 듣는 쪽 (효과음은 PlayScreen이 같은 이벤트를 듣는다)
+    this.onLand(({ platform }) => {
       this.landingTimer = CONFIG.character.landingFrameDuration;
+      const { x } = this.world.hero;
+      const w = this.world.formation.width;
+      if (platform.kind === "highJump") {
+        this.effects.sparkle(x, platform.y, w, "#ffd36e");
+        this.effects.shake("highJump");
+      } else if (platform.kind === "oneTime") {
+        this.effects.shards(platform.x, platform.y, platform.width, spriteColor(this.platformSprites?.oneTime));
+        this.effects.shake("break");
+      } else {
+        this.effects.dust(x, platform.y, w, "#fff7e6");
+      }
     });
   }
 
@@ -130,6 +145,12 @@ export class Engine {
 
   setHero(hero: Character) {
     this.hero = hero;
+    this.render(0);
+  }
+
+  /** 설정의 화면 흔들림 / 파티클·착지 이펙트 */
+  setEffects(opts: { shake: boolean; particles: boolean }) {
+    this.effects.set(opts);
     this.render(0);
   }
 
@@ -171,7 +192,13 @@ export class Engine {
   /** 미니게임 성공 → 합류. 합류 연출 후 게임을 이어 간다 */
   acceptCandidate(id: number) {
     this.world.acceptCandidate(id);
-    this.joinPop.set(this.world.companions, CONFIG.companion.joinPop);
+    const m = this.world.companions;
+    this.joinPop.set(m, CONFIG.companion.joinPop);
+    // 새 동료 자리 둘레로 별
+    const { col, row } = memberCell(m);
+    const { width: cw, height: ch } = CONFIG.character;
+    this.effects.stars(this.world.hero.x + col * cw + cw / 2, this.world.hero.y + row * ch + ch / 2, "#ffd36e");
+    this.effects.shake("join");
     this.backToPlay();
   }
 
@@ -201,6 +228,7 @@ export class Engine {
     this.platformAlpha = 0;
     this.blend = 0;
     this.landingTimer = 0;
+    this.effects.clear();
     this.events.onScore?.(0);
     this.setPhase("ready");
   }
@@ -222,6 +250,7 @@ export class Engine {
     this.landingTimer = 0;
     this.blend = 0;
     this.joinPop.clear();
+    this.effects.clear();
     this.events.onScore?.(0);
     this.world.launch();
     this.setPhase("playing");
@@ -267,6 +296,7 @@ export class Engine {
 
   private update = (dt: number) => {
     this.time += dt;
+    this.effects.step(dt);
     if (this.phase !== "ready" && this.platformAlpha < 1) this.platformAlpha = Math.min(1, this.platformAlpha + dt / 0.35);
     if (this.landingTimer > 0) this.landingTimer = Math.max(0, this.landingTimer - dt);
     for (const [m, t] of this.joinPop) {
@@ -316,6 +346,15 @@ export class Engine {
       time: this.time,
       reducedMotion: this.reducedMotion,
     });
+
+    // 느린 기기면 파티클을 줄인다
+    const now = performance.now();
+    if (this.lastFrameAt && this.phase === "playing") this.effects.recordFrame(now - this.lastFrameAt);
+    this.lastFrameAt = now;
+
+    // 흔들림: 배경은 그대로 두고 그 위(바닥·발판·캐릭터)만 살짝 옮긴다 (화면 가장자리가 비지 않게)
+    const shake = this.effects.shakeOffset();
+    ctx.translate(shake.x, shake.y);
 
     const groundTop = screenY(0);
     if (groundTop < vp.logicalHeight) {
@@ -376,7 +415,34 @@ export class Engine {
       const bottom = screenY(feet + row * ch);
       drawSprite(ctx, sprite, Math.round(baseX + (cw - w) / 2), Math.round(bottom - h), w, h);
     }
+
+    for (const p of this.effects.particles) this.drawParticle(p, vp.playX, screenY);
   };
+
+  /** 파티클: 수명이 줄수록 옅고 작아진다. 잉크 테두리로 어느 배경에서도 보이게 */
+  private drawParticle(p: Particle, playX: number, screenY: (y: number) => number) {
+    const { ctx } = this;
+    const k = Math.max(0, p.life / p.maxLife);
+    const s = Math.max(2, Math.round(p.size * (0.5 + 0.5 * k)));
+    const x = Math.round(playX + p.x - s / 2);
+    const y = Math.round(screenY(p.y) - s / 2);
+    ctx.globalAlpha = Math.min(1, k * 1.4);
+    if (p.kind === "star" || p.kind === "sparkle") {
+      // 십자 반짝이
+      ctx.fillStyle = "#3d2c5e";
+      ctx.fillRect(x - 1, y + Math.floor(s / 2) - 2, s + 2, 4);
+      ctx.fillRect(x + Math.floor(s / 2) - 2, y - 1, 4, s + 2);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(x, y + Math.floor(s / 2) - 1, s, 2);
+      ctx.fillRect(x + Math.floor(s / 2) - 1, y, 2, s);
+    } else {
+      ctx.fillStyle = "#3d2c5e";
+      ctx.fillRect(x - 1, y - 1, s + 2, s + 2);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(x, y, s, s);
+    }
+    ctx.globalAlpha = 1;
+  }
 
   /**
    * 동료 후보 (기획서 7-3). 그림 없는 슬롯은 물음표 방울, 그림이 있으면 동그란 방울 속 그 동료.
@@ -438,6 +504,17 @@ export class Engine {
     const t = (this.time % idleHopInterval) / idleHopDuration;
     return t > 1 ? 0 : 4 * idleHopHeight * t * (1 - t);
   }
+}
+
+/** 발판 그림에서 가장 많이 쓴 색 (일회용 발판 조각 색) */
+function spriteColor(sprite: Platforms["oneTime"] | undefined): string {
+  if (!sprite) return "#c9a27a";
+  const count = new Map<string, number>();
+  for (const c of sprite.pixels) if (c) count.set(c, (count.get(c) ?? 0) + 1);
+  let best = "#c9a27a";
+  let max = 0;
+  for (const [c, n] of count) if (n > max) [best, max] = [c, n];
+  return best;
 }
 
 /** 0→1 진행도에 따라 살짝 넘쳤다 돌아오는 크기 (합류 연출) */

@@ -69,6 +69,8 @@ type Props = {
   onClose: () => void;
   /** 있으면 동료 한 명만 그리는 모드 */
   companion?: CompanionTarget;
+  /** 주인공·발판 모드에서 처음 열 탭 (설정의 "발판 만들기") */
+  initialTab?: TabKey;
 };
 
 /**
@@ -76,12 +78,14 @@ type Props = {
  * 그리는 동안에는 임시 저장(editor.draft)만 계속 갱신해서, 앱이 닫혀도 다음에 이어서 그릴 수 있다.
  * companion을 주면 같은 화면이 동료 한 명 그리기(이름 · 주인공 가이드)로 바뀐다.
  */
-export function EditorScreen({ onClose, companion }: Props) {
+export function EditorScreen({ onClose, companion, initialTab }: Props) {
   const [data, update] = useSaveData();
   const kv = useKeyValueStore();
   const { show } = useToast();
   const [state, dispatch] = useReducer(editorReducer, data, (d) =>
-    companion ? createCompanionEditorState(d.companionSlots[companion.slot - 1], d.palette) : createEditorState(d),
+    companion
+      ? createCompanionEditorState(d.companionSlots[companion.slot - 1], d.palette)
+      : editorReducer(createEditorState(d), { type: "setTab", tab: initialTab ?? "hero" }),
   );
   const draftKey = companion ? companionDraftKey(companion.slot) : DRAFT_KEY;
   const inGame = companion?.inGame ?? false;

@@ -285,3 +285,40 @@
   z-index: 40;
   background: var(--color-background);
 }
+
+/* 일시정지 후 다시 시작 카운트다운: 큰 숫자 (스크린리더는 live region으로 따로 읽는다) */
+.resumeCount {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-banner);
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.resumeCount span {
+  font-family: var(--font-display);
+  font-size: calc(var(--font-size-display) * 2);
+  line-height: 1;
+  color: var(--logo-fill);
+  -webkit-text-stroke: 6px var(--logo-stroke);
+  paint-order: stroke fill;
+  animation: resume-pop 0.45s var(--ease-pop);
+}
+
+@keyframes resume-pop {
+  from {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .resumeCount span {
+    animation: none;
+  }
+}

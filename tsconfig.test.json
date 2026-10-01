@@ -8,6 +8,6 @@
     "incremental": false,
     "plugins": []
   },
-  "include": ["tests/**/*.ts", "src/lib/**/*.ts", "src/editor/grid.ts", "src/editor/history.ts", "src/editor/session.ts", "src/editor/imageMath.ts", "src/game/config.ts", "src/game/presets.ts", "src/game/themes.ts", "src/game/world.ts", "src/game/regions.ts", "src/game/formation.ts", "src/game/companions.ts", "src/game/minigames/index.ts"],
+  "include": ["tests/**/*.ts", "src/lib/**/*.ts", "src/editor/grid.ts", "src/editor/history.ts", "src/editor/session.ts", "src/editor/imageMath.ts", "src/game/config.ts", "src/game/presets.ts", "src/game/themes.ts", "src/game/world.ts", "src/game/regions.ts", "src/game/formation.ts", "src/game/companions.ts", "src/game/minigames/index.ts", "src/game/effects.ts", "src/game/audio.ts"],
   "exclude": ["node_modules"]
 }
