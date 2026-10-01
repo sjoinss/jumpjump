@@ -23,6 +23,9 @@ body {
   background-image: radial-gradient(var(--color-background-dot) 2px, transparent 2.5px);
   background-size: 20px 20px;
   color: var(--color-text);
+  /* 한글은 띄어쓰기 단위로만 줄을 바꾼다 ("따/로"처럼 단어 중간에서 끊기지 않게). 너무 긴 낱말은 그래도 넘치지 않게 */
+  word-break: keep-all;
+  overflow-wrap: anywhere;
   font-family: var(--font-sans);
   font-size: var(--font-size-body);
   line-height: var(--line-height-body);
@@ -69,6 +72,57 @@ textarea {
 :focus-visible {
   outline: 3px solid var(--color-focus);
   outline-offset: 3px;
+}
+
+/* 화면이 바뀔 때 스크린리더를 위해 제목으로 옮기는 포커스(tabIndex=-1)는 누를 수 있는 것이 아니라 링을 그리지 않는다 */
+[tabindex="-1"]:focus:not(canvas) {
+  outline: none;
+}
+
+/*
+ * 스크롤바: 브라우저 기본 회색 대신 게임 스타일 (라벤더 알약 + 잉크 외곽선, 화살표 없음).
+ * Chrome·Edge·Safari는 ::-webkit-scrollbar로 꾸민다. 표준 scrollbar-color/width를 함께 쓰면 Chrome이 이쪽을 무시하므로
+ * 표준 속성은 ::-webkit-scrollbar를 모르는 브라우저(Firefox)에만 준다.
+ * 휴대폰은 화면 위에 잠깐 떠오르는 스크롤바라 브라우저가 알아서 그린다.
+ */
+::-webkit-scrollbar {
+  width: 12px;
+  /* 가로 스크롤(팔레트 등)은 내용 바로 아래라 얇게 */
+  height: 9px;
+}
+
+::-webkit-scrollbar-track {
+  margin: 6px;
+  border-radius: var(--radius-full);
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  min-height: 40px;
+  border: 2px solid var(--color-line);
+  border-radius: var(--radius-full);
+  background: var(--color-secondary);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-secondary-edge);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: var(--color-primary);
+}
+
+::-webkit-scrollbar-button,
+::-webkit-scrollbar-corner {
+  display: none;
+  background: transparent;
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-secondary-edge) transparent;
+  }
 }
 
 .visually-hidden {

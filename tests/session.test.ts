@@ -9,6 +9,7 @@ import {
   createCompanionEditorState,
   createEditorState,
   currentSprite,
+  editorTabItems,
   editorReducer,
   isDirty,
   parseDraft,
@@ -255,4 +256,16 @@ test("동료 임시 저장(초안): 그림·이름을 담고 검증 후 복구, 
   // 주인공·발판 에디터에 동료 초안이 들어와도 아무 탭도 바뀌지 않음
   const main = run(createEditorState(base), { type: "restoreDraft", draft });
   assert.equal(isDirty(main), false);
+});
+
+test("탭 줄 항목은 그 에디터에 있는 탭만 (동료 에디터가 주인공 탭을 찾다가 멈추던 문제)", () => {
+  const companion = createCompanionEditorState({ character: null }, save().palette);
+  assert.deepEqual(
+    editorTabItems(companion).map((t) => t.id),
+    ["companion"],
+  );
+  assert.deepEqual(
+    editorTabItems(createEditorState(save())).map((t) => t.id),
+    ["hero", "basic", "highJump", "oneTime"],
+  );
 });

@@ -12,7 +12,7 @@ import { useToast } from "./ui/Toast";
 import { useMediaQuery } from "./useMediaQuery";
 import styles from "./ResultCard.module.css";
 
-const PREVIEW = 148;
+const PREVIEW = 184;
 
 type GifState = { kind: "idle" } | { kind: "working"; progress: number } | { kind: "error"; message: string };
 

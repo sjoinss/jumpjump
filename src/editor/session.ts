@@ -181,6 +181,11 @@ function nameChanged(s: EditorState) {
   return s.name.trim() !== s.savedName.trim();
 }
 
+/** 탭 줄에 보여줄 항목: 이 에디터에 있는 탭만 (동료 모드는 동료 탭 하나) */
+export function editorTabItems(s: EditorState) {
+  return s.keys.map((k) => ({ id: k, label: TAB_LABEL[k].replace(" 발판", ""), marked: isDirty(s, k) }));
+}
+
 export function canUndo(s: EditorState) {
   return tabState(s).history.past.length > 0;
 }

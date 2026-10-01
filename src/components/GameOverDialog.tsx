@@ -1,5 +1,6 @@
 "use client";
 
+import { companionsLabel, RECORD_LABEL } from "@/lib/records";
 import type { CardData } from "@/share/cardRenderer";
 import { ResultCard } from "./ResultCard";
 import { Button } from "./ui/Button";
@@ -12,7 +13,7 @@ export type GameResult = {
   /** 이 판을 포함한 최고 기록 (같은 구분 기준) */
   best: number;
   isNew: boolean;
-  /** 판 시작 때 동료 최대 인원이 1명 이상이었는지 */
+  /** 기록 구분: 판 시작 때 동료 최대 인원이 1명 이상이었는지 (동료 모드 / 혼자 모드) */
   withCompanions: boolean;
   /** 결과 이미지에 그릴 것 (게임오버 순간의 배경·대열) */
   card: CardData;
@@ -63,10 +64,13 @@ export function GameOverDialog({ result, onRetry, onEditor, onHome }: Props) {
                 NEW 최고 기록!
               </span>
             )}
-            <span className={styles.badge}>{result.withCompanions ? "동료 있음" : "동료 없음"}</span>
+            {/* 이번 판에 실제로 함께한 동료 (기록 구분과는 다름) */}
+            <span className={styles.badge}>{companionsLabel(result.card.members.length - 1)}</span>
           </div>
           <p className={styles.best}>
-            {result.isNew ? "지금까지 가장 높이 올라갔어요!" : `최고 기록 ${result.best}m`}
+            {result.isNew
+              ? `${RECORD_LABEL[result.withCompanions ? "withCompanions" : "solo"]}에서 가장 높이 올라갔어요!`
+              : `${RECORD_LABEL[result.withCompanions ? "withCompanions" : "solo"]} 최고 기록 ${result.best}m`}
           </p>
         </div>
       )}

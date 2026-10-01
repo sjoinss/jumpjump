@@ -154,3 +154,57 @@
   flex-direction: column;
   gap: var(--spacing-xs);
 }
+
+/* 섹션 카드: 섹션마다 묶어서 어디까지가 한 덩어리인지 바로 보이게 */
+.card {
+  padding: var(--spacing-md);
+  border: var(--game-outline);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: 0 var(--edge-height) 0 var(--color-line);
+}
+
+/* 연출 스위치: 줄마다 점선으로 나눠 어느 설명이 어느 스위치인지 분명하게 */
+.switches > * + * {
+  padding-top: var(--spacing-xs);
+  border-top: 2px dashed var(--color-border);
+}
+
+/* 최고 기록 두 칸 */
+.records {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-sm);
+  margin: 0;
+}
+
+.record {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--spacing-sm);
+  border: 2px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: var(--color-butter);
+}
+
+.record dt {
+  font-size: var(--font-size-caption);
+}
+
+.record dd {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-section-title);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 위험 동작: 점선으로 나눠 다른 버튼과 떨어뜨린다 */
+.danger {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-xs);
+  padding-top: var(--spacing-sm);
+  border-top: 2px dashed var(--color-border);
+}

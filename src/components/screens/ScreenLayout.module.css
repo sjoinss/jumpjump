@@ -9,7 +9,8 @@
 
 .header {
   display: grid;
-  grid-template-columns: minmax(var(--hud-button), 1fr) auto minmax(var(--hud-button), 1fr);
+  /* 제목이 길면 제목 쪽이 줄어든다 (뒤로·완료 버튼은 줄바꿈하지 않음) */
+  grid-template-columns: minmax(var(--hud-button), 1fr) minmax(0, auto) minmax(var(--hud-button), 1fr);
   align-items: center;
   gap: var(--spacing-sm);
   padding: calc(var(--spacing-md) + env(safe-area-inset-top)) calc(var(--spacing-md) + env(safe-area-inset-right))
@@ -30,10 +31,14 @@
   line-height: var(--line-height-tight);
   text-align: center;
   white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .action {
   justify-self: end;
+  white-space: nowrap;
 }
 
 .body {

@@ -1,6 +1,7 @@
+/* 미리보기를 가운데 크게, 버튼은 그 아래 두 칸 (좁은 게임오버 창에서도 빈 공간 없이) */
 .card {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   align-items: center;
   gap: var(--spacing-sm);
   padding: var(--spacing-sm);
@@ -12,15 +13,22 @@
   display: block;
   flex: 0 0 auto;
   border-radius: var(--radius-md);
+  max-width: 100%;
   image-rendering: pixelated;
 }
 
 .actions {
-  display: flex;
-  flex: 1 1 140px;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: var(--spacing-xs);
+  align-self: stretch;
   min-width: 0;
+}
+
+/* 공유(또는 GIF 진행률)는 두 칸을 다 쓴다 */
+.actions > :nth-child(3),
+.progress {
+  grid-column: 1 / -1;
 }
 
 /* GIF 진행률: 막대 + 숫자(색만으로 알리지 않음) + 취소 */
@@ -54,13 +62,13 @@
 }
 
 .note {
-  flex-basis: 100%;
+  align-self: stretch;
   color: var(--color-muted);
   font-size: var(--font-size-caption);
 }
 
 .full {
-  flex-basis: 100%;
+  align-self: stretch;
 }
 
 .fallback {

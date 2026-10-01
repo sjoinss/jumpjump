@@ -9,6 +9,8 @@
   color: var(--color-ink);
   font-size: var(--font-size-caption);
   line-height: var(--line-height-body);
+  /* 가운데 정렬된 대화창 안에서도 여러 줄 안내는 왼쪽 정렬이 읽기 쉽다 */
+  text-align: left;
 }
 
 .symbol {

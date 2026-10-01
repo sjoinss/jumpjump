@@ -322,3 +322,15 @@
     animation: none;
   }
 }
+
+/* 일시정지 메뉴의 효과음 스위치: 버튼들 사이에서 한 줄 칸으로 보이게 */
+.menuSwitch {
+  padding: 0 var(--spacing-md);
+  border: 2px solid var(--color-line);
+  border-radius: var(--radius-full);
+  background: var(--color-surface-alt);
+}
+
+.menuSwitch > button {
+  width: 100%;
+}

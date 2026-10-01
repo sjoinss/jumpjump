@@ -17,6 +17,7 @@ import {
   type ParsedImport,
 } from "@/lib/dataFile";
 import { saveOrShareFile } from "@/lib/fileIO";
+import { RECORD_LABEL } from "@/lib/records";
 import { verifyImages } from "@/lib/imageVerify";
 import type { SaveData } from "@/lib/schema";
 import { PixelPreview } from "./PixelPreview";
@@ -253,7 +254,7 @@ function summary(d: Partial<SaveData>, k: DataKey) {
     case "settings":
       return d.settings && `${THEMES[d.settings.theme].name} · 동료 최대 ${d.settings.companionMax}명`;
     case "best":
-      return d.best && `동료와 ${d.best.withCompanions} · 혼자 ${d.best.solo}`;
+      return d.best && `${RECORD_LABEL.withCompanions} ${d.best.withCompanions}m · ${RECORD_LABEL.solo} ${d.best.solo}m`;
   }
 }
 

@@ -5,6 +5,7 @@ import { Engine, type Phase, type SceneLayout } from "@/game/engine";
 import { CHARACTER_PRESETS, COMPANION_QUESTION } from "@/game/presets";
 import { SCENE } from "@/game/themes";
 import { needsBackupReminder } from "@/lib/dataFile";
+import { RECORD_LABEL } from "@/lib/records";
 import type { BestScores, Character } from "@/lib/schema";
 import { CompanionPrompt } from "../CompanionPrompt";
 import { ControlsGuide } from "../ControlsGuide";
@@ -577,7 +578,9 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
               계속하기
             </Button>
             {/* 효과음은 일시정지 메뉴에서 바로 끌 수 있다 (기획서 12번) */}
-            <Switch label="효과음" checked={sfxOn} onChange={toggleSfx} />
+            <div className={styles.menuSwitch}>
+              <Switch label="효과음" checked={sfxOn} onChange={toggleSfx} />
+            </div>
             <Button variant="secondary" icon="gear" block onClick={onOpenSettings}>
               설정
             </Button>
@@ -625,13 +628,13 @@ function BestBadge({ best }: { best: BestScores }) {
       <dl className={styles.bestList}>
         {best.withCompanions > 0 && (
           <div>
-            <dt>동료와</dt>
+            <dt>{RECORD_LABEL.withCompanions}</dt>
             <dd>{best.withCompanions}m</dd>
           </div>
         )}
         {best.solo > 0 && (
           <div>
-            <dt>혼자</dt>
+            <dt>{RECORD_LABEL.solo}</dt>
             <dd>{best.solo}m</dd>
           </div>
         )}

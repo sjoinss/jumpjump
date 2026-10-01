@@ -14,7 +14,7 @@ export type CardData = {
   /** 점수 (m) */
   score: number;
   isNew: boolean;
-  /** 기록 구분 (판 시작 때 동료 최대 인원 > 0) */
+  /** 기록 구분 (판 시작 때 동료 최대 인원 > 0). 카드의 동료 배지는 실제 동료 수(members)로 그린다 */
   withCompanions: boolean;
   regionName: string;
   /** 게임 배경 섞임 위치 (경계라면 섞인 그대로) */
@@ -150,9 +150,9 @@ function drawHeader(ctx: CanvasRenderingContext2D, d: CardData, font: string) {
   text(ctx, d.regionName, 32, 34, `13px ${font}`, "left", "#7a6a99");
   text(ctx, `${d.score}m`, 32, 58, `26px ${font}`, "left", INK);
 
-  // 오른쪽 배지: NEW(위) / 동료 있음·없음(아래)
+  // 오른쪽 배지: NEW(위) / 이번 판에 함께한 동료(아래)
   const companions = d.members.length - 1;
-  const label = d.withCompanions ? (companions > 0 ? `동료 ${companions}명` : "동료 있음") : "동료 없음";
+  const label = companions > 0 ? `동료 ${companions}명` : "동료 없이";
   pill(ctx, label, CARD.size - 28, d.isNew ? 48 : 39, font, "#e8e0ff");
   if (d.isNew) pill(ctx, "NEW 최고 기록", CARD.size - 28, 27, font, "#ffd36e");
 }

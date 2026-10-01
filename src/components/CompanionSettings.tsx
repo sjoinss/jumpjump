@@ -64,8 +64,10 @@ export function CompanionSettings({ onEdit }: Props) {
       <div className={styles.max}>
         <Segmented label="동료 최대 인원" options={MAX_OPTIONS} value={companionMax} onChange={setMax} />
         <p className={styles.help}>
-          {companionMax === 0 ? "동료 후보가 나오지 않아요." : `한 판에 동료가 ${companionMax}명까지 함께해요.`} 바꾼 값은 다음 판부터
-          적용돼요.
+          {companionMax === 0
+            ? "혼자 모드: 동료 후보가 나오지 않고, 발판을 조금 더 넉넉하게 밟을 수 있어요. 기록도 혼자 모드로 따로 남아요."
+            : `한 판에 동료가 ${companionMax}명까지 함께해요.`}{" "}
+          바꾼 값은 다음 판부터 적용돼요.
         </p>
         {companionMaxSource === "auto" && (
           <p className={styles.auto}>자동으로 설정됨 · 동료를 여러 번 거절해서 맞췄어요</p>

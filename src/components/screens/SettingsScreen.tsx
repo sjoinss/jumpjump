@@ -4,6 +4,7 @@ import { useRef, useState, type KeyboardEvent } from "react";
 import { EditorScreen } from "@/editor/EditorScreen";
 import type { TabKey } from "@/editor/session";
 import { THEME_IDS, THEMES, type ThemeId } from "@/game/themes";
+import { RECORD_HELP, RECORD_LABEL } from "@/lib/records";
 import type { Settings } from "@/lib/schema";
 import { CompanionSettings } from "../CompanionSettings";
 import { InstallButton } from "../InstallButton";
@@ -84,9 +85,11 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
     <div className={styles.root} inert={editing !== null}>
     <ScreenLayout title="설정" onBack={onClose}>
       <div className={styles.sections}>
-        <CompanionSettings onEdit={(slot) => openEditor({ kind: "companion", slot })} />
+        <div className={styles.card}>
+          <CompanionSettings onEdit={(slot) => openEditor({ kind: "companion", slot })} />
+        </div>
 
-        <section className={styles.section} aria-labelledby="draw-title">
+        <section className={`${styles.section} ${styles.card}`} aria-labelledby="draw-title">
           <h2 id="draw-title" className={styles.sectionTitle}>
             캐릭터 · 발판
           </h2>
@@ -103,12 +106,13 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
               <SpritePreview sprite={data.platforms.basic} width={48} height={12} />
             </span>
             <Button variant="secondary" icon="grid" block onClick={() => openEditor({ kind: "main", tab: "basic" })}>
-              발판 만들기 (기본 · 고점프 · 일회용)
+              발판 만들기
             </Button>
           </div>
+          <p className={styles.sectionHelp}>발판은 기본 · 고점프 · 일회용 세 가지를 따로 그려요.</p>
         </section>
 
-        <section className={styles.section} aria-labelledby="effects-title">
+        <section className={`${styles.section} ${styles.card}`} aria-labelledby="effects-title">
           <h2 id="effects-title" className={styles.sectionTitle}>
             연출
           </h2>
@@ -130,7 +134,7 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
           </div>
         </section>
 
-        <section className={styles.section} aria-labelledby="theme-title">
+        <section className={`${styles.section} ${styles.card}`} aria-labelledby="theme-title">
           <h2 id="theme-title" className={styles.sectionTitle}>
             테마
           </h2>
@@ -172,18 +176,23 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
           </div>
         </section>
 
-        <DataManager />
+        <div className={styles.card}>
+          <DataManager />
+        </div>
 
-        <section className={styles.section} aria-labelledby="app-title">
+        <section className={`${styles.section} ${styles.card}`} aria-labelledby="app-title">
           <h2 id="app-title" className={styles.sectionTitle}>
             앱
           </h2>
-          <p className={styles.sectionHelp}>
-            최고 기록: 동료와 함께 {data.best.withCompanions}m · 혼자서 {data.best.solo}m
-          </p>
-          <Button variant="danger" icon="trash" block disabled={!hasRecords} onClick={() => setConfirmReset(true)}>
-            최고 기록 초기화
-          </Button>
+          <dl className={styles.records} aria-label="최고 기록">
+            {(["withCompanions", "solo"] as const).map((k) => (
+              <div key={k} className={styles.record}>
+                <dt>{RECORD_LABEL[k]}</dt>
+                <dd>{data.best[k]}m</dd>
+              </div>
+            ))}
+          </dl>
+          <p className={styles.sectionHelp}>{RECORD_HELP}</p>
           {updateReady && (
             <Button variant="primary" icon="download" block onClick={applyUpdate}>
               새 버전으로 업데이트
@@ -201,6 +210,13 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
               <p className={styles.sectionHelp}>설치하면 홈 화면에서 바로 열리고, 인터넷이 없어도 플레이할 수 있어요.</p>
             </>
           )}
+          {/* 되돌릴 수 없는 동작은 섹션 맨 아래에 */}
+          <div className={styles.danger}>
+            <Button variant="danger" icon="trash" block disabled={!hasRecords} onClick={() => setConfirmReset(true)}>
+              최고 기록 초기화
+            </Button>
+            {!hasRecords && <p className={styles.sectionHelp}>아직 지울 기록이 없어요.</p>}
+          </div>
         </section>
       </div>
     </ScreenLayout>
@@ -209,7 +225,7 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
     <Dialog
       open={confirmReset}
       title="최고 기록을 초기화할까요?"
-      description="동료와 함께 · 혼자서 기록이 모두 0m가 돼요. 되돌릴 수 없어요."
+      description={`${RECORD_LABEL.withCompanions} · ${RECORD_LABEL.solo} 기록이 모두 0m가 돼요. 되돌릴 수 없어요.`}
       onClose={() => setConfirmReset(false)}
       initialFocusRef={cancelRef}
       actions={

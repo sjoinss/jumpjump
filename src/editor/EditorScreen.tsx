@@ -34,10 +34,10 @@ import {
   currentSprite,
   DRAFT_KEY,
   editorReducer,
+  editorTabItems,
   isCharacterTab,
   isDirty,
   parseDraft,
-  TAB_KEYS,
   TAB_LABEL,
   toDraft,
   type EditorDraft,
@@ -234,7 +234,7 @@ export function EditorScreen({ onClose, companion, initialTab }: Props) {
     if (onionBase) list.push({ sprite: onionBase, opacity: state.onionOpacity });
     return list;
   }, [companion, state.guide, heroGuide, onionBase, state.onionOpacity]);
-  const tabItems = TAB_KEYS.map((k) => ({ id: k, label: TAB_LABEL[k].replace(" 발판", ""), marked: isDirty(state, k) }));
+  const tabItems = editorTabItems(state);
   const title = companion ? `동료 ${companion.slot} 그리기` : "그리기";
   const frameName = isHero ? (state.frame === 1 ? " 착지 그림" : " 기본 그림") : "";
 

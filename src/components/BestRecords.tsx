@@ -1,6 +1,7 @@
 "use client";
 
 import { useId } from "react";
+import { RECORD_HELP, RECORD_LABEL } from "@/lib/records";
 import type { BestScores } from "@/lib/schema";
 import { PixelIcon } from "./ui/PixelIcon";
 import styles from "./BestRecords.module.css";
@@ -9,7 +10,7 @@ type Props = {
   best: BestScores | null;
 };
 
-/** PC 프레임 옆 최고 기록 카드: 두 줄(동료와 / 혼자). 기록이 없으면 빈 상태 안내 */
+/** PC 프레임 옆 최고 기록 카드: 두 줄(동료 모드 / 혼자 모드). 기록이 없으면 빈 상태 안내 */
 export function BestRecords({ best }: Props) {
   const titleId = useId();
   const empty = !best || (best.withCompanions === 0 && best.solo === 0);
@@ -26,15 +27,16 @@ export function BestRecords({ best }: Props) {
       ) : (
         <dl className={styles.list}>
           <div className={styles.row}>
-            <dt>동료와 함께</dt>
+            <dt>{RECORD_LABEL.withCompanions}</dt>
             <dd>{best.withCompanions}m</dd>
           </div>
           <div className={styles.row}>
-            <dt>혼자서</dt>
+            <dt>{RECORD_LABEL.solo}</dt>
             <dd>{best.solo}m</dd>
           </div>
         </dl>
       )}
+      {!empty && <p className={styles.help}>{RECORD_HELP}</p>}
     </section>
   );
 }

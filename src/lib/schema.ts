@@ -89,6 +89,6 @@ export type SaveData = {
 /** 한 판 동안만 쓰는 상태. 저장하지 않는다 (동료 획득 여부 포함) */
 export type RunState = {
   acquired: boolean[];
-  /** 판 시작 시점의 동료 최대 인원. 최고 기록 구분(동료 있음/없음)의 기준 */
+  /** 판 시작 시점의 동료 최대 인원. 최고 기록 구분(동료 모드/혼자 모드, lib/records.ts)의 기준 */
   companionMaxAtStart: number;
 };

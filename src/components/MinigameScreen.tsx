@@ -96,7 +96,8 @@ export function MinigameScreen({ slot, hero, companion, previous, onDone }: Prop
       const { width, height } = box.getBoundingClientRect();
       const dpr = Math.min(window.devicePixelRatio || 1, 3);
       const scale = Math.min(width / ARENA.width, height / ARENA.height);
-      view = { scale, ox: (width - ARENA.width * scale) / 2, oy: (height - ARENA.height * scale) / 2, dpr, w: width, h: height };
+      // 판은 아래에 붙인다: 남는 높이는 위쪽 하늘이 된다 (바닥 아래로 하늘색이 비치지 않게)
+      view = { scale, ox: (width - ARENA.width * scale) / 2, oy: height - ARENA.height * scale, dpr, w: width, h: height };
       canvas.width = Math.max(1, Math.round(width * dpr));
       canvas.height = Math.max(1, Math.round(height * dpr));
     };
