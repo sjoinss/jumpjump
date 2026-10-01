@@ -2,7 +2,7 @@ import { drawBackground, drawGround } from "./background";
 import { CONFIG } from "./config";
 import { Effects, type Particle } from "./effects";
 import { FixedStepLoop } from "./loop";
-import { regionBlendAt } from "./regions";
+import { regionBlendAt, regionIndexAt } from "./regions";
 import { memberCell } from "./formation";
 import { COMPANION_QUESTION } from "./presets";
 import { drawSprite } from "./sprites";
@@ -35,7 +35,8 @@ export type EngineEvents = {
   onScore?: (score: number) => void;
   onGameOver?: (score: number) => void;
   /** 새 지역에 들어옴 (게임 시작 때 동굴 포함). React가 지역 이름 배너를 띄운다 */
-  onRegion?: (index: number) => void;
+  /** 보이는 지역(테마의 지역 목록 기준)에 들어감. 판 시작 때 0번도 알린다 */
+  onRegion?: (index: number, name: string) => void;
   /** 대열이 동료 후보에 닿음 → 게임이 멈추고 React가 선택창을 연다 (기획서 7-4) */
   onCandidate?: (c: { id: number; slot: number }) => void;
 };
@@ -81,6 +82,8 @@ export class Engine {
   /** 화면 흔들림·파티클 (설정에서 각각 끈다) */
   private readonly effects = new Effects();
   private lastFrameAt = 0;
+  /** 이번 판에 배너로 알린 마지막 지역 (테마 지역 목록 기준) */
+  private shownRegion = 0;
   /** 최고 기록 선 글씨 (앱 글꼴, 처음 그릴 때 정한다) */
   private bestFont = "";
 
@@ -254,7 +257,8 @@ export class Engine {
     this.world.setCompanionMax(opts.companionMax);
     this.world.launch();
     this.setPhase("playing");
-    this.events.onRegion?.(0);
+    this.shownRegion = 0;
+    this.events.onRegion?.(0, this.scene.regions[0].name);
   }
 
   /** 게임오버 후 "다시 하기": 바닥에서 바로 다시 출발 */
@@ -268,7 +272,8 @@ export class Engine {
     this.events.onScore?.(0);
     this.world.launch();
     this.setPhase("playing");
-    this.events.onRegion?.(0);
+    this.shownRegion = 0;
+    this.events.onRegion?.(0, this.scene.regions[0].name);
   }
 
   pause() {
@@ -318,7 +323,7 @@ export class Engine {
       else this.joinPop.set(m, t - dt);
     }
     // 배경 지역: 점수로 정한 목표 위치를 천천히 따라간다 (동작 줄이기면 바로)
-    const target = regionBlendAt(this.world.score);
+    const target = regionBlendAt(this.world.score, this.scene.regions);
     if (this.reducedMotion) this.blend = target;
     else {
       const step = CONFIG.regions.followSpeed * dt;
@@ -328,8 +333,15 @@ export class Engine {
 
     for (const e of this.world.step(dt, this.input.consumeIntent())) {
       if (e.type === "land") this.landListeners.forEach((fn) => fn({ platform: e.platform, first: e.first }));
-      else if (e.type === "score") this.events.onScore?.(e.score);
-      else if (e.type === "region") this.events.onRegion?.(e.index);
+      else if (e.type === "score") {
+        this.events.onScore?.(e.score);
+        // 지역 배너는 테마의 지역 목록으로 (게임 속도용 world의 지역과 개수·높이가 다를 수 있다)
+        const reached = regionIndexAt(e.score, this.scene.regions);
+        while (this.shownRegion < reached) {
+          this.shownRegion += 1;
+          this.events.onRegion?.(this.shownRegion, this.scene.regions[this.shownRegion].name);
+        }
+      }
       else if (e.type === "candidate") {
         // 선택창이 열려 있는 동안 게임은 멈춘다
         this.setPhase("companionPrompt");

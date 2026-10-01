@@ -19,7 +19,6 @@ import { Switch } from "../ui/Switch";
 import { useToast } from "../ui/Toast";
 import { useMediaQuery } from "../useMediaQuery";
 import { ScreenLayout } from "./ScreenLayout";
-import { ShareHeroButton } from "../ShareCharacter";
 import styles from "./SettingsScreen.module.css";
 
 /** 설정 위에 덮어 여는 에디터: 동료 한 명 / 주인공·발판 */
@@ -102,8 +101,6 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
               캐릭터 다시 그리기
             </Button>
           </div>
-          <ShareHeroButton />
-          <p className={styles.sectionHelp}>링크를 받은 친구는 내 캐릭터를 동료로 데려가거나 자기 캐릭터로 쓸 수 있어요. 그림은 링크 안에만 담기고 어디에도 올라가지 않아요.</p>
           <div className={styles.drawRow}>
             <span className={styles.drawPreview}>
               <SpritePreview sprite={data.platforms.basic} width={48} height={12} />

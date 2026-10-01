@@ -19,8 +19,8 @@
     linear-gradient(
       180deg,
       var(--color-desk-bg-2) 0 25%,
-      #f0f1fd 25% 50%,
-      #f7f0f9 50% 75%,
+      var(--color-desk-mid-1) 25% 50%,
+      var(--color-desk-mid-2) 50% 75%,
       var(--color-desk-bg) 75% 100%
     );
 }

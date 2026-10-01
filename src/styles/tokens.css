@@ -2,7 +2,7 @@
  * 디자인 토큰 — 귀여운 파스텔 게임 스타일.
  * 원칙: 파스텔은 "채우기"에만 쓰고, 글자·외곽선은 진한 잉크색(--color-ink)으로 대비를 확보한다.
  * 대비(크림 배경 --color-background 기준): ink 11.4:1, muted 5.7:1, primary-strong 5.6:1, focus 4.8:1
- * 세 테마 모두 tests/contrast.test.ts가 글자 4.5:1 · 포커스 3:1을 확인한다.
+ * 모든 테마를 tests/contrast.test.ts가 글자 4.5:1 · 포커스 3:1을 확인한다.
  * 파스텔 채우기(primary/secondary/mint/butter/sky/danger) 위 잉크 글자는 모두 6:1 이상.
  */
 :root {
@@ -54,6 +54,9 @@
   /* PC 주변 배경 (게임 스테이지와 무관하게 밝은 톤 고정) */
   --color-desk-bg: #ffe9f2;
   --color-desk-bg-2: #e6f3ff;
+  /* PC 배경 가운데 두 줄 */
+  --color-desk-mid-1: #f0f1fd;
+  --color-desk-mid-2: #f7f0f9;
 
   /* 게임 외곽선·입체감. 외곽선 색(--color-line)은 테마마다 다르고, 글자색(--color-ink)은 대비 때문에 거의 고정 */
   --color-line: var(--color-ink);
@@ -204,4 +207,99 @@
   --radius-md: 16px;
   --radius-lg: 24px;
   --radius-xl: 30px;
+}
+
+/* 바닷속: 맑은 푸른색, 거품처럼 둥글게 */
+:root[data-theme="ocean"] {
+  --logo-fill: #e9f8ff;
+  --logo-stroke: #1f5f9e;
+  --color-ink: #1f3a5f;
+  --color-text: #1f3a5f;
+  --color-muted: #4a6280;
+  --color-line: #2b5c8f;
+  --outline-width: 3px;
+  --edge-height: 4px;
+
+  --color-background: #eef8ff;
+  --color-background-dot: #d6eeff;
+  --color-surface: #fbfeff;
+  --color-surface-alt: #e5f3fd;
+  --color-border: #cde4f4;
+  --color-border-strong: #7fa8cc;
+
+  --color-primary: #7fd3f0;
+  --color-primary-edge: #3fa9d6;
+  --color-primary-soft: #def3fb;
+  --color-primary-strong: #0e6696;
+  --color-secondary: #a9c8ff;
+  --color-secondary-edge: #6f9ae6;
+  --color-secondary-soft: #e8f0ff;
+  --color-mint: #a6eadb;
+  --color-mint-edge: #63c9b2;
+  --color-butter: #fff0b8;
+  --color-butter-edge: #e6cc78;
+  --color-sky: #c4e7ff;
+  --color-sky-edge: #84c2ea;
+  --color-cream: #f7fcff;
+  --color-cream-edge: #cfe3ef;
+  --color-danger-fill: #ffb3ae;
+  --color-danger-edge: #e57f78;
+  --color-focus: #3d4fe0;
+
+  --color-desk-bg: #cfe7ff;
+  --color-desk-bg-2: #e6f5ff;
+  --color-desk-mid-1: #dcefff;
+  --color-desk-mid-2: #d3ebff;
+
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 30px;
+}
+
+/* 블록 월드: 잔디·흙·돌 색, 모서리를 네모나게 */
+:root[data-theme="blocks"] {
+  --logo-fill: #8fd16a;
+  --logo-stroke: #2f3a24;
+  --color-ink: #2d2a26;
+  --color-text: #2d2a26;
+  --color-muted: #5c564d;
+  --color-line: #3b3b3b;
+  --outline-width: 3px;
+  --edge-height: 4px;
+
+  --color-background: #f1f6ea;
+  --color-background-dot: #e1ecd3;
+  --color-surface: #fffdf7;
+  --color-surface-alt: #eef3e4;
+  --color-border: #d6dfc8;
+  --color-border-strong: #8c9a7a;
+
+  --color-primary: #8fd16a;
+  --color-primary-edge: #5e9e3e;
+  --color-primary-soft: #e3f5d6;
+  --color-primary-strong: #336b1a;
+  --color-secondary: #c9a27a;
+  --color-secondary-edge: #9b7650;
+  --color-secondary-soft: #f3e8dc;
+  --color-mint: #a6e0c9;
+  --color-mint-edge: #6cbf9f;
+  --color-butter: #ffe08a;
+  --color-butter-edge: #d9b24a;
+  --color-sky: #bfe0ff;
+  --color-sky-edge: #82b5e0;
+  --color-cream: #fbf8f0;
+  --color-cream-edge: #ddd3c0;
+  --color-danger-fill: #ff9d8a;
+  --color-danger-edge: #d4675a;
+
+  --color-desk-bg: #e3eed6;
+  --color-desk-bg-2: #dcebff;
+  --color-desk-mid-1: #e6f0f4;
+  --color-desk-mid-2: #e9f1e1;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
 }

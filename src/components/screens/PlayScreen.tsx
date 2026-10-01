@@ -186,8 +186,8 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
         score: final,
         isNew,
         withCompanions,
-        regionName: regionName(regionIndexAt(final)),
-        blend: regionBlendAt(final),
+        regionName: regionName(regionIndexAt(final, SCENE[d.settings.theme].regions), SCENE[d.settings.theme].regions),
+        blend: regionBlendAt(final, SCENE[d.settings.theme].regions),
         members,
         platform: d.platforms.basic,
         scene: SCENE[d.settings.theme],
@@ -339,9 +339,8 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
         sfx.play("candidate");
         setPrompt(c);
       },
-      onRegion: (index) => {
+      onRegion: (index, name) => {
         if (index > 0) sfx.play("region");
-        const name = regionName(index);
         setRegionBanner((prev) => ({ id: (prev?.id ?? 0) + 1, name }));
         announceRef.current(name);
         if (bannerTimer.current) clearTimeout(bannerTimer.current);
