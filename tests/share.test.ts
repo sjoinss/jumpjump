@@ -243,3 +243,19 @@ test("미디언 컷: 요청한 개수 이하로 대표색을 만든다", () => {
   assert.ok(pal.length <= 16 && pal.length > 8);
   for (const c of pal) for (const v of c) assert.ok(v >= 0 && v <= 255);
 });
+
+// ── 앱 안 브라우저 저장 ──
+
+test("앱 안 브라우저는 내려받기 대신 길게 눌러 저장으로", async () => {
+  const { isInAppBrowser, externalBrowserUrl } = await import("../src/lib/fileIO");
+  const kakao = "Mozilla/5.0 (Linux; Android 14; SM-S918N Build/UP1A; wv) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36;KAKAOTALK 2410200";
+  const kakaoIos = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 KAKAOTALK 10.8.0";
+  const insta = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Instagram 300.0";
+  const chrome = "Mozilla/5.0 (Linux; Android 14; SM-S918N) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36";
+  const safari = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1";
+  const samsung = "Mozilla/5.0 (Linux; Android 14; SM-S918N) AppleWebKit/537.36 SamsungBrowser/25.0 Chrome/121 Mobile Safari/537.36";
+  for (const ua of [kakao, kakaoIos, insta]) assert.equal(isInAppBrowser(ua), true, ua);
+  for (const ua of [chrome, safari, samsung]) assert.equal(isInAppBrowser(ua), false, ua);
+  assert.equal(externalBrowserUrl(kakao, "https://a.b/c?d=1"), "kakaotalk://web/openExternal?url=https%3A%2F%2Fa.b%2Fc%3Fd%3D1");
+  assert.equal(externalBrowserUrl(insta, "https://a.b/"), null);
+});

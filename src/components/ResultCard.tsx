@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { CONFIG } from "@/game/config";
-import { saveOrShareFile } from "@/lib/fileIO";
+import { blobToDataUrl, externalBrowserUrl, isInAppBrowser, saveOrShareFile } from "@/lib/fileIO";
 import { cardAltText, drawCard, hasImageMembers, loadCardFont, type CardData } from "@/share/cardRenderer";
 import { cardFileName, exportGif, exportPng } from "@/share/exportCard";
 import { CARD } from "@/share/layout";
@@ -39,7 +39,7 @@ export function ResultCard({ card: base }: { card: CardData }) {
   const [gif, setGif] = useState<GifState>({ kind: "idle" });
   const abortRef = useRef<AbortController | null>(null);
   /** 저장·공유가 다 안 되는 브라우저: 이미지를 띄우고 길게 눌러 저장하게 한다 */
-  const [fallback, setFallback] = useState<{ url: string; name: string } | null>(null);
+  const [fallback, setFallback] = useState<{ url: string; name: string; external: string | null } | null>(null);
   const [canShare, setCanShare] = useState(false);
 
   useEffect(() => {
@@ -84,13 +84,19 @@ export function ResultCard({ card: base }: { card: CardData }) {
   }, [card, font, reducedMotion]);
 
   // 휴대폰은 공유 창(사진에 저장 포함)이 먼저, PC는 바로 다운로드 (기획서 13-6)
+  // 앱 안 브라우저는 내려받기가 안 되므로(공유 창이 뜨는 경우만 빼고) 바로 길게 눌러 저장하게 한다
   const deliver = async (blob: Blob, name: string, share: boolean) => {
+    const ua = navigator.userAgent;
+    if (isInAppBrowser(ua) && !(share && canShare)) {
+      setFallback({ url: await blobToDataUrl(blob), name, external: externalBrowserUrl(ua, location.href) });
+      return;
+    }
     try {
       const r = await saveOrShareFile(blob, name, share);
       if (r === "shared") show("공유했어요!", "success");
       else if (r === "downloaded") show("저장되었습니다", "success");
     } catch {
-      setFallback({ url: URL.createObjectURL(blob), name });
+      setFallback({ url: URL.createObjectURL(blob), name, external: null });
     }
   };
 
@@ -129,7 +135,7 @@ export function ResultCard({ card: base }: { card: CardData }) {
   };
 
   const closeFallback = () => {
-    if (fallback) URL.revokeObjectURL(fallback.url);
+    if (fallback?.url.startsWith("blob:")) URL.revokeObjectURL(fallback.url);
     setFallback(null);
   };
 
@@ -204,16 +210,23 @@ export function ResultCard({ card: base }: { card: CardData }) {
       <Dialog
         open={fallback !== null}
         title="이미지를 길게 눌러 저장하세요"
-        description="이 브라우저에서는 바로 저장할 수 없어요. 아래 이미지를 길게 누르거나 오른쪽 클릭해서 저장해주세요."
+        description="이 브라우저에서는 바로 저장할 수 없어요. 아래 이미지를 길게 누르거나 오른쪽 클릭해서 저장해주세요. 그래도 안 되면 다른 브라우저(크롬·사파리)로 열어주세요."
         onClose={closeFallback}
         actions={
-          <Button variant="primary" block data-autofocus onClick={closeFallback}>
-            닫기
-          </Button>
+          <>
+            {fallback?.external && (
+              <Button variant="secondary" block onClick={() => (location.href = fallback.external!)}>
+                다른 브라우저로 열기
+              </Button>
+            )}
+            <Button variant="primary" block data-autofocus onClick={closeFallback}>
+              닫기
+            </Button>
+          </>
         }
       >
         {fallback && (
-          // eslint-disable-next-line @next/next/no-img-element -- 방금 만든 결과 이미지(blob)를 그대로 보여준다
+          // eslint-disable-next-line @next/next/no-img-element -- 방금 만든 결과 이미지(blob·data)를 그대로 보여준다
           <img className={styles.fallback} src={fallback.url} alt={cardAltText(card)} />
         )}
       </Dialog>

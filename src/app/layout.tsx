@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Jua } from "next/font/google";
 import type { ReactNode } from "react";
+import { EARLY_KAKAO_SCRIPT } from "@/lib/fileIO";
 import { EARLY_THEME_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
@@ -42,6 +43,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <head>
         {/* 고정 문자열 스크립트: 저장된 테마를 첫 화면부터 적용 (깜빡임 방지) */}
         <script dangerouslySetInnerHTML={{ __html: EARLY_THEME_SCRIPT }} />
+        {/* 고정 문자열 스크립트: 카카오톡 안이면 기본 브라우저로 넘긴다 */}
+        <script dangerouslySetInnerHTML={{ __html: EARLY_KAKAO_SCRIPT }} />
       </head>
       <body>{children}</body>
     </html>
