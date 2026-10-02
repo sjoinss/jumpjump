@@ -146,20 +146,10 @@ test("기본 캐릭터는 늘 세 모습(기본·내려갈 때·착지)이 있�
   }
 });
 
-test("PNG 저장 크기: 파일은 고른 크기 그대로, 캐릭터는 빈 칸을 빼고 정수 배로 꽉 차게, 발판은 고른 크기가 가로", async () => {
+test("PNG 저장 크기: 칸 격자 그대로(빈 칸 포함), 고른 크기가 가로가 되게 정수 배 — 여백 없음", async () => {
   const { pngLayout } = await import("../src/editor/pngExport");
-  // 16×18 격자에 가운데 10×12칸만 그림
-  const drawn = blankSprite(16, 18);
-  for (let y = 3; y < 15; y++) for (let x = 3; x < 13; x++) drawn.pixels[y * 16 + x] = "#123456";
-  const l = pngLayout(drawn, 256, false);
-  assert.equal(l.width, 256);
-  assert.equal(l.height, 256, "파일은 정확히 256×256");
-  assert.equal(l.scale, 21, "그린 영역 12칸이 256을 거의 채운다 (21배 = 252)");
-  assert.deepEqual(l.crop, { x: 3, y: 3, width: 10, height: 12 });
-  assert.ok(256 - 12 * l.scale < l.scale, "남는 여백은 한 칸보다 작다");
-  const big = pngLayout(blankSprite(32, 36), 64, false);
-  assert.equal(big.width, 64);
-  assert.equal(big.scale, 1, "빈 그림이면 격자 전체, 최소 1배");
-  const plat = pngLayout(blankSprite(32, 8), 512, true);
-  assert.deepEqual([plat.width, plat.height, plat.scale], [512, 128, 16]);
+  assert.deepEqual(pngLayout({ width: 16, height: 18 }, 256), { width: 256, height: 288, scale: 16 });
+  assert.deepEqual(pngLayout({ width: 32, height: 36 }, 64), { width: 64, height: 72, scale: 2 });
+  assert.deepEqual(pngLayout({ width: 16, height: 18 }, 64), { width: 64, height: 72, scale: 4 });
+  assert.deepEqual(pngLayout({ width: 32, height: 8 }, 512), { width: 512, height: 128, scale: 16 });
 });

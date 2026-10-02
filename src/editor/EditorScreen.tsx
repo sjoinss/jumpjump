@@ -326,7 +326,6 @@ export function EditorScreen({ onClose, companion, initialTab }: Props) {
   const pngSave = (
     <PngSaveSection
       sprite={sprite.kind === "pixel" ? sprite : null}
-      platform={!isHero}
       label={isHero ? `${companion ? "동료" : "캐릭터"} ${POSE_INFO[poseAt(state.frame)].name} 모습` : TAB_LABEL[state.active]}
       fileBase={
         isHero

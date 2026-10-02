@@ -13,7 +13,6 @@ import styles from "./EditorScreen.module.css";
 type Props = {
   /** 지금 보고 있는 도트 그림 (이미지 그림이면 null → 안내만) */
   sprite: PixelSprite | null;
-  platform: boolean;
   /** 안내에 쓰는 이름 (예: "캐릭터 기본 모습") */
   label: string;
   /** 파일 이름 앞부분 (예: "jumpjump-character-base") */
@@ -21,7 +20,7 @@ type Props = {
 };
 
 /** 도트 그림을 배경이 투명한 PNG로 저장 (64·128·256·512). 저장하면 버튼이 잠깐 "저장 완료"로 바뀐다 */
-export function PngSaveSection({ sprite, platform, label, fileBase }: Props) {
+export function PngSaveSection({ sprite, label, fileBase }: Props) {
   const titleId = useId();
   const [size, setSize] = useState<PngSize>(256);
   const [busy, setBusy] = useState(false);
@@ -37,7 +36,7 @@ export function PngSaveSection({ sprite, platform, label, fileBase }: Props) {
     setBusy(true);
     try {
       const name = `${fileBase}-${size}px.png`;
-      const outcome = await saveOrShareFile(await spriteToPng(sprite, size, platform), name, false);
+      const outcome = await saveOrShareFile(await spriteToPng(sprite, size), name, false);
       if (outcome === "downloaded") {
         mark("png");
         show(downloadedMessage(name), "success", DOWNLOAD_TOAST_MS);
@@ -49,7 +48,7 @@ export function PngSaveSection({ sprite, platform, label, fileBase }: Props) {
     }
   };
 
-  const l = sprite ? pngLayout(sprite, size, platform) : null;
+  const l = sprite ? pngLayout(sprite, size) : null;
   return (
     <section className={styles.dialogSection} aria-labelledby={titleId}>
       <h3 id={titleId} className={styles.dialogHeading}>
@@ -63,7 +62,7 @@ export function PngSaveSection({ sprite, platform, label, fileBase }: Props) {
           </Button>
           <p className={styles.helper}>
             지금 보고 있는 {label} 그림만 배경 없이 저장해요.{" "}
-            {platform ? "" : `둘레 빈 칸은 빼고, 도트가 흐려지지 않게 ${l.scale}배로 키워 꽉 차게 둬요.`}
+            칸 격자 그대로(빈 칸은 투명) 가로 {size}px이 되게 {l.scale}배로 키워요.
           </p>
         </>
       ) : (
