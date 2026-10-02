@@ -395,6 +395,9 @@ export function editorReducer(s: EditorState, a: EditorAction): EditorState {
     }
     case "setFrameSprite": {
       if (!isCharacterTab(s.active)) return s;
+      // 기본 모습에 새 이미지를 넣으면 다른 캐릭터로 바꾸는 것 — 예전 캐릭터의 내려갈 때·착지 모습은 뺀다
+      // (남아 있으면 게임에서 갑자기 예전 캐릭터가 보여 헷갈린다, 2026-10-02 사용자 요청). 되돌리기로 돌아갈 수 있다
+      if (s.frame === 0) return { ...commit(s, characterDoc({ base: a.sprite })), stroke: null };
       return commit(s, withFrame(currentDoc(s), s.frame, a.sprite));
     }
     case "restoreDraft": {

@@ -317,3 +317,15 @@ test("기본 캐릭터를 불러오면 세 모습이 그대로 (주인공·동�
   const plat = run(createEditorState(save()), { type: "setTab", tab: "basic" }, { type: "loadCharacter", character: nabi });
   assert.equal(plat.tabs.basic!.history.past.length, 0, "발판 탭에는 안 들어감");
 });
+
+test("기본 모습에 이미지를 넣으면 예전 내려갈 때·착지 모습은 빠진다 (되돌리기 가능), 다른 모습에 넣으면 그대로", () => {
+  const img = { kind: "image" as const, mime: "image/png" as const, data: "AAAA", width: 320 as const, height: 360 as const };
+  let s = run(createEditorState(save()), { type: "addPose", pose: "fall", copyBase: true }, { type: "addPose", pose: "land", copyBase: true });
+  assert.deepEqual(s.tabs.hero!.history.present.frames.map((f) => f !== null), [true, true, true]);
+  const onLand = run(s, { type: "setFrame", frame: 2 }, { type: "setFrameSprite", sprite: img });
+  assert.deepEqual(onLand.tabs.hero!.history.present.frames.map((f) => f?.kind ?? null), ["pixel", "pixel", "image"]);
+  s = run(s, { type: "setFrame", frame: 0 }, { type: "setFrameSprite", sprite: img });
+  assert.deepEqual(s.tabs.hero!.history.present.frames.map((f) => f?.kind ?? null), ["image", null, null]);
+  s = run(s, { type: "undo" });
+  assert.deepEqual(s.tabs.hero!.history.present.frames.map((f) => f !== null), [true, true, true]);
+});

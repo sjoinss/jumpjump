@@ -660,12 +660,11 @@ export function EditorScreen({ onClose, companion, initialTab }: Props) {
             show("스킨으로 세 모습(올라갈 때·내려갈 때·착지)을 만들었어요. 바로 고칠 수 있어요.", "success");
           }}
           onDone={(sprite) => {
+            const dropsPoses = state.frame === 0 && doc.frames.slice(1).some(Boolean);
             dispatch({ type: "setFrameSprite", sprite });
             setImporting(null);
-            show(
-              sprite.kind === "pixel" ? "도트로 바꿨어요. 바로 고칠 수 있어요." : "이미지를 넣었어요. 완료를 누르면 게임에 적용돼요.",
-              "success",
-            );
+            const done = sprite.kind === "pixel" ? "도트로 바꿨어요. 바로 고칠 수 있어요." : "이미지를 넣었어요. 완료를 누르면 게임에 적용돼요.";
+            show(dropsPoses ? `${done} 예전 내려갈 때·착지 모습은 뺐어요.` : done, "success");
           }}
         />
       </div>
