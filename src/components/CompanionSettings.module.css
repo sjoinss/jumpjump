@@ -45,8 +45,10 @@
   list-style: none;
 }
 
+/* 좁은 화면에서 버튼(수정·삭제)이 이름 칸을 짓누르지 않게, 자리가 모자라면 버튼이 다음 줄로 */
 .slot {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--spacing-sm);
   padding: var(--spacing-sm);
@@ -68,7 +70,7 @@
 
 .info {
   display: flex;
-  flex: 1 1 auto;
+  flex: 1 1 64px;
   flex-direction: column;
   min-width: 0;
 }
@@ -86,12 +88,14 @@
 
 .state {
   color: var(--color-muted);
+  white-space: nowrap;
   font-size: var(--font-size-caption);
 }
 
 .actions {
   display: flex;
   flex: 0 0 auto;
+  margin-left: auto;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: var(--spacing-xs);
