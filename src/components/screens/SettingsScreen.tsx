@@ -4,6 +4,7 @@ import { useRef, useState, type KeyboardEvent } from "react";
 import { EditorScreen } from "@/editor/EditorScreen";
 import type { TabKey } from "@/editor/session";
 import { THEME_IDS, THEMES, type ThemeId } from "@/game/themes";
+import { resolvePlatforms } from "@/game/themePlatforms";
 import { formatScore, RECORD_HELP, RECORD_LABEL, scoreSize } from "@/lib/records";
 import type { Settings } from "@/lib/schema";
 import { CompanionSettings } from "../CompanionSettings";
@@ -103,7 +104,7 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
           </div>
           <div className={styles.drawRow}>
             <span className={styles.drawPreview}>
-              <SpritePreview sprite={data.platforms.basic} width={48} height={12} />
+              <SpritePreview sprite={resolvePlatforms(data.platforms, theme).basic} width={48} height={12} />
             </span>
             <Button variant="secondary" icon="grid" block onClick={() => openEditor({ kind: "main", tab: "basic" })}>
               발판 만들기

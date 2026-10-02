@@ -15,7 +15,9 @@ import { Switch } from "@/components/ui/Switch";
 import { Tabs } from "@/components/ui/Tabs";
 import { useToast } from "@/components/ui/Toast";
 import { CONFIG } from "@/game/config";
-import { CHARACTER_PRESETS, PLATFORM_PRESETS } from "@/game/presets";
+import { CHARACTER_PRESETS } from "@/game/presets";
+import { resolvePlatforms, THEME_PLATFORMS } from "@/game/themePlatforms";
+import type { ThemeId } from "@/game/themes";
 import { POSE_INFO } from "@/lib/character";
 import { POSES, type Character, type PixelSprite } from "@/lib/schema";
 import { DotCanvas, type Underlay } from "./DotCanvas";
@@ -88,7 +90,11 @@ export function EditorScreen({ onClose, companion, initialTab }: Props) {
   const [state, dispatch] = useReducer(editorReducer, data, (d) =>
     companion
       ? createCompanionEditorState(d.companionSlots[companion.slot - 1], d.palette)
-      : editorReducer(createEditorState(d), { type: "setTab", tab: initialTab ?? "hero" }),
+      : // 기본 발판은 지금 테마의 발판으로 보여준다
+        editorReducer(createEditorState({ ...d, platforms: resolvePlatforms(d.platforms, d.settings.theme) }), {
+          type: "setTab",
+          tab: initialTab ?? "hero",
+        }),
   );
   const draftKey = companion ? companionDraftKey(companion.slot) : DRAFT_KEY;
   const inGame = companion?.inGame ?? false;
@@ -486,6 +492,7 @@ export function EditorScreen({ onClose, companion, initialTab }: Props) {
         tab={state.active}
         sprite={sprite.kind === "pixel" ? sprite : null}
         hero={data.hero}
+        theme={data.settings.theme}
         onClose={() => setDialog(null)}
         onLoad={(s, name) => {
           // 발판: 기본 발판으로 되돌리기
@@ -653,6 +660,8 @@ type CanvasDialogProps = {
   sprite: PixelSprite | null;
   /** 주인공 (동료 탭의 "주인공 그림 가져오기") */
   hero: Character;
+  /** 지금 테마 (기본 발판 그림) */
+  theme: ThemeId;
   onClose: () => void;
   /** 발판 기본 그림 */
   onLoad: (sprite: PixelSprite, name: string) => void;
@@ -666,7 +675,7 @@ type CanvasDialogProps = {
  * 캐릭터: 기본 캐릭터 불러오기 + 칸 크기 / 동료: 주인공 그림 가져오기 + 칸 크기 (동료 기본 세트는 없음)
  * 발판: 기본 발판으로 되돌리기
  */
-function CanvasDialog({ open, tab, sprite, hero, onClose, onLoad, onLoadCharacter, onResize, onImportImage }: CanvasDialogProps) {
+function CanvasDialog({ open, tab, sprite, hero, theme, onClose, onLoad, onLoadCharacter, onResize, onImportImage }: CanvasDialogProps) {
   const [pendingShrink, setPendingShrink] = useState(false);
   const sizes = CONFIG.character.gridSizes;
 
@@ -675,7 +684,7 @@ function CanvasDialog({ open, tab, sprite, hero, onClose, onLoad, onLoadCharacte
   }, [open]);
 
   if (!isCharacterTab(tab)) {
-    const preset = PLATFORM_PRESETS[tab as keyof typeof PLATFORM_PRESETS];
+    const preset = THEME_PLATFORMS[theme][tab as keyof typeof THEME_PLATFORMS.dot];
     return (
       <Dialog open={open} title={TAB_LABEL[tab]} onClose={onClose}>
         <div className={styles.platformPreset}>

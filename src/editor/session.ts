@@ -1,4 +1,5 @@
 import { CONFIG } from "../game/config";
+import { platformsForSave } from "../game/themePlatforms";
 import { POSE_INFO } from "../lib/character";
 import { POSES, type Character, type CompanionSlot, type PixelSprite, type Platforms, type Pose, type SaveData, type Sprite } from "../lib/schema";
 import { validatePixelSprite, validateSprite } from "../lib/validate";
@@ -444,15 +445,19 @@ export function applyCompanionToSave(s: EditorState, save: SaveData, slot: numbe
   return { ...save, companionSlots: save.companionSlots.map((c, i) => (i === slot - 1 ? next : c)) };
 }
 
-/** 저장 데이터에 반영할 값 (main 모드) */
+/** 에디터의 발판 4종 (지금 보이는 그대로) */
+export function editorPlatforms(s: EditorState): Platforms {
+  const plat = (k: keyof Platforms) => tabState(s, k).history.present.frames[0] as PixelSprite;
+  return { basic: plat("basic"), highJump: plat("highJump"), oneTime: plat("oneTime"), moving: plat("moving") };
+}
+
+/**
+ * 저장 데이터에 반영할 값 (main 모드).
+ * 에디터는 기본 발판을 지금 테마의 발판으로 보여주므로, 테마 발판과 똑같은 종류는 "기본"으로 되돌려 저장한다 (themePlatforms.ts)
+ */
 export function applyToSave(s: EditorState, save: SaveData): SaveData {
   const hero = docCharacter(tabState(s, "hero").history.present);
-  const plat = (k: keyof Platforms) => tabState(s, k).history.present.frames[0] as PixelSprite;
-  return {
-    ...save,
-    hero,
-    platforms: { basic: plat("basic"), highJump: plat("highJump"), oneTime: plat("oneTime"), moving: plat("moving") },
-  };
+  return { ...save, hero, platforms: platformsForSave(editorPlatforms(s), save.settings.theme) };
 }
 
 // ── 임시 저장 (크래시 복구) ──

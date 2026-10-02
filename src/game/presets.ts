@@ -351,7 +351,7 @@ export function withPresetPoses(c: Character): Character {
  * 발판 32×8. 윗면(t) · 윗면 그림자(s) · 몸통(b) · 무늬(a) · 테두리(e) 다섯 색으로 같은 틀을 쓴다.
  * 종류 구분은 색 + 무늬로 하고, 색약 대응 표식은 8단계에서 게임 화면 위에 따로 겹친다.
  */
-function platformSprite(pattern: string, legend: Record<string, string>): PixelSprite {
+export function platformSprite(pattern: string, legend: Record<string, string>): PixelSprite {
   return pixelSprite(
     [
       ".." + "t".repeat(28) + "..",

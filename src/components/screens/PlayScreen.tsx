@@ -5,6 +5,7 @@ import { Engine, type Phase, type SceneLayout } from "@/game/engine";
 import { COMPANION_QUESTION } from "@/game/presets";
 import { isPresetHero } from "@/lib/character";
 import { SCENE } from "@/game/themes";
+import { resolvePlatforms } from "@/game/themePlatforms";
 import { needsBackupReminder } from "@/lib/dataFile";
 import { formatScore, RECORD_LABEL, scoreSize } from "@/lib/records";
 import type { BestScores, Character } from "@/lib/schema";
@@ -189,7 +190,7 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
         regionName: regionName(regionIndexAt(final, SCENE[d.settings.theme].regions), SCENE[d.settings.theme].regions),
         blend: regionBlendAt(final, SCENE[d.settings.theme].regions),
         members,
-        platform: d.platforms.basic,
+        platform: resolvePlatforms(d.platforms, d.settings.theme).basic,
         scene: SCENE[d.settings.theme],
         caption: d.settings.cardCaption,
       };
@@ -347,7 +348,7 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
         bannerTimer.current = setTimeout(() => setRegionBanner(null), CONFIG.regions.bannerSeconds * 1000 + 200);
       },
     });
-    engine.setPlatformSprites(dataRef.current.platforms);
+    engine.setPlatformSprites(resolvePlatforms(dataRef.current.platforms, dataRef.current.settings.theme));
     // 효과음도 착지 이벤트를 듣는다 (착지 프레임·파티클과 같은 훅)
     engine.onLand(({ platform }) => {
       sfx.play(platform.kind === "highJump" ? "highJump" : platform.kind === "oneTime" ? "break" : "land");
@@ -400,10 +401,10 @@ export function PlayScreen({ covered, onOpenSettings, onOpenEditor }: Props) {
     engineRef.current?.setMarkers(markers);
   }, [markers]);
 
-  // 에디터에서 발판을 바꾸면 바로 반영
+  // 에디터에서 발판을 바꾸거나 테마를 바꾸면 바로 반영 (기본 발판은 테마마다 다르다)
   useEffect(() => {
-    engineRef.current?.setPlatformSprites(data.platforms);
-  }, [data.platforms]);
+    engineRef.current?.setPlatformSprites(resolvePlatforms(data.platforms, data.settings.theme));
+  }, [data.platforms, data.settings.theme]);
 
   // 에디터에서 캐릭터를 바꾸면 바로 반영
   useEffect(() => {
