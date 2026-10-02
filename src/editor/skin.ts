@@ -2,12 +2,13 @@
  * 블록 게임 스킨(64×64 또는 예전 64×32 PNG) → 작은 도트 캐릭터 32×36, 세 모습.
  * 스킨 파일은 머리·몸·팔·다리 각 면이 정해진 자리에 펼쳐져 있다. 그중 "앞면"만 떼어 꼬마 비율로 다시 조립한다
  * (사용자 결정: 머리는 크게, 몸은 작게):
- *   머리 8×8 → 3배(24×24), 몸 8×12 → 8×6, 팔 4×12 → 2×6, 다리 4×12 → 4×6.
+ *   머리 8×8 → 3배(24×24, 모자 층 26×25), 몸 8×12 → 8×6, 팔 4×12 → 2×6, 다리 4×12 → 4×5.
  * 모습 (2026-10-01 사용자 결정)
  *   - 기본(올라갈 때): 차렷 — 팔을 몸에 붙인다
  *   - 내려갈 때: 팔을 양옆으로 쭉 벌린 십자
  *   - 착지: 몸이 한 칸 내려앉고 다리를 짧게 굽혀 살짝 벌린다
- * 덧입는 층(모자·겉옷·소매·바지)은 불투명한 곳만 위에 덮는다. 예전 64×32 스킨은 왼팔·왼다리가 없어 오른쪽을 좌우로 뒤집어 쓴다.
+ * 덧입는 층(모자·겉옷·소매·바지)은 불투명한 곳만 위에 덮고, 바로 아래 칸에 그림자를 넣어 떠 있어 보이게 한다.
+ * 모자 층은 머리보다 위·양옆으로 한 칸씩 크게 그린다 (실제 게임처럼 바깥 층이 부풀어 보여 너무 네모나지 않게). 예전 64×32 스킨은 왼팔·왼다리가 없어 오른쪽을 좌우로 뒤집어 쓴다.
  * 결과는 도트 칸이라 에디터에서 펜·지우개로 바로 고칠 수 있다.
  */
 
@@ -47,11 +48,15 @@ function emptyColumn(src: Src, x: number, y: number, h: number) {
   return true;
 }
 
-/** 덧입는 층이 있으면 그 색, 없으면 바탕 면의 색 (면 안 좌표 fx, fy) */
 type Part = { face: Face; overlay: Face | null; mirror: boolean };
-function partColor(src: Src, part: Part, fx: number, fy: number) {
+/** 바탕 층(base) 또는 덧입는 층(over)만 그린다 */
+type Layer = "base" | "over";
+
+/** 그 층의 색 (면 안 좌표 fx, fy). 덧입는 층이 없으면 "" */
+function partColor(src: Src, part: Part, layer: Layer, fx: number, fy: number) {
   const x = part.mirror ? part.face.w - 1 - fx : fx;
-  return (part.overlay && pixel(src, part.overlay.x + x, part.overlay.y + fy)) || pixel(src, part.face.x + x, part.face.y + fy);
+  if (layer === "over") return part.overlay ? pixel(src, part.overlay.x + x, part.overlay.y + fy) : "";
+  return pixel(src, part.face.x + x, part.face.y + fy);
 }
 
 /** 스킨에서 앞면 부위들을 찾는다 */
@@ -81,38 +86,61 @@ function parts(src: Src) {
 const W = SKIN_OUT.width;
 const H = SKIN_OUT.height;
 
-/** 부위 하나를 out의 (dx, dy)부터 dw×dh 크기로 (가장 가까운 픽셀로) 옮긴다 */
-function blit(out: string[], src: Src, part: Part, dx: number, dy: number, dw: number, dh: number) {
+/** 그리는 판: 칸 색 + 덧입는 층이 칠한 칸 표시 (그림자용) */
+type Board = { out: string[]; over: boolean[] };
+
+function put(b: Board, layer: Layer, tx: number, ty: number, color: string) {
+  if (!color || tx < 0 || tx >= W || ty < 0 || ty >= H) return;
+  b.out[ty * W + tx] = color;
+  if (layer === "over") b.over[ty * W + tx] = true;
+}
+
+/** 부위의 한 층을 (dx, dy)부터 dw×dh 크기로 (가장 가까운 픽셀로) 옮긴다 */
+function blit(b: Board, src: Src, part: Part, layer: Layer, dx: number, dy: number, dw: number, dh: number) {
   const { w, h } = part.face;
   for (let oy = 0; oy < dh; oy++) {
     const fy = Math.min(h - 1, Math.floor(((oy + 0.5) * h) / dh));
     for (let ox = 0; ox < dw; ox++) {
       const fx = Math.min(w - 1, Math.floor(((ox + 0.5) * w) / dw));
-      const color = partColor(src, part, fx, fy);
-      const tx = dx + ox;
-      const ty = dy + oy;
-      if (color && tx >= 0 && tx < W && ty >= 0 && ty < H) out[ty * W + tx] = color;
+      put(b, layer, dx + ox, dy + oy, partColor(src, part, layer, fx, fy));
     }
   }
+}
+
+/** 바탕 층 → 덧입는 층 순서로 같은 자리에 */
+function blitBoth(b: Board, src: Src, part: Part, dx: number, dy: number, dw: number, dh: number) {
+  blit(b, src, part, "base", dx, dy, dw, dh);
+  blit(b, src, part, "over", dx, dy, dw, dh);
 }
 
 /**
  * 팔을 옆으로 눕혀 그린다 (십자). 어깨(팔 면의 위쪽)가 몸 쪽, 손이 바깥쪽.
  * dir = -1이면 왼쪽으로 뻗는다. 길이 len, 두께 thick.
  */
-function blitArmOut(out: string[], src: Src, part: Part, shoulderX: number, y: number, len: number, thick: number, dir: 1 | -1) {
+function blitArmOut(b: Board, src: Src, part: Part, shoulderX: number, y: number, len: number, thick: number, dir: 1 | -1) {
   const { w, h } = part.face;
-  for (let i = 0; i < len; i++) {
-    const fy = Math.min(h - 1, Math.floor(((i + 0.5) * h) / len));
-    for (let t = 0; t < thick; t++) {
-      // 팔의 바깥 면이 위로 오게: 왼쪽 팔은 면의 왼쪽 줄이 위
-      const fxRaw = Math.min(w - 1, Math.floor(((t + 0.5) * w) / thick));
-      const fx = dir === -1 ? fxRaw : w - 1 - fxRaw;
-      const color = partColor(src, part, fx, fy);
-      const tx = shoulderX + dir * i;
-      const ty = y + t;
-      if (color && tx >= 0 && tx < W && ty >= 0 && ty < H) out[ty * W + tx] = color;
+  for (const layer of ["base", "over"] as const) {
+    for (let i = 0; i < len; i++) {
+      const fy = Math.min(h - 1, Math.floor(((i + 0.5) * h) / len));
+      for (let t = 0; t < thick; t++) {
+        // 팔의 바깥 면이 위로 오게: 왼쪽 팔은 면의 왼쪽 줄이 위
+        const fxRaw = Math.min(w - 1, Math.floor(((t + 0.5) * w) / thick));
+        const fx = dir === -1 ? fxRaw : w - 1 - fxRaw;
+        put(b, layer, shoulderX + dir * i, y + t, partColor(src, part, layer, fx, fy));
+      }
     }
+  }
+}
+
+/** 덧입는 층 바로 아래 칸(덧입는 층이 아닌 칸)을 어둡게 — 겉옷이 살짝 떠 있는 그림자 */
+const SHADOW = 0.3;
+function castShadow(b: Board) {
+  for (let i = 0; i < W * (H - 1); i++) {
+    const j = i + W;
+    if (!b.over[i] || b.over[j] || !b.out[j]) continue;
+    const n = parseInt(b.out[j].slice(1), 16);
+    const dim = (v: number) => Math.round(v * (1 - SHADOW)).toString(16).padStart(2, "0");
+    b.out[j] = `#${dim((n >> 16) & 255)}${dim((n >> 8) & 255)}${dim(n & 255)}`;
   }
 }
 
@@ -122,13 +150,16 @@ const BODY_W = 8;
 const BODY_H = 6;
 const ARM_W = 2;
 const LEG_W = 4;
-const LEG_H = 6;
+/** 모자 층이 머리보다 한 칸 위로 나오는 자리만큼 다리를 한 칸 줄였다 */
+const LEG_H = 5;
+/** 모자 층은 머리보다 위·양옆으로 한 칸씩 크게 (입체감) */
+const HAT_GROW = 1;
 const LEFT = (W - BODY_W) / 2; // 몸 왼쪽 x = 12
 
 function pose(src: Src, kind: "base" | "fall" | "land"): string[] {
-  const out: string[] = new Array(W * H).fill("");
+  const b: Board = { out: new Array(W * H).fill(""), over: new Array(W * H).fill(false) };
   const p = parts(src);
-  // 착지는 한 칸 내려앉고 다리가 짧아진다 (발끝은 늘 맨 아래 줄)
+  // 착지는 두 칸 내려앉고 다리가 짧아진다 (발끝은 늘 맨 아래 줄)
   const sink = kind === "land" ? 2 : 0;
   const legH = LEG_H - sink;
   const headY = H - HEAD - BODY_H - LEG_H + sink;
@@ -137,21 +168,24 @@ function pose(src: Src, kind: "base" | "fall" | "land"): string[] {
 
   // 다리 먼저 (몸 아래), 착지는 살짝 벌린다
   const spread = kind === "land" ? 1 : 0;
-  blit(out, src, p.legL, LEFT - spread, legY, LEG_W, legH);
-  blit(out, src, p.legR, LEFT + LEG_W + spread, legY, LEG_W, legH);
-  blit(out, src, p.body, LEFT, bodyY, BODY_W, BODY_H);
+  blitBoth(b, src, p.legL, LEFT - spread, legY, LEG_W, legH);
+  blitBoth(b, src, p.legR, LEFT + LEG_W + spread, legY, LEG_W, legH);
+  blitBoth(b, src, p.body, LEFT, bodyY, BODY_W, BODY_H);
   if (kind === "fall") {
     // 십자: 어깨(몸 맨 위)에 붙여 차렷 팔과 같은 길이(6칸)로 양옆에 (화면 끝까지 길게 뻗으면 징그럽다는 의견 — 2026-10-01)
-    blitArmOut(out, src, p.armL, LEFT - 1, bodyY, BODY_H, ARM_W, -1);
-    blitArmOut(out, src, p.armR, LEFT + BODY_W, bodyY, BODY_H, ARM_W, 1);
+    blitArmOut(b, src, p.armL, LEFT - 1, bodyY, BODY_H, ARM_W, -1);
+    blitArmOut(b, src, p.armR, LEFT + BODY_W, bodyY, BODY_H, ARM_W, 1);
   } else {
     // 차렷: 몸에 붙인다
-    blit(out, src, p.armL, LEFT - ARM_W, bodyY, ARM_W, BODY_H);
-    blit(out, src, p.armR, LEFT + BODY_W, bodyY, ARM_W, BODY_H);
+    blitBoth(b, src, p.armL, LEFT - ARM_W, bodyY, ARM_W, BODY_H);
+    blitBoth(b, src, p.armR, LEFT + BODY_W, bodyY, ARM_W, BODY_H);
   }
-  // 머리는 마지막 (몸 위에 살짝 겹쳐도 얼굴이 보이게)
-  blit(out, src, p.head, (W - HEAD) / 2, headY, HEAD, HEAD);
-  return out;
+  // 머리는 마지막 (몸 위에 살짝 겹쳐도 얼굴이 보이게). 모자 층은 머리보다 크게 덮어 입체감을 준다
+  const headX = (W - HEAD) / 2;
+  blit(b, src, p.head, "base", headX, headY, HEAD, HEAD);
+  blit(b, src, p.head, "over", headX - HAT_GROW, headY - HAT_GROW, HEAD + HAT_GROW * 2, HEAD + HAT_GROW);
+  castShadow(b);
+  return b.out;
 }
 
 /** 스킨 → 세 모습 (각 32×36 도트 칸, 왼쪽 위부터, "#rrggbb" 또는 "" 투명) */
