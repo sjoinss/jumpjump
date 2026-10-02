@@ -318,14 +318,34 @@ test("기본 캐릭터를 불러오면 세 모습이 그대로 (주인공·동�
   assert.equal(plat.tabs.basic!.history.past.length, 0, "발판 탭에는 안 들어감");
 });
 
-test("기본 모습에 이미지를 넣으면 예전 내려갈 때·착지 모습은 빠진다 (되돌리기 가능), 다른 모습에 넣으면 그대로", () => {
+test("기본 모습에 이미지: 지우기를 골랐을 때만 내려갈 때·착지가 빠지고(되돌리기 가능), 아니면 그대로", () => {
   const img = { kind: "image" as const, mime: "image/png" as const, data: "AAAA", width: 320 as const, height: 360 as const };
   let s = run(createEditorState(save()), { type: "addPose", pose: "fall", copyBase: true }, { type: "addPose", pose: "land", copyBase: true });
   assert.deepEqual(s.tabs.hero!.history.present.frames.map((f) => f !== null), [true, true, true]);
   const onLand = run(s, { type: "setFrame", frame: 2 }, { type: "setFrameSprite", sprite: img });
   assert.deepEqual(onLand.tabs.hero!.history.present.frames.map((f) => f?.kind ?? null), ["pixel", "pixel", "image"]);
-  s = run(s, { type: "setFrame", frame: 0 }, { type: "setFrameSprite", sprite: img });
+  const kept = run(s, { type: "setFrame", frame: 0 }, { type: "setFrameSprite", sprite: img });
+  assert.deepEqual(kept.tabs.hero!.history.present.frames.map((f) => f?.kind ?? null), ["image", "pixel", "pixel"]);
+  s = run(s, { type: "setFrame", frame: 0 }, { type: "setFrameSprite", sprite: img, dropPoses: true });
   assert.deepEqual(s.tabs.hero!.history.present.frames.map((f) => f?.kind ?? null), ["image", null, null]);
   s = run(s, { type: "undo" });
   assert.deepEqual(s.tabs.hero!.history.present.frames.map((f) => f !== null), [true, true, true]);
+});
+
+test("기본 캐릭터 판별: 내려갈 때·착지가 기본 캐릭터 것 그대로일 때만 (내 그림이면 묻지 않는다)", async () => {
+  const { CHARACTER_PRESETS } = await import("../src/game/presets");
+  const { presetPoseOwner, editedPresetBase, characterDoc } = await import("../src/editor/session");
+  const preset = CHARACTER_PRESETS[1];
+  const doc = characterDoc(structuredClone(preset.character));
+  assert.equal(presetPoseOwner(doc)?.id, preset.id);
+  assert.equal(editedPresetBase(doc), null, "고치기 전에는 묻지 않는다");
+  const base = preset.character.base as PixelSprite;
+  const edited = { ...doc, frames: [{ ...base, pixels: base.pixels.map((p, i) => (i === 0 ? "#123456" : p)) }, doc.frames[1], doc.frames[2]] };
+  assert.equal(editedPresetBase(edited)?.id, preset.id, "기본 모습을 고치면 묻는다");
+  const fall = doc.frames[1] as PixelSprite;
+  const mine = { frames: [doc.frames[0], { ...fall, pixels: fall.pixels.map((p, i) => (i === 0 ? "#123456" : p)) }, null] };
+  assert.equal(presetPoseOwner(mine), null, "내가 그린 내려갈 때 모습이면 기본 캐릭터가 아니다");
+  assert.equal(presetPoseOwner({ frames: [doc.frames[0], null, null] }), null);
+  const s = run(createEditorState(save()), { type: "dropPoses" });
+  assert.deepEqual(s.tabs.hero!.history.present.frames.map((f) => f !== null), [true, false, false]);
 });

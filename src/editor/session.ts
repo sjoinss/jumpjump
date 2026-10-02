@@ -1,4 +1,5 @@
 import { CONFIG } from "../game/config";
+import { CHARACTER_PRESETS, type CharacterPreset } from "../game/presets";
 import { platformsForSave } from "../game/themePlatforms";
 import { POSE_INFO } from "../lib/character";
 import { POSES, type Character, type CompanionSlot, type PixelSprite, type Platforms, type Pose, type SaveData, type Sprite } from "../lib/schema";
@@ -124,8 +125,13 @@ export type EditorAction =
   | { type: "loadCharacter"; character: Character }
   /** 보관한 발판 세트를 네 발판 탭에 한꺼번에 (main 모드만) */
   | { type: "loadPlatforms"; platforms: Platforms }
-  /** 이미지 불러오기 결과를 지금 프레임에 넣는다 (캐릭터 탭만) */
-  | { type: "setFrameSprite"; sprite: Sprite }
+  /**
+   * 이미지 불러오기 결과를 지금 프레임에 넣는다 (캐릭터 탭만).
+   * dropPoses: 기본 모습에 넣을 때 내려갈 때·착지 모습도 뺀다 (기본 캐릭터 → 내 이미지, 사용자가 경고에서 "지우기"를 골랐을 때)
+   */
+  | { type: "setFrameSprite"; sprite: Sprite; dropPoses?: boolean }
+  /** 내려갈 때·착지 모습을 뺀다 (기본 모습만 남김) */
+  | { type: "dropPoses" }
   | { type: "restoreDraft"; draft: EditorDraft }
   | { type: "markSaved" };
 
@@ -395,10 +401,13 @@ export function editorReducer(s: EditorState, a: EditorAction): EditorState {
     }
     case "setFrameSprite": {
       if (!isCharacterTab(s.active)) return s;
-      // 기본 모습에 새 이미지를 넣으면 다른 캐릭터로 바꾸는 것 — 예전 캐릭터의 내려갈 때·착지 모습은 뺀다
-      // (남아 있으면 게임에서 갑자기 예전 캐릭터가 보여 헷갈린다, 2026-10-02 사용자 요청). 되돌리기로 돌아갈 수 있다
-      if (s.frame === 0) return { ...commit(s, characterDoc({ base: a.sprite })), stroke: null };
+      if (s.frame === 0 && a.dropPoses) return { ...commit(s, characterDoc({ base: a.sprite })), stroke: null };
       return commit(s, withFrame(currentDoc(s), s.frame, a.sprite));
+    }
+    case "dropPoses": {
+      if (!isCharacterTab(s.active)) return s;
+      const base = currentDoc(s).frames[0]!;
+      return { ...commit(s, characterDoc({ base })), frame: 0, stroke: null };
     }
     case "restoreDraft": {
       const tabs = { ...s.tabs };
@@ -430,6 +439,36 @@ function clampFrame(s: EditorState, op: (h: History<Doc>) => History<Doc>) {
 }
 
 // ── 완료(저장) ──
+
+// ── 기본 캐릭터의 모습이 남아 있는지 (2026-10-02 사용자 요청) ──
+
+function sameSprite(a: Sprite, b: Sprite) {
+  if (a.kind !== "pixel" || b.kind !== "pixel") return a === b;
+  return a.width === b.width && a.height === b.height && a.pixels.every((p, i) => p === b.pixels[i]);
+}
+
+/**
+ * 내려갈 때·착지 모습이 기본 캐릭터(말랑이 등)의 것 그대로면 그 캐릭터. 아니면(직접 그린 모습이거나 없으면) null.
+ * 기본 캐릭터를 내 그림·이미지로 바꿀 때만 "기본 캐릭터의 내려갈 때·착지 그림은 사라져요"라고 묻는다 (내 그림 → 내 그림은 그대로)
+ */
+export function presetPoseOwner(doc: Doc): CharacterPreset | null {
+  const [, fall, land] = doc.frames;
+  if (!fall && !land) return null;
+  return (
+    CHARACTER_PRESETS.find(
+      (p) =>
+        (!fall || (!!p.character.fall && sameSprite(fall, p.character.fall))) &&
+        (!land || (!!p.character.land && sameSprite(land, p.character.land))),
+    ) ?? null
+  );
+}
+
+/** 기본 캐릭터의 기본 모습을 고쳐 그렸는지 (내려갈 때·착지는 그 캐릭터 것 그대로) */
+export function editedPresetBase(doc: Doc): CharacterPreset | null {
+  const owner = presetPoseOwner(doc);
+  const base = doc.frames[0];
+  return owner && base && !sameSprite(base, owner.character.base) ? owner : null;
+}
 
 export type CommitCheck = { ok: true } | { ok: false; tab: TabKey; frame: number; message: string };
 

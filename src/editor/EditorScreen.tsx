@@ -19,7 +19,7 @@ import { CHARACTER_PRESETS } from "@/game/presets";
 import { resolvePlatforms, THEME_PLATFORMS } from "@/game/themePlatforms";
 import type { ThemeId } from "@/game/themes";
 import { POSE_INFO } from "@/lib/character";
-import { POSES, SAVED_CHARACTER_MAX, SAVED_PLATFORM_MAX, type Character, type PixelSprite } from "@/lib/schema";
+import { POSES, SAVED_CHARACTER_MAX, SAVED_PLATFORM_MAX, type Character, type PixelSprite, type Sprite } from "@/lib/schema";
 import { DotCanvas, type Underlay } from "./DotCanvas";
 import { ImageImportScreen } from "./ImageImportScreen";
 import { LibrarySection } from "./LibrarySection";
@@ -39,6 +39,8 @@ import {
   currentPlatforms,
   currentSprite,
   DRAFT_KEY,
+  editedPresetBase,
+  presetPoseOwner,
   editorReducer,
   editorTabItems,
   isCharacterTab,
@@ -55,7 +57,7 @@ import { TOOLS } from "./Toolbar";
 import { Toolbar } from "./Toolbar";
 import styles from "./EditorScreen.module.css";
 
-type DialogKind = null | "canvas" | "addFall" | "addLand" | "leave" | "backup";
+type DialogKind = null | "canvas" | "addFall" | "addLand" | "leave" | "backup" | "presetDraw";
 
 const DRAFT_DEBOUNCE_MS = 500;
 
@@ -105,6 +107,12 @@ export function EditorScreen({ onClose, companion, initialTab }: Props) {
   const [draftPrompt, setDraftPrompt] = useState<EditorDraft | null>(null);
   const [draftChecked, setDraftChecked] = useState(false);
   const stayRef = useRef<HTMLButtonElement>(null);
+  /** 기본 캐릭터 모습에 넣으려는 이미지 (내려갈 때·착지를 지울지 묻는 중) */
+  const [pendingImage, setPendingImage] = useState<Sprite | null>(null);
+  /** 기본 캐릭터를 고쳐 그릴 때 한 번만 묻는다 (이 화면을 여는 동안) */
+  const askedDraw = useRef(false);
+  /** 화면을 열 때의 기본 모습. 이번에 고친 게 아니면(예전에 "남겨두기"로 저장한 그림) 묻지 않는다 */
+  const baseAtOpen = useRef((state.tabs.hero ?? state.tabs.companion)?.history.present.frames[0]);
   /** 이미지 불러오기 화면. file이 있으면 끌어다 놓은 파일로 바로 시작 */
   const [importing, setImporting] = useState<{ file: File | null } | null>(null);
 
@@ -212,6 +220,14 @@ export function EditorScreen({ onClose, companion, initialTab }: Props) {
     writeDraft();
     onClose();
   };
+
+  // 기본 캐릭터의 기본 모습을 고쳐 그리면(붓질이 끝난 뒤) 한 번 묻는다: 그 캐릭터의 내려갈 때·착지 그림을 지울지
+  useEffect(() => {
+    if (askedDraw.current || state.stroke || state.frame !== 0 || !isHero || dialog || draftPrompt) return;
+    if (doc.frames[0] === baseAtOpen.current || !editedPresetBase(doc)) return;
+    askedDraw.current = true;
+    setDialog("presetDraw");
+  }, [doc, state.stroke, state.frame, isHero, dialog, draftPrompt]);
 
   // ── 단축키 (대화창이 열려 있거나 입력 중이면 무시) ──
   useEffect(() => {
@@ -636,6 +652,70 @@ export function EditorScreen({ onClose, companion, initialTab }: Props) {
       />
 
       <Dialog
+        open={pendingImage !== null}
+        title="기본 캐릭터 그림이 사라져요"
+        description={`지금은 ${presetPoseOwner(doc)?.name ?? "기본 캐릭터"}의 내려갈 때·착지 그림이 들어 있어요. 내 이미지로 바꾸면서 두 그림을 지울까요? 남겨두면 게임에서 그 모습일 때 ${presetPoseOwner(doc)?.name ?? "기본 캐릭터"}가 보여요.`}
+        onClose={() => {
+          // 닫기 = 남겨두고 넣기 (그림을 잃지 않는 쪽)
+          if (pendingImage) dispatch({ type: "setFrameSprite", sprite: pendingImage });
+          setPendingImage(null);
+        }}
+        actions={
+          <>
+            <Button
+              variant="primary"
+              block
+              data-autofocus
+              onClick={() => {
+                if (pendingImage) dispatch({ type: "setFrameSprite", sprite: pendingImage, dropPoses: true });
+                setPendingImage(null);
+                show("이미지를 넣고 내려갈 때·착지 그림은 지웠어요. 되돌리기로 돌아갈 수 있어요.", "success");
+              }}
+            >
+              두 그림 지우고 넣기
+            </Button>
+            <Button
+              variant="secondary"
+              block
+              onClick={() => {
+                if (pendingImage) dispatch({ type: "setFrameSprite", sprite: pendingImage });
+                setPendingImage(null);
+                show("이미지를 넣었어요. 내려갈 때·착지 그림은 그대로예요.", "success");
+              }}
+            >
+              남겨두고 넣기
+            </Button>
+          </>
+        }
+      />
+
+      <Dialog
+        open={dialog === "presetDraw"}
+        title="기본 캐릭터 그림이 사라져요"
+        description={`${editedPresetBase(doc)?.name ?? "기본 캐릭터"}를 고쳐 그리고 있어요. 내 캐릭터로 만들면서 ${editedPresetBase(doc)?.name ?? "기본 캐릭터"}의 내려갈 때·착지 그림을 지울까요? 남겨두면 게임에서 그 모습일 때 예전 모습이 보여요.`}
+        onClose={() => setDialog(null)}
+        actions={
+          <>
+            <Button
+              variant="primary"
+              block
+              data-autofocus
+              onClick={() => {
+                dispatch({ type: "dropPoses" });
+                setDialog(null);
+                show("내려갈 때·착지 그림을 지웠어요. 되돌리기로 돌아갈 수 있어요.", "info");
+              }}
+            >
+              두 그림 지우기
+            </Button>
+            <Button variant="secondary" block onClick={() => setDialog(null)}>
+              남겨두기
+            </Button>
+          </>
+        }
+      />
+
+      <Dialog
         open={dialog === "backup"}
         title="그림을 백업해두세요"
         description="그림은 이 브라우저에만 저장돼요. 브라우저 데이터가 지워지면 함께 사라지니, 설정의 데이터 관리에서 내보내기를 해두면 안전해요."
@@ -660,11 +740,15 @@ export function EditorScreen({ onClose, companion, initialTab }: Props) {
             show("스킨으로 세 모습(올라갈 때·내려갈 때·착지)을 만들었어요. 바로 고칠 수 있어요.", "success");
           }}
           onDone={(sprite) => {
-            const dropsPoses = state.frame === 0 && doc.frames.slice(1).some(Boolean);
-            dispatch({ type: "setFrameSprite", sprite });
             setImporting(null);
-            const done = sprite.kind === "pixel" ? "도트로 바꿨어요. 바로 고칠 수 있어요." : "이미지를 넣었어요. 완료를 누르면 게임에 적용돼요.";
-            show(dropsPoses ? `${done} 예전 내려갈 때·착지 모습은 뺐어요.` : done, "success");
+            // 기본 캐릭터 → 내 이미지: 그 캐릭터의 내려갈 때·착지 그림을 지울지 먼저 묻는다
+            if (state.frame === 0 && presetPoseOwner(doc)) {
+              askedDraw.current = true;
+              setPendingImage(sprite);
+              return;
+            }
+            dispatch({ type: "setFrameSprite", sprite });
+            show(sprite.kind === "pixel" ? "도트로 바꿨어요. 바로 고칠 수 있어요." : "이미지를 넣었어요. 완료를 누르면 게임에 적용돼요.", "success");
           }}
         />
       </div>
