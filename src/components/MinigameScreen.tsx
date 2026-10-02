@@ -80,6 +80,22 @@ export function MinigameScreen({ slot, hero, companion, previous, onDone }: Prop
     return () => clearTimeout(t);
   }, [phase, count]);
 
+  // 세는 도중 앱을 벗어나면 멈춤 창으로 (돌아왔을 때 이미 시작돼 있지 않게). 다시 시작하면 처음부터 센다
+  useEffect(() => {
+    if (phase !== "countdown") return;
+    const away = () => {
+      setCount(CONFIG.minigame.countdown);
+      setPhase("paused");
+    };
+    const onVisibility = () => document.visibilityState === "hidden" && away();
+    window.addEventListener("blur", away);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("blur", away);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [phase]);
+
   // 처음 열릴 때 무슨 게임인지 알린다 (숫자 읽기보다 먼저)
   useEffect(() => {
     announceRef.current(`미니게임 ${info.name}. ${info.goal}`);

@@ -252,9 +252,11 @@ export class Engine {
 
   start(opts: RunOptions) {
     if (this.phase !== "ready") return;
-    // 동료 최대 인원은 판을 시작할 때 정한다 (설정에서 바꾼 값은 다음 판부터)
+    // 동료 최대 인원은 판을 시작할 때 정한다 (설정에서 바꾼 값은 다음 판부터).
+    // 시작 장면의 세계는 예전 설정으로 만들어졌을 수 있어서(혼자 모드 발판 폭 등) 이번 판 설정으로 새로 만든다.
+    // 시작 장면에선 발판이 숨어 있고 주인공도 가운데 서 있어서 바뀌는 게 보이지 않는다
     this.runOptions = opts;
-    this.world.setCompanionMax(opts.companionMax);
+    this.world = this.createWorld();
     this.world.launch();
     this.setPhase("playing");
     this.shownRegion = 0;
