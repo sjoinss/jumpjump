@@ -397,3 +397,50 @@
   --radius-lg: 14px;
   --radius-xl: 18px;
 }
+
+/* 동화 숲: 짙은 숲색 외곽선 + 새싹 초록·버섯 빨강, 둥근 모서리 */
+:root[data-theme="forest"] {
+  --logo-fill: #8fd18a;
+  --logo-stroke: #3d4a2f;
+  --color-ink: #2f3a24;
+  --color-text: #2f3a24;
+  --color-muted: #5a6648;
+  --color-line: #3d4a2f;
+  --outline-width: 3px;
+  --edge-height: 4px;
+
+  --color-background: #f5faee;
+  --color-background-dot: #e3f0d6;
+  --color-surface: #fffdf7;
+  --color-surface-alt: #eef6e4;
+  --color-border: #dbe8cc;
+  --color-border-strong: #9cb184;
+
+  --color-primary: #8fd18a;
+  --color-primary-edge: #5fae5a;
+  --color-primary-soft: #e3f5df;
+  --color-primary-strong: #2a7025;
+  --color-secondary: #ff9a8a;
+  --color-secondary-edge: #e06a5a;
+  --color-secondary-soft: #ffe6e1;
+  --color-mint: #a8e8c8;
+  --color-mint-edge: #6cc79e;
+  --color-butter: #ffe39a;
+  --color-butter-edge: #d9b24a;
+  --color-sky: #c6e6ff;
+  --color-sky-edge: #8cbfe8;
+  --color-cream: #fffaf0;
+  --color-cream-edge: #e2d6bc;
+  --color-danger-fill: #ff9d94;
+  --color-danger-edge: #d9645b;
+
+  --color-desk-bg: #e6f2da;
+  --color-desk-bg-2: #fff3dc;
+  --color-desk-mid-1: #eef7e6;
+  --color-desk-mid-2: #f6f9ec;
+
+  --radius-sm: 12px;
+  --radius-md: 18px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+}

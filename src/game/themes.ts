@@ -6,12 +6,13 @@ import type { TileSet } from "./tiles";
 import { BLOCK_DECOR, BLOCK_TILES } from "./tilesets/blocks";
 import { CANDY_DECOR, CANDY_TILES } from "./tilesets/candy";
 import { CITY_DECOR, CITY_TILES } from "./tilesets/city";
+import { FOREST_DECOR, FOREST_TILES } from "./tilesets/forest";
 
 /**
  * 테마 목록. UI 색은 styles/tokens.css의 [data-theme]에, 게임 장면 색은 여기 SCENE에 둔다.
  * 테마를 추가할 때는 두 곳 + THEME_IDS에 같은 id로 넣는다.
  */
-export const THEME_IDS = ["dot", "cotton", "dream", "ocean", "blocks", "candy", "city"] as const;
+export const THEME_IDS = ["dot", "cotton", "dream", "ocean", "blocks", "candy", "city", "forest"] as const;
 export type ThemeId = (typeof THEME_IDS)[number];
 export const DEFAULT_THEME: ThemeId = "dot";
 
@@ -65,6 +66,12 @@ export const THEMES: Record<ThemeId, ThemeInfo> = {
     name: "도시 빌딩",
     description: "지하철역에서 거리로, 빌딩 숲을 지나 옥상과 밤하늘까지.",
     swatches: ["#eef1f8", "#ffb26b", "#9fb4ff", "#2f3d5c"],
+  },
+  forest: {
+    id: "forest",
+    name: "동화 숲",
+    description: "토끼 굴에서 버섯 숲으로, 나무 위 마을을 지나 콩나무 타고 구름 위 성까지.",
+    swatches: ["#f1f8e8", "#8fd18a", "#ff9a8a", "#3d4a2f"],
   },
 };
 
@@ -324,5 +331,33 @@ export const SCENE: Record<ThemeId, ScenePalette> = {
     },
     shadow: "rgba(36,48,74,0.25)",
     cssBackground: "#5d6270",
+  },
+  forest: {
+    style: "tiles",
+    tiles: FOREST_TILES,
+    decor: FOREST_DECOR,
+    regions: [
+      { key: "burrow", name: "토끼 굴", startM: DEFAULT_STOPS[0], top: "#5e4634", bottom: "#7d6049" },
+      { key: "mushroom", name: "버섯 숲", startM: DEFAULT_STOPS[1], top: "#c4ecd2", bottom: "#fff6dc" },
+      { key: "treetop", name: "나무 위 마을", startM: DEFAULT_STOPS[2], top: "#a8dcff", bottom: "#e6f7ee" },
+      { key: "castle", name: "구름 위 성", startM: DEFAULT_STOPS[3], top: "#b9a8f0", bottom: "#ffe1ee" },
+    ],
+    cloud: "rgba(255,255,255,0.92)",
+    sparkle: "#ffffff",
+    sparkleCore: "#fff3a0",
+    sparkleDensity: 1,
+    accent: "#ff9a8a",
+    moon: "#fff4c7",
+    ground: {
+      top: "#8a6146",
+      topEdge: "#5e4634",
+      highlight: "#a87a5a",
+      soil: "#7f583f",
+      pebble: "#6a4935",
+      flower: "#ffe08a",
+      flowerCore: "#ffffff",
+    },
+    shadow: "rgba(45,35,25,0.25)",
+    cssBackground: "#5e4634",
   },
 };
