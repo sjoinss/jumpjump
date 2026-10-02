@@ -63,7 +63,7 @@ export function PngSaveSection({ sprite, platform, label, fileBase }: Props) {
           </Button>
           <p className={styles.helper}>
             지금 보고 있는 {label} 그림만 배경 없이 저장해요.{" "}
-            {platform ? "" : `도트가 흐려지지 않게 ${l.scale}배로 키워 가운데에 둬요.`}
+            {platform ? "" : `둘레 빈 칸은 빼고, 도트가 흐려지지 않게 ${l.scale}배로 키워 꽉 차게 둬요.`}
           </p>
         </>
       ) : (
