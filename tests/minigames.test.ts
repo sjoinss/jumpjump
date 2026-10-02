@@ -258,9 +258,9 @@ function humanDodge(seed: number) {
 
 const rate = (fn: (seed: number) => boolean, n = 80) => Array.from({ length: n }, (_, i) => fn(5000 + i)).filter(Boolean).length / n;
 
-test("밸런스: 파닥파닥은 반응이 느려도 꽤 성공 (60~85%)", () => {
+test("밸런스: 파닥파닥은 반응이 느리면 자주 실패 (20~45%, 2026-10-02 더 빠르게 + 목숨 2개)", () => {
   const r = rate(humanFlappy);
-  assert.ok(r >= 0.6 && r <= 0.85, `성공률 ${Math.round(r * 100)}%`);
+  assert.ok(r >= 0.2 && r <= 0.45, `성공률 ${Math.round(r * 100)}%`);
 });
 
 test("밸런스: 피하기는 반응이 느려도 꽤 성공 (65~90%)", () => {
