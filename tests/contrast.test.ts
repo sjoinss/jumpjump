@@ -32,6 +32,7 @@ const THEMES: Record<string, Record<string, string>> = {
   "과자 나라": { ...ROOT, ...vars(block(':root[data-theme="candy"]')) },
   "도시 빌딩": { ...ROOT, ...vars(block(':root[data-theme="city"]')) },
   "동화 숲": { ...ROOT, ...vars(block(':root[data-theme="forest"]')) },
+  "겨울 왕국": { ...ROOT, ...vars(block(':root[data-theme="winter"]')) },
 };
 
 function resolve(t: Record<string, string>, name: string): string {

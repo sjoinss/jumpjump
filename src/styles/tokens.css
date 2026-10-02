@@ -444,3 +444,50 @@
   --radius-lg: 24px;
   --radius-xl: 32px;
 }
+
+/* 겨울 왕국: 깊은 밤색 파랑 외곽선 + 얼음 하늘색·딸기 분홍 */
+:root[data-theme="winter"] {
+  --logo-fill: #9fd8ff;
+  --logo-stroke: #2f4a6b;
+  --color-ink: #243a56;
+  --color-text: #243a56;
+  --color-muted: #4e6684;
+  --color-line: #2f4a6b;
+  --outline-width: 3px;
+  --edge-height: 4px;
+
+  --color-background: #f3f8ff;
+  --color-background-dot: #e0ecfa;
+  --color-surface: #fdfeff;
+  --color-surface-alt: #eaf2fc;
+  --color-border: #d4e2f2;
+  --color-border-strong: #8ca6c6;
+
+  --color-primary: #9fd8ff;
+  --color-primary-edge: #62afe6;
+  --color-primary-soft: #e2f3ff;
+  --color-primary-strong: #1f5f94;
+  --color-secondary: #ffb3c7;
+  --color-secondary-edge: #e57f9b;
+  --color-secondary-soft: #ffe8ef;
+  --color-mint: #b5ecdf;
+  --color-mint-edge: #74cdb6;
+  --color-butter: #ffe8a8;
+  --color-butter-edge: #dcbb5c;
+  --color-sky: #cfe6ff;
+  --color-sky-edge: #8fbbe8;
+  --color-cream: #fbfdff;
+  --color-cream-edge: #d6e2ef;
+  --color-danger-fill: #ff9d94;
+  --color-danger-edge: #d9645b;
+
+  --color-desk-bg: #e2eefb;
+  --color-desk-bg-2: #f1e8fb;
+  --color-desk-mid-1: #edf4fd;
+  --color-desk-mid-2: #f6f2fd;
+
+  --radius-sm: 12px;
+  --radius-md: 18px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+}
