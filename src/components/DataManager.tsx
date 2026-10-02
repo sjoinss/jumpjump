@@ -16,7 +16,7 @@ import {
   type DataKey,
   type ParsedImport,
 } from "@/lib/dataFile";
-import { saveOrShareFile } from "@/lib/fileIO";
+import { DOWNLOAD_TOAST_MS, downloadedMessage, saveOrShareFile } from "@/lib/fileIO";
 import { formatScore, RECORD_LABEL } from "@/lib/records";
 import { verifyImages } from "@/lib/imageVerify";
 import type { SaveData } from "@/lib/schema";
@@ -127,10 +127,11 @@ export function DataManager() {
         data={data}
         preferShare={touch}
         onClose={() => setExportOpen(false)}
-        onExported={(outcome) => {
+        onExported={(outcome, name) => {
           setExportOpen(false);
           update((d) => ({ ...d, settings: { ...d.settings, onboarding: { ...d.settings.onboarding, lastExportAt: Date.now() } } }));
-          show(outcome === "shared" ? "공유했어요." : "파일을 저장했어요.", "success");
+          if (outcome === "shared") show("공유했어요.", "success");
+          else show(downloadedMessage(name), "success", DOWNLOAD_TOAST_MS);
         }}
       />
 
@@ -163,7 +164,7 @@ function ExportDialog({
   data: SaveData;
   preferShare: boolean;
   onClose: () => void;
-  onExported: (outcome: "shared" | "downloaded") => void;
+  onExported: (outcome: "shared" | "downloaded", name: string) => void;
 }) {
   const [keys, setKeys] = useState<DataKey[]>(DEFAULT_EXPORT_KEYS);
   const [busy, setBusy] = useState(false);
@@ -179,8 +180,9 @@ function ExportDialog({
     try {
       const now = new Date();
       const blob = new Blob([JSON.stringify(buildExport(data, keys, now))], { type: "application/json" });
-      const outcome = await saveOrShareFile(blob, exportFileName(now), preferShare);
-      if (outcome !== "cancelled") onExported(outcome);
+      const name = exportFileName(now);
+      const outcome = await saveOrShareFile(blob, name, preferShare);
+      if (outcome !== "cancelled") onExported(outcome, name);
     } catch {
       setError("파일을 만들지 못했어요. 다시 시도해주세요.");
     } finally {

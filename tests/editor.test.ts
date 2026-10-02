@@ -145,3 +145,11 @@ test("기본 캐릭터는 늘 세 모습(기본·내려갈 때·착지)이 있�
     assert.equal(p.sprite, p.character.base);
   }
 });
+
+test("PNG 저장 크기: 캐릭터는 정사각형 안에 정수 배로 가운데, 발판은 고른 크기가 가로", async () => {
+  const { pngLayout } = await import("../src/editor/pngExport");
+  assert.deepEqual(pngLayout({ width: 16, height: 18 }, 64, false), { width: 64, height: 64, scale: 3, x: 8, y: 5 });
+  assert.deepEqual(pngLayout({ width: 32, height: 36 }, 512, false), { width: 512, height: 512, scale: 14, x: 32, y: 4 });
+  assert.deepEqual(pngLayout({ width: 32, height: 8 }, 256, true), { width: 256, height: 64, scale: 8, x: 0, y: 0 });
+  assert.equal(pngLayout({ width: 32, height: 36 }, 64, false).scale, 1, "작아도 최소 1배");
+});

@@ -2,7 +2,8 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { CONFIG } from "@/game/config";
-import { blobToDataUrl, externalBrowserUrl, isInAppBrowser, saveOrShareFile } from "@/lib/fileIO";
+import { blobToDataUrl, DOWNLOAD_TOAST_MS, downloadedMessage, externalBrowserUrl, isInAppBrowser, saveOrShareFile } from "@/lib/fileIO";
+import { useSavedFlag } from "./useSavedFlag";
 import { cardAltText, drawCard, hasImageMembers, loadCardFont, type CardData } from "@/share/cardRenderer";
 import { cardFileName, exportGif, exportPng } from "@/share/exportCard";
 import { CARD } from "@/share/layout";
@@ -41,6 +42,8 @@ export function ResultCard({ card: base }: { card: CardData }) {
   /** 저장·공유가 다 안 되는 브라우저: 이미지를 띄우고 길게 눌러 저장하게 한다 */
   const [fallback, setFallback] = useState<{ url: string; name: string; external: string | null } | null>(null);
   const [canShare, setCanShare] = useState(false);
+  /** 방금 저장한 버튼 ("png" | "gif"): 잠깐 "저장 완료"로 바꿔 연타를 막는다 */
+  const { saved, mark } = useSavedFlag();
 
   useEffect(() => {
     let alive = true;
@@ -85,7 +88,7 @@ export function ResultCard({ card: base }: { card: CardData }) {
 
   // 휴대폰은 공유 창(사진에 저장 포함)이 먼저, PC는 바로 다운로드 (기획서 13-6)
   // 앱 안 브라우저는 내려받기가 안 되므로(공유 창이 뜨는 경우만 빼고) 바로 길게 눌러 저장하게 한다
-  const deliver = async (blob: Blob, name: string, share: boolean) => {
+  const deliver = async (blob: Blob, name: string, share: boolean, key: string) => {
     const ua = navigator.userAgent;
     if (isInAppBrowser(ua) && !(share && canShare)) {
       setFallback({ url: await blobToDataUrl(blob), name, external: externalBrowserUrl(ua, location.href) });
@@ -94,17 +97,20 @@ export function ResultCard({ card: base }: { card: CardData }) {
     try {
       const r = await saveOrShareFile(blob, name, share);
       if (r === "shared") show("공유했어요!", "success");
-      else if (r === "downloaded") show("저장되었습니다", "success");
+      else if (r === "downloaded") {
+        mark(key);
+        show(downloadedMessage(name), "success", DOWNLOAD_TOAST_MS);
+      }
     } catch {
       setFallback({ url: URL.createObjectURL(blob), name, external: null });
     }
   };
 
   const savePng = async (share: boolean) => {
-    if (!font || busy) return;
+    if (!font || busy || (!share && saved === "png")) return;
     setBusy(share ? "share" : "png");
     try {
-      await deliver(await exportPng(card, font), cardFileName(card, "png"), share);
+      await deliver(await exportPng(card, font), cardFileName(card, "png"), share, "png");
     } catch (err) {
       show(`이미지를 만들지 못했어요. ${err instanceof Error ? err.message : ""} 다시 시도해주세요.`, "error");
     } finally {
@@ -113,14 +119,14 @@ export function ResultCard({ card: base }: { card: CardData }) {
   };
 
   const saveGif = async () => {
-    if (!font || gif.kind === "working") return;
+    if (!font || gif.kind === "working" || saved === "gif") return;
     const ctrl = new AbortController();
     abortRef.current = ctrl;
     setGif({ kind: "working", progress: 0 });
     try {
       const blob = await exportGif(card, font, (p) => setGif({ kind: "working", progress: p }), ctrl.signal);
       setGif({ kind: "idle" });
-      await deliver(blob, cardFileName(card, "gif"), false);
+      await deliver(blob, cardFileName(card, "gif"), false, "gif");
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") {
         setGif({ kind: "idle" });
@@ -164,8 +170,16 @@ export function ResultCard({ card: base }: { card: CardData }) {
         />
       </label>
       <div className={styles.actions}>
-        <Button variant="secondary" icon="image" block onClick={() => savePng(false)} loading={busy === "png"} loadingLabel="만드는 중" disabled={!font}>
-          이미지 저장
+        <Button
+          variant="secondary"
+          icon={saved === "png" ? "check" : "image"}
+          block
+          onClick={() => savePng(false)}
+          loading={busy === "png"}
+          loadingLabel="만드는 중"
+          disabled={!font || saved === "png"}
+        >
+          {saved === "png" ? "저장 완료" : "이미지 저장"}
         </Button>
         {working ? (
           <div className={styles.progress}>
@@ -185,8 +199,8 @@ export function ResultCard({ card: base }: { card: CardData }) {
             </Button>
           </div>
         ) : (
-          <Button variant="secondary" icon="download" block onClick={saveGif} disabled={!font}>
-            {gif.kind === "error" ? "GIF 다시 시도" : "GIF 저장"}
+          <Button variant="secondary" icon={saved === "gif" ? "check" : "download"} block onClick={saveGif} disabled={!font || saved === "gif"}>
+            {saved === "gif" ? "GIF 저장 완료" : gif.kind === "error" ? "GIF 다시 시도" : "GIF 저장"}
           </Button>
         )}
         {canShare && (

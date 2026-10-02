@@ -23,6 +23,7 @@ import { POSES, SAVED_CHARACTER_MAX, SAVED_PLATFORM_MAX, type Character, type Pi
 import { DotCanvas, type Underlay } from "./DotCanvas";
 import { ImageImportScreen } from "./ImageImportScreen";
 import { LibrarySection } from "./LibrarySection";
+import { PngSaveSection } from "./PngSaveSection";
 import { isLossyDownscale } from "./grid";
 import { Palette } from "./Palette";
 import {
@@ -321,6 +322,19 @@ export function EditorScreen({ onClose, companion, initialTab }: Props) {
       }}
     />
   );
+  // 지금 보고 있는 도트 그림을 배경 투명 PNG로 (이미지 그림은 안내만)
+  const pngSave = (
+    <PngSaveSection
+      sprite={sprite.kind === "pixel" ? sprite : null}
+      platform={!isHero}
+      label={isHero ? `${companion ? "동료" : "캐릭터"} ${POSE_INFO[poseAt(state.frame)].name} 모습` : TAB_LABEL[state.active]}
+      fileBase={
+        isHero
+          ? `jumpjump-${companion ? `companion${companion.slot}` : "character"}-${poseAt(state.frame)}`
+          : `jumpjump-platform-${state.active}`
+      }
+    />
+  );
   const tabItems = editorTabItems(state);
   const title = companion ? `동료 ${companion.slot} 그리기` : "그리기";
   const pose = poseAt(state.frame);
@@ -400,7 +414,7 @@ export function EditorScreen({ onClose, companion, initialTab }: Props) {
           )}
           <button type="button" className={styles.chipGhost} onClick={() => setDialog("canvas")}>
             <PixelIcon name="grid" size={12} />
-            {isHero ? "불러오기 · 보관" : "기본 발판 · 보관"}
+            {isHero ? "불러오기 · 저장" : "기본 발판 · 저장"}
           </button>
         </div>
 
@@ -573,6 +587,7 @@ export function EditorScreen({ onClose, companion, initialTab }: Props) {
         hero={data.hero}
         theme={data.settings.theme}
         library={library}
+        pngSave={pngSave}
         onClose={() => setDialog(null)}
         onLoad={(s, name) => {
           // 발판: 기본 발판으로 되돌리기
@@ -811,6 +826,8 @@ type CanvasDialogProps = {
   theme: ThemeId;
   /** 보관함 (맨 위) */
   library: ReactNode;
+  /** PNG로 저장 (보관함 아래) */
+  pngSave: ReactNode;
   onClose: () => void;
   /** 발판 기본 그림 */
   onLoad: (sprite: PixelSprite, name: string) => void;
@@ -824,7 +841,7 @@ type CanvasDialogProps = {
  * 캐릭터: 기본 캐릭터 불러오기 + 칸 크기 / 동료: 주인공 그림 가져오기 + 칸 크기 (동료 기본 세트는 없음)
  * 발판: 기본 발판으로 되돌리기
  */
-function CanvasDialog({ open, tab, sprite, hero, theme, library, onClose, onLoad, onLoadCharacter, onResize, onImportImage }: CanvasDialogProps) {
+function CanvasDialog({ open, tab, sprite, hero, theme, library, pngSave, onClose, onLoad, onLoadCharacter, onResize, onImportImage }: CanvasDialogProps) {
   const [pendingShrink, setPendingShrink] = useState(false);
   const sizes = CONFIG.character.gridSizes;
 
@@ -835,8 +852,9 @@ function CanvasDialog({ open, tab, sprite, hero, theme, library, onClose, onLoad
   if (!isCharacterTab(tab)) {
     const preset = THEME_PLATFORMS[theme][tab as keyof typeof THEME_PLATFORMS.dot];
     return (
-      <Dialog open={open} title="발판 불러오기 · 보관" onClose={onClose}>
+      <Dialog open={open} title="발판 불러오기 · 저장" onClose={onClose}>
         {library}
+        {pngSave}
         <div className={styles.platformPreset}>
           <h3 className={styles.dialogHeading}>{TAB_LABEL[tab]} 기본 그림 (지금 테마)</h3>
           <PixelPreview sprite={preset} width={192} height={48} label={`기본 ${TAB_LABEL[tab]} 그림`} />
@@ -850,8 +868,9 @@ function CanvasDialog({ open, tab, sprite, hero, theme, library, onClose, onLoad
 
   const current = sprite ? sizes.findIndex((g) => g.width === sprite.width) : -1;
   return (
-    <Dialog open={open} title="불러오기 · 보관 · 크기" onClose={onClose}>
+    <Dialog open={open} title="불러오기 · 저장 · 크기" onClose={onClose}>
       {library}
+      {pngSave}
 
       <section className={styles.dialogSection}>
         <Button variant="secondary" icon="image" block onClick={onImportImage}>

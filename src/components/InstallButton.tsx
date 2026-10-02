@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { buildExport, exportFileName, FULL_BACKUP_KEYS } from "@/lib/dataFile";
-import { saveOrShareFile } from "@/lib/fileIO";
+import { DOWNLOAD_TOAST_MS, saveOrShareFile } from "@/lib/fileIO";
 import { usePwa } from "./PwaProvider";
 import { useSaveData } from "./SaveProvider";
 import { Button, type ButtonVariant } from "./ui/Button";
@@ -57,10 +57,17 @@ export function IosInstallGuide({ open, onClose }: { open: boolean; onClose: () 
     try {
       const now = new Date();
       const blob = new Blob([JSON.stringify(buildExport(data, FULL_BACKUP_KEYS, now))], { type: "application/json" });
-      const outcome = await saveOrShareFile(blob, exportFileName(now), true);
+      const name = exportFileName(now);
+      const outcome = await saveOrShareFile(blob, name, true);
       if (outcome !== "cancelled") {
         update((d) => ({ ...d, settings: { ...d.settings, onboarding: { ...d.settings.onboarding, lastExportAt: Date.now() } } }));
-        show("내보냈어요. 설치한 앱의 설정 → 데이터 관리에서 불러오세요.", "success");
+        show(
+          outcome === "downloaded"
+            ? `「${name}」 저장 완료! 다운로드 폴더에 있어요. 설치한 앱의 설정 → 데이터 관리에서 불러오세요.`
+            : "내보냈어요. 설치한 앱의 설정 → 데이터 관리에서 불러오세요.",
+          "success",
+          DOWNLOAD_TOAST_MS,
+        );
       }
     } catch {
       show("파일을 만들지 못했어요. 다시 시도해주세요.", "error");

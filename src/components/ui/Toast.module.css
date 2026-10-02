@@ -1,5 +1,14 @@
-.region {
+/* popover로 맨 위 층에 올릴 때도 같은 자리에 (브라우저 기본 popover 모양은 지운다) */
+.region,
+.region:popover-open {
   position: fixed;
+  inset: auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow: visible;
+  color: inherit;
   left: 50%;
   bottom: calc(var(--spacing-lg) + env(safe-area-inset-bottom));
   z-index: var(--z-toast);

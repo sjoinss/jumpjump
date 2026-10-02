@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import styles from "./Toast.module.css";
 
 export type ToastTone = "success" | "warning" | "error" | "info";
@@ -8,7 +8,8 @@ export type ToastTone = "success" | "warning" | "error" | "info";
 type ToastItem = { id: number; tone: ToastTone; message: string };
 
 type ToastApi = {
-  show: (message: string, tone?: ToastTone) => void;
+  /** durationMs: 기본 3.5초. 파일 저장 안내처럼 꼭 읽어야 하는 건 길게 */
+  show: (message: string, tone?: ToastTone, durationMs?: number) => void;
   /** 화면에는 안 보이고 스크린리더에만 읽히는 안내 (카운트다운, 게임 상태 등) */
   announce: (message: string) => void;
 };
@@ -24,10 +25,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const [announcement, setAnnouncement] = useState("");
   const nextId = useRef(1);
 
-  const show = useCallback((message: string, tone: ToastTone = "info") => {
+  const show = useCallback((message: string, tone: ToastTone = "info", durationMs = DURATION_MS) => {
     const id = nextId.current++;
     setItems((prev) => [...prev.slice(-2), { id, tone, message }]);
-    window.setTimeout(() => setItems((prev) => prev.filter((t) => t.id !== id)), DURATION_MS);
+    window.setTimeout(() => setItems((prev) => prev.filter((t) => t.id !== id)), durationMs);
   }, []);
 
   const announce = useCallback((message: string) => {
@@ -38,10 +39,25 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   const api = useMemo(() => ({ show, announce }), [show, announce]);
 
+  // 대화창(<dialog> showModal)은 맨 위 층에 떠서 보통 요소는 z-index와 상관없이 그 뒤에 가려진다.
+  // 알림 영역을 popover로 맨 위 층에 올리고, 새 알림이 올 때마다 다시 올려서 방금 연 대화창보다도 위에 보이게 한다
+  const regionRef = useRef<HTMLDivElement>(null);
+  const shown = items.length;
+  useLayoutEffect(() => {
+    const el = regionRef.current as (HTMLDivElement & { showPopover?: () => void; hidePopover?: () => void }) | null;
+    if (!el?.showPopover || !el.hidePopover) return;
+    try {
+      if (el.matches(":popover-open")) el.hidePopover();
+      if (shown > 0) el.showPopover();
+    } catch {
+      // popover를 못 쓰는 브라우저: 예전처럼 z-index로만
+    }
+  }, [shown, items]);
+
   return (
     <ToastContext.Provider value={api}>
       {children}
-      <div className={styles.region} role="status" aria-live="polite">
+      <div ref={regionRef} popover="manual" className={styles.region} role="status" aria-live="polite">
         {items.map((t) => (
           <p key={t.id} className={`${styles.toast} ${styles[t.tone]}`}>
             <span className={styles.symbol} aria-hidden="true">

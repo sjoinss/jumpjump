@@ -4,6 +4,13 @@
  */
 export type SaveOutcome = "shared" | "downloaded" | "cancelled";
 
+/** 내려받은 뒤 보여줄 안내 (파일 이름 + 어디서 찾는지). 휴대폰은 조용히 받아져서 꼭 알려준다 */
+export function downloadedMessage(name: string) {
+  return `「${name}」 저장 완료! 휴대폰은 다운로드 폴더나 파일 앱에서 볼 수 있어요.`;
+}
+/** 저장 안내는 길게 (파일 이름까지 읽을 시간) */
+export const DOWNLOAD_TOAST_MS = 6000;
+
 export async function saveOrShareFile(blob: Blob, name: string, preferShare: boolean): Promise<SaveOutcome> {
   const file = new File([blob], name, { type: blob.type });
   if (preferShare && typeof navigator.canShare === "function" && navigator.canShare({ files: [file] })) {
