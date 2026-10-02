@@ -50,11 +50,10 @@ test("스킨 → 32×36 꼬마 도트(기본 = 차렷): 머리 3배 24×24, 몸 
   assert.equal(at(cells, 10, 33), "", "다리 옆은 투명");
 });
 
-test("덧입는 층: 모자는 머리보다 한 칸 크게 덮고, 바로 아래 칸에 그림자", () => {
+test("덧입는 층: 모자는 머리보다 한 칸 크게 덮는다 (그림자는 없음)", () => {
   const cells = skinToDots(makeSkin(64));
   assert.equal(at(cells, 7, 3), "#0000ff", "모자 층 점 (머리 (1,1) 근처)");
-  assert.equal(at(cells, 7, 6), "#b30000", "모자 점 아래 얼굴에 그림자 (30% 어둡게)");
-  assert.equal(at(cells, 7, 10), "#ff0000", "그림자는 한 칸만");
+  assert.equal(at(cells, 7, 6), "#ff0000", "모자 점 아래 얼굴은 그대로");
   const skin = makeSkin(64);
   skin.rgba.set([0, 0, 255, 255], (8 * 64 + 40) * 4); // 모자 층 왼쪽 위 칸
   const grown = skinToDots(skin);

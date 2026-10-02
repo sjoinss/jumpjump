@@ -7,7 +7,7 @@
  *   - 기본(올라갈 때): 차렷 — 팔을 몸에 붙인다
  *   - 내려갈 때: 팔을 양옆으로 쭉 벌린 십자
  *   - 착지: 몸이 한 칸 내려앉고 다리를 짧게 굽혀 살짝 벌린다
- * 덧입는 층(모자·겉옷·소매·바지)은 불투명한 곳만 위에 덮고, 바로 아래 칸에 그림자를 넣어 떠 있어 보이게 한다.
+ * 덧입는 층(모자·겉옷·소매·바지)은 불투명한 곳만 위에 덮는다.
  * 모자 층은 머리보다 위·양옆으로 한 칸씩 크게 그린다 (실제 게임처럼 바깥 층이 부풀어 보여 너무 네모나지 않게). 예전 64×32 스킨은 왼팔·왼다리가 없어 오른쪽을 좌우로 뒤집어 쓴다.
  * 결과는 도트 칸이라 에디터에서 펜·지우개로 바로 고칠 수 있다.
  */
@@ -86,13 +86,12 @@ function parts(src: Src) {
 const W = SKIN_OUT.width;
 const H = SKIN_OUT.height;
 
-/** 그리는 판: 칸 색 + 덧입는 층이 칠한 칸 표시 (그림자용) */
-type Board = { out: string[]; over: boolean[] };
+/** 그리는 판: 칸 색 */
+type Board = { out: string[] };
 
-function put(b: Board, layer: Layer, tx: number, ty: number, color: string) {
+function put(b: Board, tx: number, ty: number, color: string) {
   if (!color || tx < 0 || tx >= W || ty < 0 || ty >= H) return;
   b.out[ty * W + tx] = color;
-  if (layer === "over") b.over[ty * W + tx] = true;
 }
 
 /** 부위의 한 층을 (dx, dy)부터 dw×dh 크기로 (가장 가까운 픽셀로) 옮긴다 */
@@ -102,7 +101,7 @@ function blit(b: Board, src: Src, part: Part, layer: Layer, dx: number, dy: numb
     const fy = Math.min(h - 1, Math.floor(((oy + 0.5) * h) / dh));
     for (let ox = 0; ox < dw; ox++) {
       const fx = Math.min(w - 1, Math.floor(((ox + 0.5) * w) / dw));
-      put(b, layer, dx + ox, dy + oy, partColor(src, part, layer, fx, fy));
+      put(b, dx + ox, dy + oy, partColor(src, part, layer, fx, fy));
     }
   }
 }
@@ -126,21 +125,9 @@ function blitArmOut(b: Board, src: Src, part: Part, shoulderX: number, y: number
         // 팔의 바깥 면이 위로 오게: 왼쪽 팔은 면의 왼쪽 줄이 위
         const fxRaw = Math.min(w - 1, Math.floor(((t + 0.5) * w) / thick));
         const fx = dir === -1 ? fxRaw : w - 1 - fxRaw;
-        put(b, layer, shoulderX + dir * i, y + t, partColor(src, part, layer, fx, fy));
+        put(b, shoulderX + dir * i, y + t, partColor(src, part, layer, fx, fy));
       }
     }
-  }
-}
-
-/** 덧입는 층 바로 아래 칸(덧입는 층이 아닌 칸)을 어둡게 — 겉옷이 살짝 떠 있는 그림자 */
-const SHADOW = 0.3;
-function castShadow(b: Board) {
-  for (let i = 0; i < W * (H - 1); i++) {
-    const j = i + W;
-    if (!b.over[i] || b.over[j] || !b.out[j]) continue;
-    const n = parseInt(b.out[j].slice(1), 16);
-    const dim = (v: number) => Math.round(v * (1 - SHADOW)).toString(16).padStart(2, "0");
-    b.out[j] = `#${dim((n >> 16) & 255)}${dim((n >> 8) & 255)}${dim(n & 255)}`;
   }
 }
 
@@ -157,7 +144,7 @@ const HAT_GROW = 1;
 const LEFT = (W - BODY_W) / 2; // 몸 왼쪽 x = 12
 
 function pose(src: Src, kind: "base" | "fall" | "land"): string[] {
-  const b: Board = { out: new Array(W * H).fill(""), over: new Array(W * H).fill(false) };
+  const b: Board = { out: new Array(W * H).fill("") };
   const p = parts(src);
   // 착지는 두 칸 내려앉고 다리가 짧아진다 (발끝은 늘 맨 아래 줄)
   const sink = kind === "land" ? 2 : 0;
@@ -184,7 +171,6 @@ function pose(src: Src, kind: "base" | "fall" | "land"): string[] {
   const headX = (W - HEAD) / 2;
   blit(b, src, p.head, "base", headX, headY, HEAD, HEAD);
   blit(b, src, p.head, "over", headX - HAT_GROW, headY - HAT_GROW, HEAD + HAT_GROW * 2, HEAD + HAT_GROW);
-  castShadow(b);
   return b.out;
 }
 
