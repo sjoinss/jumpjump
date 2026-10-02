@@ -350,3 +350,50 @@
   --radius-lg: 26px;
   --radius-xl: 34px;
 }
+
+/* 도시 빌딩: 슬레이트 블루 외곽선 + 택시 주황, 반듯한 모서리 */
+:root[data-theme="city"] {
+  --logo-fill: #ffb26b;
+  --logo-stroke: #24304a;
+  --color-ink: #24304a;
+  --color-text: #24304a;
+  --color-muted: #4e5a74;
+  --color-line: #2f3d5c;
+  --outline-width: 3px;
+  --edge-height: 4px;
+
+  --color-background: #f3f5fa;
+  --color-background-dot: #e2e7f2;
+  --color-surface: #fdfdff;
+  --color-surface-alt: #eaeef6;
+  --color-border: #d7deea;
+  --color-border-strong: #8c99b4;
+
+  --color-primary: #ffb26b;
+  --color-primary-edge: #e08a3a;
+  --color-primary-soft: #ffeedd;
+  --color-primary-strong: #a3500f;
+  --color-secondary: #9fb4ff;
+  --color-secondary-edge: #6f86e0;
+  --color-secondary-soft: #e6ebff;
+  --color-mint: #a6e3d0;
+  --color-mint-edge: #62c2a6;
+  --color-butter: #ffe08a;
+  --color-butter-edge: #d9b24a;
+  --color-sky: #c6dcff;
+  --color-sky-edge: #8aaee8;
+  --color-cream: #f9fafc;
+  --color-cream-edge: #d6dce8;
+  --color-danger-fill: #ff9d94;
+  --color-danger-edge: #d9645b;
+
+  --color-desk-bg: #dde6f5;
+  --color-desk-bg-2: #e6ebf5;
+  --color-desk-mid-1: #eef1f8;
+  --color-desk-mid-2: #e3e9f4;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+}

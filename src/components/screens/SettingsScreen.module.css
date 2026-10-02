@@ -21,26 +21,30 @@
   font-size: var(--font-size-caption);
 }
 
+/* 테마가 많아져도 짧게: 작은 카드 격자(휴대폰 3칸), 설명은 고른 테마 것만 아래에 */
 .themes {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-md);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  gap: var(--spacing-md) var(--spacing-sm);
   margin-top: var(--spacing-xs);
 }
 
 /* 테마 카드: 선택되면 두꺼운 잉크 테두리 + 체크 (색만으로 구분하지 않음) */
 .theme {
+  position: relative;
   display: flex;
-  align-items: center;
-  gap: var(--spacing-md);
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
   width: 100%;
-  padding: var(--spacing-sm);
+  min-width: 0;
+  padding: 6px 6px 8px;
   border: var(--game-outline);
   border-radius: var(--radius-lg);
   background: var(--color-surface);
   box-shadow: 0 var(--edge-height) 0 var(--color-line);
   color: var(--color-ink);
-  text-align: left;
+  text-align: center;
   cursor: pointer;
   transition:
     transform var(--duration-fast) var(--ease-out),
@@ -66,16 +70,15 @@
   flex: none;
   flex-direction: column;
   justify-content: center;
-  gap: 6px;
-  width: 72px;
-  height: 64px;
-  padding: 0 12px;
-  border-radius: 12px;
+  gap: 5px;
+  height: 44px;
+  padding: 0 10px;
+  border-radius: calc(var(--radius-lg) - 6px);
 }
 
 .previewPill {
   display: block;
-  height: 14px;
+  height: 12px;
   border: 2px solid;
   border-radius: var(--radius-full);
 }
@@ -84,34 +87,37 @@
   width: 70%;
 }
 
-.themeText {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
 .themeName {
   font-family: var(--font-display);
-  font-size: var(--font-size-subheading);
+  font-size: var(--font-size-caption);
+  line-height: 1.2;
+  word-break: keep-all;
 }
 
+/* 고른 테마의 설명 (격자 아래 한 줄) */
 .themeDesc {
+  margin-top: var(--spacing-md);
   color: var(--color-muted);
   font-size: var(--font-size-caption);
   line-height: 1.4;
 }
 
+/* 체크: 카드 오른쪽 위 모서리에 걸친다 */
 .check {
+  position: absolute;
+  top: -8px;
+  right: -8px;
   display: grid;
-  flex: none;
   place-items: center;
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border: 2px solid var(--color-line);
   border-radius: var(--radius-full);
   background: var(--color-surface);
+}
+
+.theme[aria-checked="false"] .check {
+  display: none;
 }
 
 .theme[aria-checked="true"] .check {

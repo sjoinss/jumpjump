@@ -30,6 +30,7 @@ const THEMES: Record<string, Record<string, string>> = {
   바닷속: { ...ROOT, ...vars(block(':root[data-theme="ocean"]')) },
   "블록 월드": { ...ROOT, ...vars(block(':root[data-theme="blocks"]')) },
   "과자 나라": { ...ROOT, ...vars(block(':root[data-theme="candy"]')) },
+  "도시 빌딩": { ...ROOT, ...vars(block(':root[data-theme="city"]')) },
 };
 
 function resolve(t: Record<string, string>, name: string): string {

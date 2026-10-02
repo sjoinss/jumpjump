@@ -20,15 +20,16 @@ test("바닷속: 해저 → 수면 → 하늘 → 우주 (높이는 기본과 �
   assert.equal(regionName(regionIndexAt(320, list), list), "수면");
 });
 
-test("블록 월드: 네더 → 동굴 → 지상 → 하늘 → 우주, 다섯 지역도 배경 섞임이 이어진다", () => {
+test("블록 월드: 네더 → 동굴 → 지상 → 하늘 → 우주 → 엔더 월드, 지역이 많아도 배경 섞임이 이어진다", () => {
   const list = SCENE.blocks.regions;
-  assert.deepEqual(list.map((r) => r.name), ["네더", "동굴", "지상", "하늘", "우주"]);
+  assert.deepEqual(list.map((r) => r.name), ["네더", "동굴", "지상", "하늘", "우주", "엔더 월드"]);
   assert.equal(regionName(regionIndexAt(0, list), list), "네더");
   assert.equal(regionName(regionIndexAt(200, list), list), "동굴");
   assert.equal(regionName(regionIndexAt(600, list), list), "지상");
-  assert.equal(regionBlendAt(9000, list), 4);
+  assert.equal(regionName(regionIndexAt(4200, list), list), "엔더 월드");
+  assert.equal(regionBlendAt(9000, list), 5);
   let prev = -1;
-  for (let m = 0; m <= 3000; m += 5) {
+  for (let m = 0; m <= 4500; m += 5) {
     const b = regionBlendAt(m, list);
     assert.ok(b >= prev, `${m}m`);
     prev = b;

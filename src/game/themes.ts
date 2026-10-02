@@ -1,15 +1,17 @@
 import { CONFIG } from "./config";
+import { DREAM_DECOR } from "./dream";
 import type { BackgroundState } from "./background";
 import type { RegionStop } from "./regions";
 import type { TileSet } from "./tiles";
-import { BLOCK_TILES } from "./tilesets/blocks";
+import { BLOCK_DECOR, BLOCK_TILES } from "./tilesets/blocks";
 import { CANDY_DECOR, CANDY_TILES } from "./tilesets/candy";
+import { CITY_DECOR, CITY_TILES } from "./tilesets/city";
 
 /**
  * 테마 목록. UI 색은 styles/tokens.css의 [data-theme]에, 게임 장면 색은 여기 SCENE에 둔다.
  * 테마를 추가할 때는 두 곳 + THEME_IDS에 같은 id로 넣는다.
  */
-export const THEME_IDS = ["dot", "cotton", "dream", "ocean", "blocks", "candy"] as const;
+export const THEME_IDS = ["dot", "cotton", "dream", "ocean", "blocks", "candy", "city"] as const;
 export type ThemeId = (typeof THEME_IDS)[number];
 export const DEFAULT_THEME: ThemeId = "dot";
 
@@ -37,7 +39,7 @@ export const THEMES: Record<ThemeId, ThemeInfo> = {
   dream: {
     id: "dream",
     name: "꿈나라",
-    description: "라벤더와 하늘빛, 별이 반짝이는 몽환적인 밤하늘.",
+    description: "잠든 방에서 양을 세며 무지개 구름을 지나 은하수까지.",
     swatches: ["#c9c0f7", "#f5b8e8", "#bdf0f0", "#9d8ee6"],
   },
   ocean: {
@@ -49,7 +51,7 @@ export const THEMES: Record<ThemeId, ThemeInfo> = {
   blocks: {
     id: "blocks",
     name: "블록 월드",
-    description: "네모난 블록 세상의 단면. 네더에서 동굴, 지상, 하늘, 우주로.",
+    description: "네모난 블록 세상의 단면. 네더에서 동굴, 지상, 하늘, 우주, 엔더 월드까지.",
     swatches: ["#e4efd9", "#8fd16a", "#c9a27a", "#3b3b3b"],
   },
   candy: {
@@ -57,6 +59,12 @@ export const THEMES: Record<ThemeId, ThemeInfo> = {
     name: "과자 나라",
     description: "초코 동굴에서 케이크를 뚫고 솜사탕 구름, 사탕 우주까지.",
     swatches: ["#fff0f6", "#ff8fbf", "#9fe0ff", "#6b4430"],
+  },
+  city: {
+    id: "city",
+    name: "도시 빌딩",
+    description: "지하철역에서 거리로, 빌딩 숲을 지나 옥상과 밤하늘까지.",
+    swatches: ["#eef1f8", "#ffb26b", "#9fb4ff", "#2f3d5c"],
   },
 };
 
@@ -118,8 +126,8 @@ function classicRegions(sky: Record<"cave" | "ground" | "sky" | "space", [string
   return CONFIG.regions.list.map((r) => ({ key: r.id, name: r.name, startM: r.startM, top: sky[r.id][0], bottom: sky[r.id][1] }));
 }
 
-/** 해저 테마: 높이는 기본과 같고(수면 = 지상 시작 높이) 이름만 바다식 */
-const OCEAN_STOPS = CONFIG.regions.list.map((r) => r.startM);
+/** 기본 지역 높이 (바닷속·꿈나라는 높이는 그대로 두고 이름·장식만 바꾼다. 바다의 수면 = 지상 시작 높이) */
+const DEFAULT_STOPS = CONFIG.regions.list.map((r) => r.startM);
 
 /**
  * 우주도 너무 어두워지지 않게 한다: 캐릭터 외곽선(잉크)은 묻혀도 채우기 색과 HUD가 또렷하도록 (기획서 3-5, 13-3).
@@ -179,12 +187,13 @@ export const SCENE: Record<ThemeId, ScenePalette> = {
   },
   dream: {
     style: "classic",
-    regions: classicRegions({
-      cave: ["#a79ee9", "#d6ccf8"],
-      ground: ["#b9d5ff", "#ffe2f3"],
-      sky: ["#aac9ff", "#e3eeff"],
-      space: ["#4a4598", "#7b6fcc"],
-    }),
+    decor: DREAM_DECOR,
+    regions: [
+      { key: "bedroom", name: "잠든 방", startM: DEFAULT_STOPS[0], top: "#6a62bd", bottom: "#a79ee9" },
+      { key: "sheep", name: "양 세는 언덕", startM: DEFAULT_STOPS[1], top: "#b9d5ff", bottom: "#ffe2f3" },
+      { key: "rainbow", name: "무지개 구름", startM: DEFAULT_STOPS[2], top: "#c6d8ff", bottom: "#fff0f8" },
+      { key: "galaxy", name: "은하수", startM: DEFAULT_STOPS[3], top: "#3f3a8c", bottom: "#6d61c0" },
+    ],
     cloud: "rgba(245,240,255,0.75)",
     sparkle: "#fff8d6",
     sparkleCore: "#ffffff",
@@ -201,15 +210,15 @@ export const SCENE: Record<ThemeId, ScenePalette> = {
       flowerCore: "#fff8d6",
     },
     shadow: "rgba(51,41,92,0.22)",
-    cssBackground: "#a79ee9",
+    cssBackground: "#6a62bd",
   },
   ocean: {
     style: "ocean",
     regions: [
-      { key: "seabed", name: "해저", startM: OCEAN_STOPS[0], top: "#86c8ee", bottom: "#4f93d8" },
-      { key: "surface", name: "수면", startM: OCEAN_STOPS[1], top: "#bfe6ff", bottom: "#eaf8ff" },
-      { key: "sky", name: "하늘", startM: OCEAN_STOPS[2], top: "#8fd0ff", bottom: "#dcf2ff" },
-      { key: "space", name: "우주", startM: OCEAN_STOPS[3], top: "#4459b0", bottom: "#7a8fdc" },
+      { key: "seabed", name: "해저", startM: DEFAULT_STOPS[0], top: "#86c8ee", bottom: "#4f93d8" },
+      { key: "surface", name: "수면", startM: DEFAULT_STOPS[1], top: "#bfe6ff", bottom: "#eaf8ff" },
+      { key: "sky", name: "하늘", startM: DEFAULT_STOPS[2], top: "#8fd0ff", bottom: "#dcf2ff" },
+      { key: "space", name: "우주", startM: DEFAULT_STOPS[3], top: "#4459b0", bottom: "#7a8fdc" },
     ],
     cloud: "rgba(255,255,255,0.9)",
     sparkle: "#ffffff",
@@ -232,12 +241,14 @@ export const SCENE: Record<ThemeId, ScenePalette> = {
   blocks: {
     style: "tiles",
     tiles: BLOCK_TILES,
+    decor: BLOCK_DECOR,
     regions: [
       { key: "nether", name: "네더", startM: 0, top: "#7d3540", bottom: "#a8505a" },
       { key: "stone", name: "동굴", startM: 150, top: "#6f7180", bottom: "#9496a3" },
       { key: "overworld", name: "지상", startM: 500, top: "#9fd6ff", bottom: "#e4f4ff" },
       { key: "sky", name: "하늘", startM: 1200, top: "#8ccaff", bottom: "#d8efff" },
       { key: "space", name: "우주", startM: 2500, top: "#3f3f7a", bottom: "#6a6aa8" },
+      { key: "end", name: "엔더 월드", startM: 4000, top: "#2e2250", bottom: "#4e3a7a" },
     ],
     cloud: "rgba(255,255,255,0.95)",
     sparkle: "#ffffff",
@@ -284,5 +295,34 @@ export const SCENE: Record<ThemeId, ScenePalette> = {
     },
     shadow: "rgba(74,44,34,0.25)",
     cssBackground: "#8a5a45",
+  },
+  city: {
+    style: "tiles",
+    tiles: CITY_TILES,
+    decor: CITY_DECOR,
+    regions: [
+      { key: "subway", name: "지하철", startM: 0, top: "#5d6270", bottom: "#7a8090" },
+      { key: "street", name: "거리", startM: 300, top: "#bfe3ff", bottom: "#fff1d6" },
+      { key: "towers", name: "빌딩 숲", startM: 800, top: "#a8d4ff", bottom: "#e8f4ff" },
+      { key: "roof", name: "옥상", startM: 1600, top: "#ffc8a8", bottom: "#ffe9d6" },
+      { key: "night", name: "밤하늘", startM: 2500, top: "#2f3a6a", bottom: "#55609a" },
+    ],
+    cloud: "rgba(255,255,255,0.9)",
+    sparkle: "#ffffff",
+    sparkleCore: "#ffe08a",
+    sparkleDensity: 1.2,
+    accent: "#ffb26b",
+    moon: "#fff4c7",
+    ground: {
+      top: "#b8bcc6",
+      topEdge: "#ffd84a",
+      highlight: "#d6d9e0",
+      soil: "#8f95a3",
+      pebble: "#7a808c",
+      flower: "#ffd84a",
+      flowerCore: "#ffffff",
+    },
+    shadow: "rgba(36,48,74,0.25)",
+    cssBackground: "#5d6270",
   },
 };

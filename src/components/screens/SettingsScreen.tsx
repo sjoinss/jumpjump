@@ -139,7 +139,7 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
             테마
           </h2>
           <p className={styles.sectionHelp}>화면과 게임 배경의 분위기가 함께 바뀌어요.</p>
-          <div className={styles.themes} role="radiogroup" aria-labelledby="theme-title">
+          <div className={styles.themes} role="radiogroup" aria-labelledby="theme-title" aria-describedby="theme-desc">
             {THEME_IDS.map((id, i) => {
               const t = THEMES[id];
               const checked = id === theme;
@@ -163,10 +163,7 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
                     <span className={styles.previewPill} style={{ background: fillA, borderColor: line, boxShadow: `0 3px 0 ${line}` }} />
                     <span className={styles.previewPill} style={{ background: fillB, borderColor: line, boxShadow: `0 3px 0 ${line}` }} />
                   </span>
-                  <span className={styles.themeText}>
-                    <span className={styles.themeName}>{t.name}</span>
-                    <span className={styles.themeDesc}>{t.description}</span>
-                  </span>
+                  <span className={styles.themeName}>{t.name}</span>
                   <span className={styles.check} aria-hidden="true">
                     {checked && <PixelIcon name="check" size={16} />}
                   </span>
@@ -174,6 +171,9 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
               );
             })}
           </div>
+          <p id="theme-desc" className={styles.themeDesc} aria-live="polite">
+            <strong>{THEMES[theme].name}</strong> · {THEMES[theme].description}
+          </p>
         </section>
 
         <div className={styles.card}>
