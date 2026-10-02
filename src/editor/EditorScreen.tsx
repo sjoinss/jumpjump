@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
 import { PixelPreview } from "@/components/PixelPreview";
 import { SpritePreview } from "@/components/SpritePreview";
 import { requestPersistentStorage } from "@/components/PwaProvider";
@@ -19,9 +19,10 @@ import { CHARACTER_PRESETS } from "@/game/presets";
 import { resolvePlatforms, THEME_PLATFORMS } from "@/game/themePlatforms";
 import type { ThemeId } from "@/game/themes";
 import { POSE_INFO } from "@/lib/character";
-import { POSES, type Character, type PixelSprite } from "@/lib/schema";
+import { POSES, SAVED_CHARACTER_MAX, SAVED_PLATFORM_MAX, type Character, type PixelSprite } from "@/lib/schema";
 import { DotCanvas, type Underlay } from "./DotCanvas";
 import { ImageImportScreen } from "./ImageImportScreen";
+import { LibrarySection } from "./LibrarySection";
 import { isLossyDownscale } from "./grid";
 import { Palette } from "./Palette";
 import {
@@ -33,7 +34,9 @@ import {
   companionDraftKey,
   createCompanionEditorState,
   createEditorState,
+  currentCharacter,
   currentDoc,
+  currentPlatforms,
   currentSprite,
   DRAFT_KEY,
   editorReducer,
@@ -242,6 +245,66 @@ export function EditorScreen({ onClose, companion, initialTab }: Props) {
     if (onionBase) list.push({ sprite: onionBase, opacity: state.onionOpacity });
     return list;
   }, [companion, state.guide, heroGuide, onionBase, state.onionOpacity]);
+  // ── 보관함: 캐릭터 탭이면 캐릭터 5개, 발판 탭이면 발판 세트(4종) 3개 ──
+  const keep = () => void requestPersistentStorage();
+  const library = isHero ? (
+    <LibrarySection
+      what="캐릭터"
+      max={SAVED_CHARACTER_MAX}
+      saveLabel="지금 그림 보관"
+      items={data.savedCharacters.map((c) => ({ name: c.name, preview: <SpritePreview sprite={c.character.base} width={32} height={36} /> }))}
+      cantSave={currentCharacter(state) ? null : "빈 그림이 있어서 보관할 수 없어요. 한 칸 이상 그리거나 빈 모습을 삭제해주세요."}
+      onLoad={(i) => {
+        const item = data.savedCharacters[i];
+        dispatch({ type: "loadCharacter", character: structuredClone(item.character) });
+        setDialog(null);
+        show(`「${item.name}」을(를) 불러왔어요. 되돌리기로 돌아갈 수 있어요.`, "info");
+      }}
+      onDelete={(i) => update((d) => ({ ...d, savedCharacters: d.savedCharacters.filter((_, j) => j !== i) }))}
+      onSave={(name) => {
+        const character = currentCharacter(state);
+        if (!character) return;
+        update((d) => ({ ...d, savedCharacters: [...d.savedCharacters, { name, character: structuredClone(character) }].slice(0, SAVED_CHARACTER_MAX) }));
+        keep();
+        show(`「${name}」을(를) 보관했어요.`, "success");
+      }}
+    />
+  ) : (
+    <LibrarySection
+      what="발판 세트"
+      max={SAVED_PLATFORM_MAX}
+      saveLabel="발판 4종 보관"
+      items={data.savedPlatforms.map((p) => {
+        const shown = resolvePlatforms(p.platforms, data.settings.theme);
+        return {
+          name: p.name,
+          preview: (
+            <>
+              <PixelPreview sprite={shown.basic} width={32} height={8} />
+              <PixelPreview sprite={shown.highJump} width={32} height={8} />
+              <PixelPreview sprite={shown.oneTime} width={32} height={8} />
+              <PixelPreview sprite={shown.moving} width={32} height={8} />
+            </>
+          ),
+        };
+      })}
+      cantSave={currentPlatforms(state) ? null : "빈 발판이 있어서 보관할 수 없어요. 발판 4종을 모두 그려주세요."}
+      onLoad={(i) => {
+        const item = data.savedPlatforms[i];
+        dispatch({ type: "loadPlatforms", platforms: structuredClone(resolvePlatforms(item.platforms, data.settings.theme)) });
+        setDialog(null);
+        show(`「${item.name}」 발판 4종을 불러왔어요. 완료를 누르면 게임에 적용돼요.`, "info");
+      }}
+      onDelete={(i) => update((d) => ({ ...d, savedPlatforms: d.savedPlatforms.filter((_, j) => j !== i) }))}
+      onSave={(name) => {
+        const platforms = currentPlatforms(state);
+        if (!platforms) return;
+        update((d) => ({ ...d, savedPlatforms: [...d.savedPlatforms, { name, platforms: structuredClone(platforms) }].slice(0, SAVED_PLATFORM_MAX) }));
+        keep();
+        show(`「${name}」 발판 세트를 보관했어요.`, "success");
+      }}
+    />
+  );
   const tabItems = editorTabItems(state);
   const title = companion ? `동료 ${companion.slot} 그리기` : "그리기";
   const pose = poseAt(state.frame);
@@ -321,7 +384,7 @@ export function EditorScreen({ onClose, companion, initialTab }: Props) {
           )}
           <button type="button" className={styles.chipGhost} onClick={() => setDialog("canvas")}>
             <PixelIcon name="grid" size={12} />
-            {isHero ? "불러오기" : "기본 발판"}
+            {isHero ? "불러오기 · 보관" : "기본 발판 · 보관"}
           </button>
         </div>
 
@@ -493,6 +556,7 @@ export function EditorScreen({ onClose, companion, initialTab }: Props) {
         sprite={sprite.kind === "pixel" ? sprite : null}
         hero={data.hero}
         theme={data.settings.theme}
+        library={library}
         onClose={() => setDialog(null)}
         onLoad={(s, name) => {
           // 발판: 기본 발판으로 되돌리기
@@ -662,6 +726,8 @@ type CanvasDialogProps = {
   hero: Character;
   /** 지금 테마 (기본 발판 그림) */
   theme: ThemeId;
+  /** 보관함 (맨 위) */
+  library: ReactNode;
   onClose: () => void;
   /** 발판 기본 그림 */
   onLoad: (sprite: PixelSprite, name: string) => void;
@@ -675,7 +741,7 @@ type CanvasDialogProps = {
  * 캐릭터: 기본 캐릭터 불러오기 + 칸 크기 / 동료: 주인공 그림 가져오기 + 칸 크기 (동료 기본 세트는 없음)
  * 발판: 기본 발판으로 되돌리기
  */
-function CanvasDialog({ open, tab, sprite, hero, theme, onClose, onLoad, onLoadCharacter, onResize, onImportImage }: CanvasDialogProps) {
+function CanvasDialog({ open, tab, sprite, hero, theme, library, onClose, onLoad, onLoadCharacter, onResize, onImportImage }: CanvasDialogProps) {
   const [pendingShrink, setPendingShrink] = useState(false);
   const sizes = CONFIG.character.gridSizes;
 
@@ -686,8 +752,10 @@ function CanvasDialog({ open, tab, sprite, hero, theme, onClose, onLoad, onLoadC
   if (!isCharacterTab(tab)) {
     const preset = THEME_PLATFORMS[theme][tab as keyof typeof THEME_PLATFORMS.dot];
     return (
-      <Dialog open={open} title={TAB_LABEL[tab]} onClose={onClose}>
+      <Dialog open={open} title="발판 불러오기 · 보관" onClose={onClose}>
+        {library}
         <div className={styles.platformPreset}>
+          <h3 className={styles.dialogHeading}>{TAB_LABEL[tab]} 기본 그림 (지금 테마)</h3>
           <PixelPreview sprite={preset} width={192} height={48} label={`기본 ${TAB_LABEL[tab]} 그림`} />
           <Button variant="secondary" block onClick={() => onLoad(preset, `기본 ${TAB_LABEL[tab]}`)}>
             기본 발판으로 되돌리기
@@ -699,7 +767,9 @@ function CanvasDialog({ open, tab, sprite, hero, theme, onClose, onLoad, onLoadC
 
   const current = sprite ? sizes.findIndex((g) => g.width === sprite.width) : -1;
   return (
-    <Dialog open={open} title="불러오기 · 크기" onClose={onClose}>
+    <Dialog open={open} title="불러오기 · 보관 · 크기" onClose={onClose}>
+      {library}
+
       <section className={styles.dialogSection}>
         <Button variant="secondary" icon="image" block onClick={onImportImage}>
           내 이미지 불러오기

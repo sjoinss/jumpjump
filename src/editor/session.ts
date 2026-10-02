@@ -122,6 +122,8 @@ export type EditorAction =
   | { type: "loadSprite"; sprite: PixelSprite }
   /** 기본 캐릭터·주인공 그림을 세 모습 그대로 불러온다 (캐릭터 탭만) */
   | { type: "loadCharacter"; character: Character }
+  /** 보관한 발판 세트를 네 발판 탭에 한꺼번에 (main 모드만) */
+  | { type: "loadPlatforms"; platforms: Platforms }
   /** 이미지 불러오기 결과를 지금 프레임에 넣는다 (캐릭터 탭만) */
   | { type: "setFrameSprite"; sprite: Sprite }
   | { type: "restoreDraft"; draft: EditorDraft }
@@ -383,6 +385,14 @@ export function editorReducer(s: EditorState, a: EditorAction): EditorState {
       if (!isCharacterTab(s.active)) return s;
       return { ...commit(s, characterDoc(a.character)), frame: 0, stroke: null };
     }
+    case "loadPlatforms": {
+      const tabs = { ...s.tabs };
+      for (const k of PLATFORM_TABS) {
+        const t = tabs[k];
+        if (t) tabs[k] = { ...t, history: pushHistory(t.history, { frames: [a.platforms[k]] }) };
+      }
+      return { ...s, tabs, stroke: null };
+    }
     case "setFrameSprite": {
       if (!isCharacterTab(s.active)) return s;
       return commit(s, withFrame(currentDoc(s), s.frame, a.sprite));
@@ -443,6 +453,23 @@ export function applyCompanionToSave(s: EditorState, save: SaveData, slot: numbe
   const name = s.name.trim();
   const next: CompanionSlot = name ? { character, name } : { character };
   return { ...save, companionSlots: save.companionSlots.map((c, i) => (i === slot - 1 ? next : c)) };
+}
+
+const PLATFORM_TABS: (keyof Platforms)[] = ["basic", "highJump", "oneTime", "moving"];
+
+/** 보관할 수 있는 지금 캐릭터 (캐릭터 탭). 빈 그림이 있으면 null */
+export function currentCharacter(s: EditorState): Character | null {
+  if (!isCharacterTab(s.active)) return null;
+  const doc = currentDoc(s);
+  if (doc.frames.some((f) => f?.kind === "pixel" && isEmptySprite(f))) return null;
+  return docCharacter(doc);
+}
+
+/** 보관할 수 있는 지금 발판 4종 (main 모드). 빈 발판이 있으면 null */
+export function currentPlatforms(s: EditorState): Platforms | null {
+  if (!s.tabs.basic) return null;
+  const p = editorPlatforms(s);
+  return PLATFORM_TABS.some((k) => isEmptySprite(p[k])) ? null : p;
 }
 
 /** 에디터의 발판 4종 (지금 보이는 그대로) */

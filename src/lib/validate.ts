@@ -13,6 +13,10 @@ import {
   type PixelColor,
   type PixelSprite,
   type Platforms,
+  SAVED_CHARACTER_MAX,
+  SAVED_PLATFORM_MAX,
+  type SavedCharacter,
+  type SavedPlatformSet,
   type SaveData,
   type Settings,
   type Sprite,
@@ -166,6 +170,51 @@ export function validatePlatforms(raw: unknown): Result<Platforms> {
   return ok(out as Platforms);
 }
 
+/** 보관함 이름: 앞뒤 공백 없이 1~companionNameMax자 */
+function savedName(raw: unknown, label: string): Result<string> {
+  const max = CONFIG.limits.companionNameMax;
+  if (typeof raw !== "string" || !raw.trim()) return fail(`${label}의 이름이 올바르지 않습니다`);
+  const name = raw.trim();
+  if (name.length > max) return fail(`${label}의 이름은 ${max}자까지 쓸 수 있습니다`);
+  return ok(name);
+}
+
+export function validateSavedCharacters(raw: unknown): Result<SavedCharacter[]> {
+  if (!Array.isArray(raw) || raw.length > SAVED_CHARACTER_MAX) {
+    return fail(`보관한 캐릭터는 ${SAVED_CHARACTER_MAX}개까지 저장할 수 있습니다`);
+  }
+  const out: SavedCharacter[] = [];
+  for (let i = 0; i < raw.length; i++) {
+    const label = `보관한 캐릭터 ${i + 1}`;
+    const item = raw[i];
+    if (!isRecord(item)) return fail(`${label}의 형식이 올바르지 않습니다`);
+    const name = savedName(item.name, label);
+    if (!name.ok) return name;
+    const c = validateCharacter(item.character, label);
+    if (!c.ok) return c;
+    out.push({ name: name.value, character: c.value });
+  }
+  return ok(out);
+}
+
+export function validateSavedPlatforms(raw: unknown): Result<SavedPlatformSet[]> {
+  if (!Array.isArray(raw) || raw.length > SAVED_PLATFORM_MAX) {
+    return fail(`보관한 발판 세트는 ${SAVED_PLATFORM_MAX}개까지 저장할 수 있습니다`);
+  }
+  const out: SavedPlatformSet[] = [];
+  for (let i = 0; i < raw.length; i++) {
+    const label = `보관한 발판 세트 ${i + 1}`;
+    const item = raw[i];
+    if (!isRecord(item)) return fail(`${label}의 형식이 올바르지 않습니다`);
+    const name = savedName(item.name, label);
+    if (!name.ok) return name;
+    const p = validatePlatforms(item.platforms);
+    if (!p.ok) return fail(`${label}: ${p.error}`);
+    out.push({ name: name.value, platforms: p.value });
+  }
+  return ok(out);
+}
+
 export function validatePalette(raw: unknown): Result<PixelColor[]> {
   if (!Array.isArray(raw)) return fail("팔레트 형식이 올바르지 않습니다");
   if (raw.length > CONFIG.limits.paletteMax) {
@@ -255,6 +304,9 @@ export function normalizeSaveData(raw: unknown, env: DefaultEnv): { data: SaveDa
       hero: section(validateCharacter(raw.hero, "주인공"), def.hero),
       platforms: section(validatePlatforms(raw.platforms), def.platforms),
       companionSlots: section(validateCompanionSlots(raw.companionSlots), def.companionSlots),
+      // 보관함은 나중에 생겨서 예전 데이터에는 없다 → 빈 목록 (손상으로 치지 않음)
+      savedCharacters: raw.savedCharacters === undefined ? [] : section(validateSavedCharacters(raw.savedCharacters), def.savedCharacters),
+      savedPlatforms: raw.savedPlatforms === undefined ? [] : section(validateSavedPlatforms(raw.savedPlatforms), def.savedPlatforms),
       palette: section(validatePalette(raw.palette), def.palette),
       best: section(validateBest(raw.best), def.best),
       settings: settings.value,

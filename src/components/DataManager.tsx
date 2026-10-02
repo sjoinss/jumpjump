@@ -250,6 +250,10 @@ function summary(d: Partial<SaveData>, k: DataKey) {
       );
     case "companionSlots":
       return d.companionSlots && `그림 ${d.companionSlots.filter((s) => s.character).length}개`;
+    case "savedCharacters":
+      return d.savedCharacters && `${d.savedCharacters.length}개`;
+    case "savedPlatforms":
+      return d.savedPlatforms && `${d.savedPlatforms.length}세트`;
     case "palette":
       return d.palette && `색 ${d.palette.length}개`;
     case "settings":

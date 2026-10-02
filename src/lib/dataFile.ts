@@ -11,6 +11,8 @@ import {
   type ImageSprite,
   type PixelColor,
   type Platforms,
+  type SavedCharacter,
+  type SavedPlatformSet,
   type SaveData,
   type Settings,
   type Sprite,
@@ -22,6 +24,8 @@ import {
   validateCompanionSlots,
   validatePalette,
   validatePlatforms,
+  validateSavedCharacters,
+  validateSavedPlatforms,
   type Result,
 } from "./validate";
 
@@ -30,26 +34,30 @@ import {
  * { app: "dot-jump-climb", type: "save", version, exportedAt, data: { hero?, platforms?, companionSlots?, palette?, settings?, best? } }
  */
 
-export const DATA_KEYS = ["hero", "platforms", "companionSlots", "palette", "settings", "best"] as const;
+export const DATA_KEYS = ["hero", "platforms", "companionSlots", "savedCharacters", "savedPlatforms", "palette", "settings", "best"] as const;
 export type DataKey = (typeof DATA_KEYS)[number];
 
 export const DATA_LABEL: Record<DataKey, string> = {
   hero: "캐릭터",
   platforms: "발판 4종",
   companionSlots: "동료 그림",
+  savedCharacters: "보관한 캐릭터",
+  savedPlatforms: "보관한 발판 세트",
   palette: "팔레트",
   settings: "설정",
   best: "최고 기록",
 };
 
 /** 기본 체크: 그림 데이터만. 설정·최고 기록은 "전체 백업"에서만 */
-export const DEFAULT_EXPORT_KEYS: DataKey[] = ["hero", "platforms", "companionSlots", "palette"];
+export const DEFAULT_EXPORT_KEYS: DataKey[] = ["hero", "platforms", "companionSlots", "savedCharacters", "savedPlatforms", "palette"];
 export const FULL_BACKUP_KEYS: DataKey[] = [...DATA_KEYS];
 
 export type ExportData = {
   hero?: Character;
   platforms?: Platforms;
   companionSlots?: CompanionSlot[];
+  savedCharacters?: SavedCharacter[];
+  savedPlatforms?: SavedPlatformSet[];
   palette?: PixelColor[];
   settings?: Settings;
   best?: BestScores;
@@ -79,7 +87,11 @@ export function exportFileName(now: Date) {
 /** 고른 항목에 불러온 이미지(사진일 수 있음)가 들어 있는지 — 공유 전 경고용 (기획서 6-4) */
 export function exportHasImages(save: SaveData, keys: readonly DataKey[]) {
   const hasImage = (c: Character | null) => !!c && characterSprites(c).some((f) => f.kind === "image");
-  return (keys.includes("hero") && hasImage(save.hero)) || (keys.includes("companionSlots") && save.companionSlots.some((s) => hasImage(s.character)));
+  return (
+    (keys.includes("hero") && hasImage(save.hero)) ||
+    (keys.includes("companionSlots") && save.companionSlots.some((s) => hasImage(s.character))) ||
+    (keys.includes("savedCharacters") && save.savedCharacters.some((s) => hasImage(s.character)))
+  );
 }
 
 // ── 불러오기 ──
@@ -153,6 +165,12 @@ export function parseImport(text: string): Result<ParsedImport> {
       case "companionSlots":
         error = take(key, validateCompanionSlots(v));
         break;
+      case "savedCharacters":
+        error = take(key, validateSavedCharacters(v));
+        break;
+      case "savedPlatforms":
+        error = take(key, validateSavedPlatforms(v));
+        break;
       case "palette":
         error = take(key, validatePalette(v));
         break;
@@ -185,6 +203,7 @@ export function collectImages(data: ExportData): { label: string; sprite: ImageS
   };
   add(data.hero, "캐릭터");
   data.companionSlots?.forEach((s, i) => add(s.character, `동료 슬롯 ${i + 1}`));
+  data.savedCharacters?.forEach((s, i) => add(s.character, `보관한 캐릭터 ${i + 1}`));
   return out;
 }
 
@@ -202,6 +221,7 @@ export function replaceImages(data: ExportData, map: Map<ImageSprite, ImageSprit
     ...data,
     hero: data.hero && (swap(data.hero) as Character),
     companionSlots: data.companionSlots?.map((s) => ({ ...s, character: swap(s.character) })),
+    savedCharacters: data.savedCharacters?.map((s) => ({ ...s, character: swap(s.character) as Character })),
   };
 }
 
@@ -241,7 +261,13 @@ export function hasCustomArt(save: SaveData) {
   const presetPlatforms = (Object.keys(PLATFORM_PRESETS) as (keyof Platforms)[]).every(
     (k) => pixelsKey(save.platforms[k]) === pixelsKey(PLATFORM_PRESETS[k]),
   );
-  return !presetHero || !presetPlatforms || save.companionSlots.some((s) => s.character !== null);
+  return (
+    !presetHero ||
+    !presetPlatforms ||
+    save.companionSlots.some((s) => s.character !== null) ||
+    save.savedCharacters.length > 0 ||
+    save.savedPlatforms.length > 0
+  );
 }
 
 /**

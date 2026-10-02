@@ -35,6 +35,8 @@ export function createDefaultSaveData(env: DefaultEnv): SaveData {
     hero: structuredClone(CHARACTER_PRESETS[0].character),
     platforms: structuredClone(PLATFORM_PRESETS),
     companionSlots: createEmptyCompanionSlots(),
+    savedCharacters: [],
+    savedPlatforms: [],
     palette: [...DEFAULT_PALETTE],
     best: { withCompanions: 0, solo: 0 },
     settings: createDefaultSettings(env),

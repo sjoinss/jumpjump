@@ -62,6 +62,15 @@ export type Platforms = {
 
 export type PlatformKind = keyof Platforms;
 
+/**
+ * 보관함 (사용자 요청 2026-10-02): 내가 만든 캐릭터·발판 세트를 따로 모아 두고 에디터에서 다시 불러온다.
+ * 게임에 쓰는 주인공·발판과는 별개다. 나중에 추가된 항목이라 없으면 빈 목록으로 읽는다 (마이그레이션 불필요).
+ */
+export type SavedCharacter = { name: string; character: Character };
+export type SavedPlatformSet = { name: string; platforms: Platforms };
+export const SAVED_CHARACTER_MAX = 5;
+export const SAVED_PLATFORM_MAX = 3;
+
 export type CompanionMaxSource = "default" | "auto" | "user";
 
 export type Settings = {
@@ -96,6 +105,10 @@ export type SaveData = {
   platforms: Platforms;
   /** 항상 길이 5 */
   companionSlots: CompanionSlot[];
+  /** 보관한 캐릭터 (최대 SAVED_CHARACTER_MAX) */
+  savedCharacters: SavedCharacter[];
+  /** 보관한 발판 세트 (최대 SAVED_PLATFORM_MAX) */
+  savedPlatforms: SavedPlatformSet[];
   palette: PixelColor[];
   best: BestScores;
   settings: Settings;

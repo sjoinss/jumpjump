@@ -26,7 +26,7 @@ test("내보내기: 기본은 그림 데이터만, 전체 백업은 설정·기�
   const basic = buildExport(save(), DEFAULT_EXPORT_KEYS, NOW);
   assert.equal(basic.app, "dot-jump-climb");
   assert.equal(basic.version, SCHEMA_VERSION);
-  assert.deepEqual(Object.keys(basic.data), ["hero", "platforms", "companionSlots", "palette"]);
+  assert.deepEqual(Object.keys(basic.data), ["hero", "platforms", "companionSlots", "savedCharacters", "savedPlatforms", "palette"]);
   assert.deepEqual(Object.keys(buildExport(save(), FULL_BACKUP_KEYS, NOW).data).sort(), [...FULL_BACKUP_KEYS].sort());
 });
 
@@ -47,7 +47,7 @@ test("불러오기: 내보낸 파일은 그대로 다시 읽힌다", () => {
   s.palette = ["#123456"];
   const r = parseImport(roundTrip(s));
   assert.ok(r.ok);
-  assert.deepEqual(r.value.keys, ["hero", "platforms", "companionSlots", "palette"]);
+  assert.deepEqual(r.value.keys, ["hero", "platforms", "companionSlots", "savedCharacters", "savedPlatforms", "palette"]);
   assert.deepEqual(r.value.data.palette, ["#123456"]);
   assert.equal(r.value.exportedAt?.getTime(), NOW.getTime());
 });
@@ -135,4 +135,22 @@ test("백업 안내: 직접 그린 게 있고 오래 내보내지 않았을 때�
   assert.equal(needsBackupReminder(s, 25 * day), true, "14일 지남");
   s.settings.onboarding.lastExportAt = 24 * day;
   assert.equal(needsBackupReminder(s, 25 * day), false, "최근에 내보냄");
+});
+
+test("보관함: 캐릭터 5개·발판 세트 3개까지, 이름이 있어야 하고, 예전 데이터엔 없으면 빈 목록", async () => {
+  const { validateSavedCharacters, validateSavedPlatforms, normalizeSaveData } = await import("../src/lib/validate");
+  const { CHARACTER_PRESETS, PLATFORM_PRESETS } = await import("../src/game/presets");
+  const c = { name: "말랑", character: CHARACTER_PRESETS[0].character };
+  assert.ok(validateSavedCharacters([c, c, c, c, c]).ok);
+  assert.equal(validateSavedCharacters([c, c, c, c, c, c]).ok, false);
+  assert.equal(validateSavedCharacters([{ ...c, name: "  " }]).ok, false);
+  const p = { name: "발판", platforms: PLATFORM_PRESETS };
+  assert.ok(validateSavedPlatforms([p, p, p]).ok);
+  assert.equal(validateSavedPlatforms([p, p, p, p]).ok, false);
+  const s = save();
+  const { savedCharacters: _a, savedPlatforms: _b, ...old } = s;
+  const n = normalizeSaveData(old, { reducedMotion: false });
+  assert.deepEqual(n.data.savedCharacters, []);
+  assert.deepEqual(n.data.savedPlatforms, []);
+  assert.deepEqual(n.issues, []);
 });
