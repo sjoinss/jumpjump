@@ -36,6 +36,14 @@
   text-overflow: ellipsis;
 }
 
+/* 아주 좁은 화면(320px대)에서 "이미지 불러오기" 같은 제목이 잘리지 않게 */
+@media (max-width: 360px) {
+  .title {
+    padding-inline: var(--spacing-md);
+    font-size: var(--font-size-subheading);
+  }
+}
+
 .action {
   justify-self: end;
   white-space: nowrap;

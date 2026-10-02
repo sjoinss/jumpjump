@@ -17,12 +17,17 @@
   image-rendering: pixelated;
 }
 
+/* 저장 버튼 두 개는 자리가 되면 나란히, 좁으면 한 줄에 하나씩 (글자가 쪼개지지 않게) */
 .actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
   gap: var(--spacing-xs);
   align-self: stretch;
   min-width: 0;
+}
+
+.actions button {
+  white-space: nowrap;
 }
 
 /* 공유(또는 GIF 진행률)는 두 칸을 다 쓴다 */

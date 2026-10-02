@@ -34,10 +34,10 @@ const bedroom: DecorFn = (ctx, p, w, h, s) => {
     ctx.fillStyle = "#f5d9ff";
     for (const x of [cell, w - 2 * cell]) ctx.fillRect(x, y, 3, cell);
   }
-  // 창문 (천천히 흘러간다)
+  // 창문 (천천히 흘러간다). 시작 화면에서 제목·시작 카드와 겹치지 않게 아래쪽 오른편에서 출발
   const c = 5;
-  const wx = Math.round(w * 0.6);
-  const wy = wrapY(h * 0.18, s.cameraY * 0.15, h, 80);
+  const wx = Math.round(w * 0.62);
+  const wy = wrapY(h * 0.68, s.cameraY * 0.15, h, 80);
   ctx.fillStyle = "#4a4598";
   ctx.fillRect(wx, wy, WINDOW * c, WINDOW * c);
   ctx.fillStyle = "#fff4c7";

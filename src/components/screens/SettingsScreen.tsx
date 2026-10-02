@@ -99,7 +99,7 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
               <SpritePreview sprite={data.hero.base} width={40} height={45} />
             </span>
             <Button variant="secondary" icon="pencil" block onClick={() => openEditor({ kind: "main", tab: "hero" })}>
-              캐릭터 다시 그리기
+              캐릭터 그리기
             </Button>
           </div>
           <div className={styles.drawRow}>

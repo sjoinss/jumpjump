@@ -1,88 +1,360 @@
 import type { PixelSprite, PlatformKind, Platforms } from "../lib/schema";
-import { PLATFORM_PRESETS, platformSprite } from "./presets";
+import { PLATFORM_PRESETS, pixelSprite } from "./presets";
 import type { ThemeId } from "./themes";
 
 /**
- * 테마별 기본 발판 (사용자 요청 2026-10-02: 발판이 테마와 동떨어져 보이지 않게).
+ * 테마별 기본 발판 (사용자 요청 2026-10-02: 발판이 테마와 동떨어져 보이지 않게, 색만 바꾸지 말고 모양부터 다르게).
  * 규칙: 저장된 발판이 "기본 발판"(PLATFORM_PRESETS) 그대로면 → 지금 테마의 발판으로 보여준다.
  *       직접 그린 발판은 어느 테마에서나 그대로.
  * 그래서 테마 발판을 따로 저장하지 않는다. 에디터에서 테마 발판과 똑같이 완료하면 다시 "기본"(= 테마를 따라감)으로 저장한다.
- * 틀은 모두 같은 32×8 (윗면 t · 윗면 그림자 s · 몸통 b · 무늬 a · 테두리 e), 종류 구분은 색 + 무늬.
+ *
+ * 모두 32×8칸. 칸마다 무엇을 칠할지 정하는 함수(Shape)로 그리고, 글자는 범례 색으로 바꾼다 ("." = 투명).
+ * 윗줄(0~1)은 되도록 넓게 채운다 — 캐릭터가 발판 윗면에 서기 때문에 양끝이 비면 떠 보인다.
  */
 
-const DOTS = "bbab".repeat(7) + "bb";
-const FINE = "bab".repeat(10);
-const CRACK = "bbaab".repeat(6);
-const DASH = "bbaabb".repeat(5);
-const STRIPE = "bbaa".repeat(7) + "bb";
+const W = 32;
+const H = 8;
+type Shape = (x: number, y: number) => string;
+type Legend = Record<string, string>;
+type Decor = (x: number, y: number) => boolean;
 
-type Legend = { t: string; s: string; b: string; a: string; e: string };
-const set = (basic: Legend, highJump: Legend, oneTime: Legend, moving: Legend, movingPattern = DASH): Platforms => ({
-  basic: platformSprite(DOTS, basic),
-  highJump: platformSprite(FINE, highJump),
-  oneTime: platformSprite(CRACK, oneTime),
-  moving: platformSprite(movingPattern, moving),
+function art(shape: Shape, legend: Legend): PixelSprite {
+  const rows: string[] = [];
+  for (let y = 0; y < H; y++) {
+    let row = "";
+    for (let x = 0; x < W; x++) row += shape(x, y);
+    rows.push(row);
+  }
+  return pixelSprite(rows, legend);
+}
+
+const inside = (x: number, from: number, to: number) => x >= from && x <= to;
+
+// ── 속 무늬 (구름·베개에 넣는다) ──
+
+const dots: Decor = (x, y) => y === 4 && x % 4 === 2;
+const heart: Decor = (x, y) => {
+  const m = x % 8;
+  return (y === 4 && (m === 2 || m === 4)) || (y === 5 && m === 3);
+};
+const stitch: Decor = (x, y) => y === 4 && x % 3 === 0;
+const star: Decor = (x, y) => {
+  const dx = (x % 8) - 4;
+  const dy = y - 4;
+  return (dx === 0 && Math.abs(dy) <= 1) || (dy === 0 && Math.abs(dx) <= 1);
+};
+const crack: Decor = (x, y) => y === 3 + [0, 1, 2, 1][x % 4] && inside(x, 3, 28);
+const wave: Decor = (x, y) => y === 3 + [0, 1, 1, 0][x % 4] + 1;
+
+// ── 솜사탕: 뭉게구름 (위·아래가 봉긋) ──
+
+function cloud(decor: Decor): Shape {
+  return (x, y) => {
+    const m = x % 8;
+    if (y === 0) return inside(m, 2, 5) ? "t" : ".";
+    if (y === 1) return inside(x, 1, 30) ? "t" : ".";
+    if (y === 2) return "t";
+    if (y === 3) return "s";
+    if (y === 4) return decor(x, y) ? "a" : "b";
+    if (y === 5) return inside(x, 1, 30) ? (decor(x, y) ? "a" : "b") : ".";
+    if (y === 6) return inside(m, 2, 5) ? "e" : ".";
+    return ".";
+  };
+}
+
+// ── 꿈나라: 모서리에 술이 달린 베개 ──
+
+function pillow(decor: Decor): Shape {
+  return (x, y) => {
+    const corner = x <= 1 || x >= 30;
+    if (y === 0 || y === 7) return corner ? "e" : ".";
+    if (x === 0 || x === 31) return ".";
+    if (x === 1 || x === 30) return "e";
+    if (y <= 2) return "t";
+    if (y === 6) return "e";
+    return decor(x, y) ? "a" : y === 3 ? "s" : "b";
+  };
+}
+
+// ── 바닷속 ──
+
+/** 해초가 돋은 바위 */
+const rock: Shape = (x, y) => {
+  const weed = x % 9 === 2 || x % 9 === 6;
+  if (y === 0) return weed ? "g" : ".";
+  if (y === 1) return inside(x, 1, 30) ? (weed ? "g" : "t") : ".";
+  if (y === 2) return "t";
+  if (y === 3) return "s";
+  if (y === 4 || y === 5) return (x * 7 + y * 3) % 11 === 0 ? "a" : "b";
+  if (y === 6) return inside(x, 2, 29) && x % 5 !== 0 ? "e" : ".";
+  return ".";
+};
+/** 가리비 조개: 세로 골 + 봉긋한 골 윗면 */
+const shell: Shape = (x, y) => {
+  const m = x % 6;
+  if (y === 0) return inside(m, 1, 4) ? "t" : ".";
+  if (y >= 1 && y <= 5) return m === 0 ? "e" : y <= 2 ? "t" : m === 2 ? "a" : "b";
+  if (y === 6) return inside(x, 2, 29) ? "e" : ".";
+  return ".";
+};
+/** 떠내려온 판자: 나뭇결 + 옹이 */
+const plank: Shape = (x, y) => {
+  if (x === 0 || x === 31) return inside(y, 2, 5) ? "e" : ".";
+  if (y === 0 || y === 7) return ".";
+  if (y === 1) return "t";
+  if (y === 6) return "e";
+  if ((x === 8 || x === 22) && y === 4) return "a";
+  if ((x + 3 * y) % 9 === 0) return "a";
+  return y === 2 ? "s" : "b";
+};
+/** 해파리 줄: 동그란 갓 + 다리 */
+const jellyfish: Shape = (x, y) => {
+  const m = x % 8;
+  if (y === 0) return inside(m, 2, 5) ? "t" : ".";
+  if (y === 1) return inside(m, 1, 6) ? "t" : ".";
+  if (y === 2 || y === 3) return m === 2 && y === 2 ? "w" : "b";
+  if (y === 4) return inside(m, 1, 6) ? "s" : ".";
+  if (y === 5) return m === 2 || m === 5 ? "a" : ".";
+  if (y === 6) return m === 1 || m === 6 ? "a" : ".";
+  return ".";
+};
+
+// ── 블록 월드: 8×8 블록 네 칸 (오른쪽·아래 경계선) ──
+
+function blocks(face: (lx: number, y: number, bx: number) => string): Shape {
+  return (x, y) => {
+    const lx = x % 8;
+    if (lx === 7 || y === 7) return "e";
+    return face(lx, y, Math.floor(x / 8));
+  };
+}
+const speck = (lx: number, y: number, bx: number) => ((lx * 5 + y * 3 + bx * 7) % 11 === 0 ? "a" : "b");
+const grassBlock = blocks((lx, y, bx) => (y <= 1 || (y === 2 && (lx + bx) % 3 === 0) ? "t" : speck(lx, y, bx)));
+const slimeBlock = blocks((lx, y) =>
+  (inside(lx, 2, 4) && (y === 2 || y === 4)) || (inside(y, 2, 4) && (lx === 2 || lx === 4)) ? "a" : y === 0 ? "t" : "b",
+);
+const sandBlock = blocks((lx, y, bx) => (y === 0 ? "t" : speck(lx, y, bx)));
+const plankBlock = blocks((lx, y, bx) => {
+  if (y === 3) return "a";
+  const seam = y < 3 ? (bx % 2 ? 3 : 5) : bx % 2 ? 1 : 4;
+  return lx === seam ? "a" : y === 0 ? "t" : "b";
 });
+
+// ── 과자 나라 ──
+
+/** 분홍 아이싱이 흘러내린 판 초콜릿 */
+const chocolate: Shape = (x, y) => {
+  if (x === 0 || x === 31) return inside(y, 1, 5) ? "e" : ".";
+  if (y <= 1) return "t";
+  if (y === 2) return x % 5 === 1 || x % 5 === 2 ? "t" : x % 8 === 0 ? "e" : "b";
+  if (y === 6) return "e";
+  if (y === 7) return ".";
+  if (x % 8 === 0 || y === 4) return "e";
+  return x % 8 === 1 || y === 3 ? "s" : "b";
+};
+/** 말랑한 젤리 (반짝이 + 기포) */
+const jellyBar: Shape = (x, y) => {
+  if (y === 0) return inside(x, 3, 28) ? "t" : ".";
+  if (y === 1) return inside(x, 1, 30) ? (inside(x, 4, 7) ? "w" : "t") : ".";
+  if (y >= 2 && y <= 5) return (x * 5 + y * 7) % 13 === 0 ? "a" : "b";
+  if (y === 6) return inside(x, 2, 29) ? "e" : ".";
+  return ".";
+};
+/** 격자무늬 웨하스 */
+const wafer: Shape = (x, y) => {
+  if (y === 0) return "t";
+  if (y === 6) return "e";
+  if (y === 7) return ".";
+  return x % 4 === 0 || y % 2 === 1 ? "a" : "b";
+};
+/** 빨강·흰 사선 줄무늬 지팡이 사탕 (끝은 둥글게) */
+const cane: Shape = (x, y) => {
+  if (y === 0 || y === 7) return ".";
+  if ((x === 0 || x === 31) && (y === 1 || y === 6)) return ".";
+  if (y === 1) return "t";
+  if (y === 6) return "e";
+  return (x + y) % 6 < 3 ? "b" : "a";
+};
+
+// ── 도시 빌딩 ──
+
+/** 구멍 뚫린 철골(I빔): 위·아래 날개 + 가운데 판(구멍으로 뒤가 보인다) */
+const beam: Shape = (x, y) => {
+  if (y === 0) return x % 8 === 0 ? "a" : "t";
+  if (y === 1 || y === 5) return "s";
+  if (y >= 2 && y <= 4) return inside(x % 8, 3, 4) && y === 3 ? "." : "b";
+  if (y === 6) return x % 8 === 0 ? "a" : "e";
+  return ".";
+};
+/** 트램펄린: 줄무늬 매트 + 틀 + 다리 */
+const trampoline: Shape = (x, y) => {
+  if (y === 0) return inside(x, 1, 30) ? (x % 4 < 2 ? "t" : "a") : ".";
+  if (y === 1) return "s";
+  if (y === 2) return "e";
+  if (y >= 3 && y <= 6) return x <= 1 || x >= 30 ? "e" : y === 3 && x % 4 === 2 ? "a" : ".";
+  return ".";
+};
+/** 나무 상자 두 개 (X자 버팀목) */
+const crate: Shape = (x, y) => {
+  if (y === 7) return ".";
+  const l = x % 16;
+  if (y === 0) return "t";
+  if (y === 6 || l === 0 || l === 15) return "e";
+  // 안쪽(1~14칸 × 1~5줄)을 대각선 두 줄이 가로지른다 (두 칸 두께)
+  const diag = Math.round(1 + (y - 1) * 3.25);
+  const anti = 15 - diag;
+  return l === diag || l === diag + 1 || l === anti || l === anti - 1 ? "a" : "b";
+};
+/** 유리 엘리베이터: 테두리 + 창 */
+const elevator: Shape = (x, y) => {
+  if (y === 7) return ".";
+  if (y === 0) return "t";
+  if (y === 6 || x === 0 || x === 31) return "e";
+  return inside(x % 8, 2, 5) && inside(y, 2, 4) ? (y === 2 && x % 8 === 2 ? "w" : "a") : "b";
+};
+
+// ── 동화 숲 ──
+
+/** 이끼 낀 통나무 (양끝은 나이테가 보이는 단면) */
+const log: Shape = (x, y) => {
+  if (y === 0) return inside(x, 3, 28) && inside(x % 4, 1, 2) ? "g" : ".";
+  if (y === 1) return inside(x, 2, 29) ? "g" : ".";
+  if (y === 7) return ".";
+  if (y === 6) return inside(x, 2, 29) ? "e" : ".";
+  if (x <= 1 || x >= 30) return inside(y, 3, 4) && (x === 1 || x === 30) ? "a" : "w";
+  return (x + y * 3) % 7 === 0 ? "a" : "b";
+};
+/** 흰 점 박힌 버섯 갓 + 짧은 대 */
+const mushroom: Shape = (x, y) => {
+  if (y === 0) return inside(x, 4, 27) ? "t" : ".";
+  if (y === 1) return inside(x, 1, 30) ? "t" : ".";
+  if (y === 2 || y === 3) {
+    const m = x % 8;
+    return (y === 2 && (m === 2 || m === 3)) || (y === 3 && (m === 6 || m === 7)) ? "a" : "b";
+  }
+  if (y === 4) return "s";
+  if (y === 5) return inside(x, 1, 30) ? (x % 2 ? "e" : "s") : ".";
+  if (y === 6) return inside(x, 13, 18) ? "w" : ".";
+  return ".";
+};
+/** 나뭇잎 (가운데 잎맥, 양끝이 뾰족) */
+const leaf: Shape = (x, y) => {
+  const half = [12, 14, 16, 16, 14, 12, 9, -1][y];
+  const d = x < 16 ? 16 - x : x - 15;
+  if (d > half) return ".";
+  if (y === 3) return "a";
+  return y <= 2 ? "t" : y === 6 ? "e" : "b";
+};
+/** 꽃 뗏목: 꽃 네 송이를 잎으로 이었다 */
+const flowers: Shape = (x, y) => {
+  const m = x % 8;
+  if (y === 0) return inside(m, 2, 5) ? "t" : ".";
+  if (y >= 1 && y <= 3) return inside(m, 1, 6) ? (inside(m, 3, 4) && y === 2 ? "a" : "b") : y === 3 ? "g" : ".";
+  if (y === 4) return inside(m, 2, 5) ? "s" : "g";
+  if (y === 5) return m === 0 || m === 7 ? "g" : ".";
+  return ".";
+};
+
+// ── 겨울 왕국 ──
+
+/** 눈 쌓인 얼음 + 아래 고드름 */
+const snowIce: Shape = (x, y) => {
+  if (y === 0) return inside(x, 2, 29) && x % 6 !== 0 ? "t" : ".";
+  if (y === 1) return inside(x, 1, 30) ? "t" : ".";
+  if (y === 2) return x % 5 <= 2 ? "t" : "b";
+  if (y === 6) return inside(x, 1, 30) ? "e" : ".";
+  if (y === 7) return x % 7 === 3 ? "e" : ".";
+  return (x - y * 2 + 40) % 10 === 0 ? "a" : "b";
+};
+/** 눈꽃 무늬 블록 */
+const snowflake: Shape = (x, y) => {
+  if (y === 7) return ".";
+  if ((x === 0 || x === 31) && (y === 0 || y === 6)) return ".";
+  if (y === 0) return "t";
+  if (y === 6) return "e";
+  const dx = (x % 10) - 5;
+  const dy = y - 3;
+  const flake = (dx === 0 && Math.abs(dy) <= 2) || (dy === 0 && Math.abs(dx) <= 2) || (Math.abs(dx) === 1 && Math.abs(dy) === 1);
+  return flake ? "a" : "b";
+};
+/** 금 간 얇은 얼음 */
+const thinIce: Shape = (x, y) => {
+  if (y === 7) return ".";
+  if ((x === 0 || x === 31) && y !== 3) return ".";
+  if (y === 0) return "t";
+  if (y === 6) return "e";
+  if (y === 2 + [0, 1, 2, 3, 2, 1][x % 6] && inside(x, 2, 29)) return "a";
+  return x % 9 === 4 && y === 1 ? "w" : "b";
+};
+/** 썰매: 좌석 + 버팀대 + 앞이 말린 날 */
+const sled: Shape = (x, y) => {
+  if (y === 0) return inside(x, 0, 27) ? "t" : ".";
+  if (y === 1 || y === 2) return inside(x, 0, 27) ? (x % 5 === 0 ? "a" : "b") : ".";
+  if (y === 3) return x === 4 || x === 5 || x === 20 || x === 21 || x === 31 ? "e" : ".";
+  if (y === 4) return x === 4 || x === 5 || x === 20 || x === 21 || x === 30 ? "e" : ".";
+  if (y === 5) return inside(x, 1, 30) ? "e" : ".";
+  if (y === 6) return inside(x, 2, 28) ? "s" : ".";
+  return ".";
+};
 
 export const THEME_PLATFORMS: Record<ThemeId, Platforms> = {
   dot: PLATFORM_PRESETS,
-  // 솜사탕: 분홍 크림 · 민트 · 바닐라 · 라벤더
-  cotton: set(
-    { t: "#ffd1e3", s: "#f3a0c2", b: "#fff1dc", a: "#f7c9a8", e: "#e090b4" },
-    { t: "#c8f2df", s: "#7fd6b0", b: "#f0fff8", a: "#7fd6b0", e: "#4fb08a" },
-    { t: "#fff3c4", s: "#ecd68a", b: "#fff8e0", a: "#d9b86a", e: "#c09848" },
-    { t: "#d9ccff", s: "#a99be6", b: "#f3efff", a: "#a99be6", e: "#8070c8" },
-  ),
-  // 꿈나라: 라벤더 베개 · 노란 별 · 희미한 달빛(사라짐) · 하늘빛
-  dream: set(
-    { t: "#cfc1ff", s: "#9d8ee6", b: "#eee6ff", a: "#c9bdf5", e: "#7d6fcc" },
-    { t: "#ffe58a", s: "#e6b84a", b: "#fff8d6", a: "#e6b84a", e: "#b58a2a" },
-    { t: "#e6e2f0", s: "#bdb6d0", b: "#f4f2f8", a: "#9a92b0", e: "#7f7896" },
-    { t: "#bdf0f0", s: "#7fd0d6", b: "#e8ffff", a: "#5fb8c0", e: "#3f98a6" },
-  ),
-  // 바닷속: 해초 덮인 모래 · 산호 · 떠내려온 나무 · 해파리
-  ocean: set(
-    { t: "#6fd0b0", s: "#3fa88c", b: "#f6e3b4", a: "#e0c08a", e: "#b8935a" },
-    { t: "#ff9fb3", s: "#e5708c", b: "#ffe6ec", a: "#ff7a98", e: "#b84a64" },
-    { t: "#d8b48a", s: "#b08a5e", b: "#c9a070", a: "#8a6440", e: "#6e4e30" },
-    { t: "#c9b8ff", s: "#9a86e6", b: "#efe8ff", a: "#b49cff", e: "#6f5bc0" },
-  ),
+  // 솜사탕: 뭉게구름 (분홍 점 · 민트 하트 · 금 간 바닐라 · 라벤더 물결)
+  cotton: {
+    basic: art(cloud(dots), { t: "#ffb3cf", s: "#f08cb4", b: "#fff1dc", a: "#f7a8c8", e: "#d0709a" }),
+    highJump: art(cloud(heart), { t: "#c8f2df", s: "#7fd6b0", b: "#f0fff8", a: "#ff7aa8", e: "#4fb08a" }),
+    oneTime: art(cloud(crack), { t: "#fff3c4", s: "#ecd68a", b: "#fff8e0", a: "#c09848", e: "#c09848" }),
+    moving: art(cloud(wave), { t: "#d9ccff", s: "#a99be6", b: "#f3efff", a: "#8070c8", e: "#8070c8" }),
+  },
+  // 꿈나라: 술 달린 베개 (분홍 베개 · 별 쿠션 · 금 간 달빛 · 물결 하늘빛)
+  dream: {
+    basic: art(pillow(stitch), { t: "#f5b8e8", s: "#e6a0d8", b: "#fff0fb", a: "#c98ac0", e: "#a86aa0" }),
+    highJump: art(pillow(star), { t: "#ffe58a", s: "#f0cf6a", b: "#fff8d6", a: "#e6a82a", e: "#b58a2a" }),
+    oneTime: art(pillow(crack), { t: "#e6e2f0", s: "#d6d0e6", b: "#f4f2f8", a: "#8a82a6", e: "#7f7896" }),
+    moving: art(pillow(wave), { t: "#bdf0f0", s: "#9fe0e6", b: "#e8ffff", a: "#5fb8c0", e: "#3f98a6" }),
+  },
+  // 바닷속: 해초 바위 · 가리비 · 판자 · 해파리
+  ocean: {
+    basic: art(rock, { g: "#3fb89a", t: "#9fb8c9", s: "#7f98ab", b: "#b8c9d6", a: "#8aa0b0", e: "#5f7a8f" }),
+    highJump: art(shell, { t: "#ffb3c1", b: "#ffd6de", a: "#ff8fa8", e: "#c85a78" }),
+    oneTime: art(plank, { t: "#e0bf94", s: "#c9a070", b: "#d4ae80", a: "#8a6440", e: "#6e4e30" }),
+    moving: art(jellyfish, { t: "#e6d8ff", w: "#ffffff", b: "#c9b8ff", s: "#9a86e6", a: "#b49cff" }),
+  },
   // 블록 월드: 잔디 블록 · 슬라임 블록 · 모래 · 나무 판자
-  blocks: set(
-    { t: "#74c84f", s: "#4fa83a", b: "#9b6a43", a: "#7a5232", e: "#5c3d22" },
-    { t: "#8fe07a", s: "#5fb84e", b: "#b8f0a8", a: "#6fcf5f", e: "#3f8f3a" },
-    { t: "#e8dca0", s: "#cdbd78", b: "#e3d59a", a: "#b8a868", e: "#8f8048" },
-    { t: "#c99a5e", s: "#a87a44", b: "#b88a52", a: "#8a6236", e: "#6a4826" },
-  ),
-  // 과자 나라: 분홍 아이싱 초콜릿 · 젤리 · 웨하스 · 지팡이 사탕(빨강·흰 줄무늬)
-  candy: set(
-    { t: "#ffb3cf", s: "#f78fb5", b: "#7b4a35", a: "#5e3626", e: "#4a2a1e" },
-    { t: "#9fe0ff", s: "#5fb8e0", b: "#d6f3ff", a: "#ffffff", e: "#3f8fb8" },
-    { t: "#f6d38b", s: "#d9a95a", b: "#f0ca7c", a: "#b8853c", e: "#8f6428" },
-    { t: "#ffffff", s: "#ffd0d6", b: "#ff5a6e", a: "#ffffff", e: "#c23a4e" },
-    STRIPE,
-  ),
-  // 도시 빌딩: 철골(노란 볼트) · 주황 트램펄린 · 나무 비계 · 파란 유리 엘리베이터
-  city: set(
-    { t: "#c3cad6", s: "#8c96a8", b: "#9aa3b2", a: "#ffd84a", e: "#5d6270" },
-    { t: "#ffb26b", s: "#e0883a", b: "#3f4656", a: "#ffd84a", e: "#2b3040" },
-    { t: "#d9b07a", s: "#b88a50", b: "#c99a60", a: "#8a6236", e: "#6a4826" },
-    { t: "#9fb4ff", s: "#6f86e0", b: "#d6e0ff", a: "#6f86e0", e: "#3f56a8" },
-  ),
-  // 동화 숲: 풀 덮인 통나무 · 빨간 버섯 갓(흰 점) · 마른 잎 · 연잎
-  forest: set(
-    { t: "#8fd18a", s: "#5fae5a", b: "#a87a52", a: "#7d5634", e: "#5e3e24" },
-    { t: "#ff7d7d", s: "#e05a5a", b: "#ff9a9a", a: "#ffffff", e: "#a83a3a" },
-    { t: "#ffc06b", s: "#e09a3a", b: "#f5d6a0", a: "#c9853a", e: "#9a6024" },
-    { t: "#7fd36a", s: "#4fa83a", b: "#bff0a8", a: "#5fb84e", e: "#2f7a2a" },
-  ),
-  // 겨울 왕국: 눈 쌓인 얼음 · 분홍 눈꽃 · 금 간 얇은 얼음 · 빨간 썰매
-  winter: set(
-    { t: "#ffffff", s: "#d8e6f5", b: "#bfe6f7", a: "#8cc8e8", e: "#5f8fb8" },
-    { t: "#ffc6dc", s: "#f39ab9", b: "#ffeef5", a: "#f39ab9", e: "#b8577a" },
-    { t: "#e6f7ff", s: "#b8dcef", b: "#d4eefb", a: "#7fb4d6", e: "#5f8fb0" },
-    { t: "#ff8a8a", s: "#d95c5c", b: "#c9945e", a: "#a06a3a", e: "#7a4a2a" },
-  ),
+  blocks: {
+    basic: art(grassBlock, { t: "#74c84f", b: "#9b6a43", a: "#7a5232", e: "#5c3d22" }),
+    highJump: art(slimeBlock, { t: "#b8f0a8", b: "#8fe07a", a: "#5fb84e", e: "#3f8f3a" }),
+    oneTime: art(sandBlock, { t: "#f0e6b4", b: "#e3d59a", a: "#c9b878", e: "#a8985a" }),
+    moving: art(plankBlock, { t: "#d4a86c", b: "#b88a52", a: "#8a6236", e: "#6a4826" }),
+  },
+  // 과자 나라: 아이싱 초콜릿 · 젤리 · 웨하스 · 지팡이 사탕
+  candy: {
+    basic: art(chocolate, { t: "#ffb3cf", s: "#8f5a42", b: "#7b4a35", e: "#4a2a1e" }),
+    highJump: art(jellyBar, { t: "#9fe0ff", w: "#ffffff", b: "#7fd0f5", a: "#d6f3ff", e: "#3f8fb8" }),
+    oneTime: art(wafer, { t: "#fadc9b", b: "#f0ca7c", a: "#c9963c", e: "#8f6428" }),
+    moving: art(cane, { t: "#ffffff", b: "#ff5a6e", a: "#ffffff", e: "#c23a4e" }),
+  },
+  // 도시 빌딩: 노란 I빔 · 빨강·흰 트램펄린 · 나무 상자 · 유리 엘리베이터
+  city: {
+    basic: art(beam, { t: "#ffd84a", s: "#e0b02a", b: "#f2c23a", a: "#3f4656", e: "#8a6a1a" }),
+    highJump: art(trampoline, { t: "#ff6f6f", s: "#d94a4a", a: "#ffffff", e: "#2b3040" }),
+    oneTime: art(crate, { t: "#e0bc88", b: "#c99a60", a: "#8a6236", e: "#6a4826" }),
+    moving: art(elevator, { t: "#9fb4ff", b: "#6f86e0", a: "#d6e0ff", w: "#ffffff", e: "#3f56a8" }),
+  },
+  // 동화 숲: 이끼 통나무 · 버섯 갓 · 나뭇잎 · 꽃 뗏목
+  forest: {
+    basic: art(log, { g: "#7fd36a", w: "#e8c99a", b: "#a87a52", a: "#7d5634", e: "#5e3e24" }),
+    highJump: art(mushroom, { t: "#ff7d7d", b: "#ff6b6b", a: "#ffffff", s: "#f3e6cf", e: "#c9b48f", w: "#f3e6cf" }),
+    oneTime: art(leaf, { t: "#ffd06b", b: "#f0a848", a: "#a8641c", e: "#9a6024" }),
+    moving: art(flowers, { t: "#d6e8ff", b: "#9fc4ff", a: "#ffe08a", s: "#6f9ae0", g: "#5fb84e" }),
+  },
+  // 겨울 왕국: 고드름 달린 눈 얼음 · 분홍 눈꽃 블록 · 금 간 청록 얼음 · 빨간 썰매
+  winter: {
+    basic: art(snowIce, { t: "#ffffff", b: "#bfe6f7", a: "#ffffff", e: "#5f8fb8" }),
+    highJump: art(snowflake, { t: "#ffd6e6", b: "#ffb3cf", a: "#ffffff", e: "#b8577a" }),
+    oneTime: art(thinIce, { t: "#c9f3ef", w: "#ffffff", b: "#9fe8e0", a: "#2f7f78", e: "#2f7f78" }),
+    moving: art(sled, { t: "#ff8a8a", b: "#e05c5c", a: "#a83a3a", e: "#7a4a2a", s: "#c9d6e6" }),
+  },
 };
 
 const KINDS: PlatformKind[] = ["basic", "highJump", "oneTime", "moving"];

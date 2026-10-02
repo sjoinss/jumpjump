@@ -47,13 +47,19 @@
   outline-offset: 2px;
 }
 
+/* 이름은 한 줄로 (좁으면 오른쪽 설명이 줄바꿈된다) */
 .label {
+  flex: none;
   font-family: var(--font-display);
   font-size: var(--font-size-body);
+  white-space: nowrap;
 }
 
 .detail {
   display: flex;
+  flex: 1 1 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
   gap: var(--spacing-xs);
   margin-left: auto;
@@ -61,4 +67,9 @@
   color: var(--color-muted);
   font-size: var(--font-size-caption);
   text-align: right;
+}
+
+/* 미리보기 그림은 찌그러뜨리지 않는다 (모자라면 다음 줄로) */
+.detail > * {
+  flex: none;
 }
