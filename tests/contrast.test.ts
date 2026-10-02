@@ -33,6 +33,9 @@ const THEMES: Record<string, Record<string, string>> = {
   "도시 빌딩": { ...ROOT, ...vars(block(':root[data-theme="city"]')) },
   "동화 숲": { ...ROOT, ...vars(block(':root[data-theme="forest"]')) },
   "겨울 왕국": { ...ROOT, ...vars(block(':root[data-theme="winter"]')) },
+  "벚꽃 마을": { ...ROOT, ...vars(block(':root[data-theme="sakura"]')) },
+  "장난감 방": { ...ROOT, ...vars(block(':root[data-theme="toys"]')) },
+  "사막 피라미드": { ...ROOT, ...vars(block(':root[data-theme="desert"]')) },
 };
 
 function resolve(t: Record<string, string>, name: string): string {

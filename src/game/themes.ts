@@ -8,12 +8,15 @@ import { CANDY_DECOR, CANDY_TILES } from "./tilesets/candy";
 import { CITY_DECOR, CITY_TILES } from "./tilesets/city";
 import { FOREST_DECOR, FOREST_TILES } from "./tilesets/forest";
 import { WINTER_DECOR, WINTER_TILES } from "./tilesets/winter";
+import { SAKURA_DECOR, SAKURA_TILES } from "./tilesets/sakura";
+import { TOY_DECOR, TOY_TILES } from "./tilesets/toys";
+import { DESERT_DECOR, DESERT_TILES } from "./tilesets/desert";
 
 /**
  * 테마 목록. UI 색은 styles/tokens.css의 [data-theme]에, 게임 장면 색은 여기 SCENE에 둔다.
  * 테마를 추가할 때는 두 곳 + THEME_IDS에 같은 id로 넣는다.
  */
-export const THEME_IDS = ["dot", "cotton", "dream", "ocean", "blocks", "candy", "city", "forest", "winter"] as const;
+export const THEME_IDS = ["dot", "cotton", "dream", "ocean", "blocks", "candy", "city", "forest", "winter", "sakura", "toys", "desert"] as const;
 export type ThemeId = (typeof THEME_IDS)[number];
 export const DEFAULT_THEME: ThemeId = "dot";
 
@@ -79,6 +82,24 @@ export const THEMES: Record<ThemeId, ThemeInfo> = {
     name: "겨울 왕국",
     description: "얼음 동굴에서 눈 마을로, 설산 꼭대기를 넘어 오로라까지.",
     swatches: ["#eef6ff", "#9fd8ff", "#ffb3c7", "#2f4a6b"],
+  },
+  sakura: {
+    id: "sakura",
+    name: "벚꽃 마을",
+    description: "정원 연못에서 벚꽃길을 지나 기와지붕 위로, 연등이 뜨는 밤하늘까지.",
+    swatches: ["#fff3f6", "#ffadc8", "#a8dcc8", "#7a3f5a"],
+  },
+  toys: {
+    id: "toys",
+    name: "장난감 방",
+    description: "장난감 상자에서 나와 블록 탑과 책장을 지나 천장 모빌까지.",
+    swatches: ["#fff8e6", "#ff8a8a", "#8fc4ff", "#3d3a6b"],
+  },
+  desert: {
+    id: "desert",
+    name: "사막 피라미드",
+    description: "모래 속 무덤에서 오아시스로, 피라미드 꼭대기를 넘어 별 쏟아지는 밤까지.",
+    swatches: ["#fff6e2", "#ffc46b", "#6fc8c0", "#6b4426"],
   },
 };
 
@@ -394,5 +415,89 @@ export const SCENE: Record<ThemeId, ScenePalette> = {
     },
     shadow: "rgba(30,50,80,0.22)",
     cssBackground: "#5f86a8",
+  },
+  sakura: {
+    style: "tiles",
+    tiles: SAKURA_TILES,
+    decor: SAKURA_DECOR,
+    regions: [
+      { key: "pond", name: "정원 연못", startM: DEFAULT_STOPS[0], top: "#2f6f78", bottom: "#4f9aa0" },
+      { key: "blossom", name: "벚꽃길", startM: DEFAULT_STOPS[1], top: "#ffd9e6", bottom: "#fff6ee" },
+      { key: "roofs", name: "기와지붕", startM: DEFAULT_STOPS[2], top: "#ffc9b8", bottom: "#ffeede" },
+      { key: "lanterns", name: "연등 밤하늘", startM: DEFAULT_STOPS[3], top: "#2c2f5e", bottom: "#4a4f8a" },
+    ],
+    cloud: "rgba(255,255,255,0.9)",
+    sparkle: "#ffffff",
+    sparkleCore: "#ffd6e4",
+    sparkleDensity: 1,
+    accent: "#ffadc8",
+    moon: "#fff4c7",
+    ground: {
+      top: "#8fcf8a",
+      topEdge: "#5fae5a",
+      highlight: "#bfe8b8",
+      soil: "#d8c9a8",
+      pebble: "#b8a888",
+      flower: "#ffadc8",
+      flowerCore: "#ffffff",
+    },
+    shadow: "rgba(60,40,50,0.22)",
+    cssBackground: "#2f6f78",
+  },
+  toys: {
+    style: "tiles",
+    tiles: TOY_TILES,
+    decor: TOY_DECOR,
+    regions: [
+      { key: "toybox", name: "장난감 상자", startM: DEFAULT_STOPS[0], top: "#a8744a", bottom: "#c9925e" },
+      { key: "playroom", name: "놀이방 바닥", startM: DEFAULT_STOPS[1], top: "#fff1c9", bottom: "#fff8e6" },
+      { key: "bookshelf", name: "책장", startM: DEFAULT_STOPS[2], top: "#d6ecff", bottom: "#f2f8ff" },
+      { key: "mobile", name: "천장 모빌", startM: DEFAULT_STOPS[3], top: "#4f548f", bottom: "#7a7fc0" },
+    ],
+    cloud: "rgba(255,255,255,0.9)",
+    sparkle: "#ffffff",
+    sparkleCore: "#ffe08a",
+    sparkleDensity: 1,
+    accent: "#ff8a8a",
+    moon: "#fff4c7",
+    ground: {
+      top: "#e05c7a",
+      topEdge: "#b8405e",
+      highlight: "#ff8fa8",
+      soil: "#c98f5a",
+      pebble: "#a8744a",
+      flower: "#ffd36b",
+      flowerCore: "#ffffff",
+    },
+    shadow: "rgba(50,40,70,0.22)",
+    cssBackground: "#a8744a",
+  },
+  desert: {
+    style: "tiles",
+    tiles: DESERT_TILES,
+    decor: DESERT_DECOR,
+    regions: [
+      { key: "tomb", name: "모래 속 무덤", startM: DEFAULT_STOPS[0], top: "#7a5a3a", bottom: "#9a7550" },
+      { key: "oasis", name: "오아시스", startM: DEFAULT_STOPS[1], top: "#9fd8f0", bottom: "#fff0c8" },
+      { key: "pyramid", name: "피라미드", startM: DEFAULT_STOPS[2], top: "#ffc98a", bottom: "#ffe8c4" },
+      { key: "night", name: "별 쏟아지는 밤", startM: DEFAULT_STOPS[3], top: "#2a2a5c", bottom: "#4a3f7a" },
+    ],
+    cloud: "rgba(255,255,255,0.85)",
+    sparkle: "#ffffff",
+    sparkleCore: "#fff1a8",
+    sparkleDensity: 1,
+    accent: "#ffc46b",
+    moon: "#fff4c7",
+    ground: {
+      top: "#f0d49a",
+      topEdge: "#d9b878",
+      highlight: "#fff0c8",
+      soil: "#e0b878",
+      pebble: "#c99a5e",
+      flower: "#5fb86a",
+      flowerCore: "#ffd36b",
+    },
+    shadow: "rgba(80,50,20,0.22)",
+    cssBackground: "#7a5a3a",
   },
 };

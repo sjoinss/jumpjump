@@ -297,6 +297,128 @@ const sled: Shape = (x, y) => {
   return ".";
 };
 
+// ── 벚꽃 마을 ──
+
+/** 아치 돌다리: 아래가 둥글게 뚫렸다 */
+const bridge: Shape = (x, y) => {
+  if (y === 0) return x % 8 === 0 ? "a" : "t";
+  if (y === 1) return "t";
+  if (y === 7) return ".";
+  const hole = [0, 0, 0, 0, 5, 7, 8][y] ?? 0;
+  if (hole && Math.abs(x - 15.5) < hole) return ".";
+  return x % 6 === 0 || y === 6 ? "e" : y === 2 ? "s" : "b";
+};
+/** 종이우산: 살이 보이는 둥근 갓 + 손잡이 */
+const umbrella: Shape = (x, y) => {
+  if (y === 0) return inside(x, 6, 25) ? "t" : ".";
+  if (y === 1) return inside(x, 2, 29) ? (x % 5 === 0 ? "a" : "t") : ".";
+  if (y === 2) return x % 5 === 0 ? "a" : "b";
+  if (y === 3) return x % 4 < 2 ? "e" : ".";
+  if (y >= 4 && y <= 5) return inside(x, 15, 16) ? "w" : ".";
+  if (y === 6) return inside(x, 15, 17) ? "w" : ".";
+  return ".";
+};
+/** 꽃잎 세 장 (위 가운데가 살짝 파였다) */
+const petals: Shape = (x, y) => {
+  const m = x % 11;
+  const span = [[3, 7], [1, 9], [0, 10], [0, 10], [1, 9], [3, 7], [-1, -2], [-1, -2]][y];
+  if (!inside(m, span[0], span[1])) return ".";
+  if (y === 0 && m === 5) return ".";
+  if (y <= 1) return "t";
+  return y === 5 ? "e" : m === 5 && y <= 3 ? "a" : "b";
+};
+/** 가로로 긴 종이 연등: 위·아래 덮개 + 세로 살 + 가운데 불빛 */
+const paperLantern: Shape = (x, y) => {
+  if (y === 0 || y === 7) return inside(x, 3, 28) ? "e" : ".";
+  if (y === 1) return inside(x, 1, 30) ? "t" : ".";
+  if (y === 6) return inside(x, 1, 30) ? "s" : ".";
+  if (x % 4 === 0) return "a";
+  return inside(x, 12, 19) && inside(y, 3, 4) ? "w" : "b";
+};
+
+// ── 장난감 방 ──
+
+/** 레고 블록: 윗면에 돌기 넷 */
+const lego: Shape = (x, y) => {
+  const m = x % 8;
+  if (y <= 1) return inside(m, 2, 5) ? (y === 0 ? "s" : "t") : ".";
+  if (y === 2) return "t";
+  if (y === 6) return "e";
+  if (y === 7) return ".";
+  return x === 0 || x === 31 ? "e" : "b";
+};
+/** 용수철: 위·아래 판 사이에 코일 넷 */
+const spring: Shape = (x, y) => {
+  const m = x % 8;
+  if (y === 0) return "t";
+  if (y === 1 || y === 6) return "e";
+  if (y === 7) return ".";
+  if (!inside(m, 2, 5)) return ".";
+  return y % 2 === 0 || m === 2 || m === 5 ? "a" : ".";
+};
+/** 알록달록 ABC 블록 넷 (블록마다 색 r·y·g·u, 글자 대신 도트 무늬) */
+const abcBlocks: Shape = (x, y) => {
+  const m = x % 8;
+  if (m === 7 || y === 7) return "e";
+  if (y === 0) return "w";
+  const glyph = Math.floor(x / 8) % 2 ? inside(m, 2, 4) && (y === 2 || y === 5) : m === 3 && inside(y, 2, 5);
+  return glyph ? "e" : "rygu"[Math.floor(x / 8)];
+};
+/** 장난감 기차: 칸 두 개 + 창문 + 바퀴 */
+const train: Shape = (x, y) => {
+  const m = x % 16;
+  if (y === 0) return inside(m, 2, 13) ? "t" : ".";
+  if (y >= 1 && y <= 4) {
+    if (y === 4 && (m === 15 || m === 0)) return "e";
+    if (!inside(m, 1, 14)) return ".";
+    return y === 2 && (inside(m, 3, 5) || inside(m, 9, 11)) ? "w" : "b";
+  }
+  if (y === 5) return inside(m, 1, 14) ? "e" : ".";
+  if (y === 6 || y === 7) return inside(m, 2, 4) || inside(m, 10, 12) ? (y === 6 ? "a" : "e") : ".";
+  return ".";
+};
+
+// ── 사막 피라미드 ──
+
+/** 사암 벽돌 (줄마다 엇갈린 줄눈) */
+const sandstone: Shape = (x, y) => {
+  if (y === 0) return "t";
+  if (y === 7) return ".";
+  if (y === 3 || y === 6) return "e";
+  return (y < 3 ? x % 8 === 0 : x % 8 === 4) ? "e" : "b";
+};
+/** 황금 블록에 새긴 호루스의 눈 */
+const goldEye: Shape = (x, y) => {
+  const m = x % 16;
+  if (y === 0) return "t";
+  if (y === 6) return "e";
+  if (y === 7) return ".";
+  if (x === 0 || x === 31) return "e";
+  if (y === 2 && inside(m, 5, 10)) return "a";
+  if (y === 3 && (m === 4 || m === 11)) return "a";
+  if (y === 3 && inside(m, 7, 8)) return "e";
+  if (y === 4 && inside(m, 5, 10)) return "a";
+  if (y === 5 && m === 6) return "a";
+  return "b";
+};
+/** 모래 더미: 가운데가 봉긋 */
+const sandPile: Shape = (x, y) => {
+  const span = [[6, 25], [3, 28], [1, 30], [0, 31], [0, 31], [0, 31], [1, 30], [-1, -2]][y];
+  if (!inside(x, span[0], span[1])) return ".";
+  if (y <= 1) return "t";
+  if (y === 6) return "e";
+  return (x * 3 + y * 5) % 7 === 0 ? "a" : "b";
+};
+/** 마법 양탄자: 테두리 무늬 + 가운데 마름모 + 양끝·아래 술 */
+const carpet: Shape = (x, y) => {
+  if (y === 0 || y === 7) return ".";
+  if (x === 0 || x === 31) return y <= 5 ? "t" : ".";
+  if (y === 6) return x % 2 === 0 ? "t" : ".";
+  if (y === 1 || y === 5) return x % 3 === 0 ? "a" : "e";
+  const d = Math.abs((x % 8) - 3.5) + Math.abs(y - 3);
+  return d <= 1.5 ? "a" : "b";
+};
+
 export const THEME_PLATFORMS: Record<ThemeId, Platforms> = {
   dot: PLATFORM_PRESETS,
   // 솜사탕: 뭉게구름 (분홍 점 · 민트 하트 · 금 간 바닐라 · 라벤더 물결)
@@ -354,6 +476,27 @@ export const THEME_PLATFORMS: Record<ThemeId, Platforms> = {
     highJump: art(snowflake, { t: "#ffd6e6", b: "#ffb3cf", a: "#ffffff", e: "#b8577a" }),
     oneTime: art(thinIce, { t: "#c9f3ef", w: "#ffffff", b: "#9fe8e0", a: "#2f7f78", e: "#2f7f78" }),
     moving: art(sled, { t: "#ff8a8a", b: "#e05c5c", a: "#a83a3a", e: "#7a4a2a", s: "#c9d6e6" }),
+  },
+  // 벚꽃 마을: 아치 돌다리 · 종이우산 · 꽃잎 · 종이 연등
+  sakura: {
+    basic: art(bridge, { t: "#c9c4bb", s: "#b4afa6", b: "#a9a49b", a: "#7a5a46", e: "#7f7a72" }),
+    highJump: art(umbrella, { t: "#ff9ab8", a: "#c94a74", b: "#ffb7cf", e: "#c94a74", w: "#8a5a3c" }),
+    oneTime: art(petals, { t: "#ffd6e4", b: "#ffb7cf", a: "#ff8fb3", e: "#e07a9e" }),
+    moving: art(paperLantern, { t: "#ff8a5c", s: "#d9603a", b: "#ff7a4a", a: "#c9482a", w: "#ffe08a", e: "#3d2c2c" }),
+  },
+  // 장난감 방: 레고 블록 · 용수철 · ABC 블록 · 장난감 기차
+  toys: {
+    basic: art(lego, { t: "#ff6f6f", s: "#ff9a9a", b: "#e85555", e: "#a83a3a" }),
+    highJump: art(spring, { t: "#8fc4ff", a: "#9aa3b2", e: "#3f6aa8" }),
+    oneTime: art(abcBlocks, { r: "#ff9a9a", y: "#ffe08a", g: "#a8e8a0", u: "#a8d0ff", w: "#ffffff", e: "#6a5a8a" }),
+    moving: art(train, { t: "#5c8fe0", b: "#ffd36b", w: "#bfe8ff", e: "#3d2c5e", a: "#e05c5c" }),
+  },
+  // 사막 피라미드: 사암 벽돌 · 호루스의 눈 황금 블록 · 모래 더미 · 마법 양탄자
+  desert: {
+    basic: art(sandstone, { t: "#f4d79a", b: "#e0b878", e: "#a87a40" }),
+    highJump: art(goldEye, { t: "#fff1a8", b: "#ffd36b", a: "#3f5aa8", e: "#b8862a" }),
+    oneTime: art(sandPile, { t: "#fff0c8", b: "#f0d49a", a: "#d9b878", e: "#c9a46a" }),
+    moving: art(carpet, { t: "#ffd36b", a: "#ffd36b", e: "#7a2a4a", b: "#c9405e" }),
   },
 };
 

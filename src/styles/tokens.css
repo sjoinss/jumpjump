@@ -491,3 +491,144 @@
   --radius-lg: 24px;
   --radius-xl: 32px;
 }
+
+/* 벚꽃 마을: 자두색 외곽선 + 벚꽃 분홍·말차 민트, 둥근 모서리 */
+:root[data-theme="sakura"] {
+  --logo-fill: #ffadc8;
+  --logo-stroke: #7a3f5a;
+  --color-ink: #4a2a3a;
+  --color-text: #4a2a3a;
+  --color-muted: #7a5464;
+  --color-line: #7a3f5a;
+  --outline-width: 3px;
+  --edge-height: 4px;
+
+  --color-background: #fff5f8;
+  --color-background-dot: #fde0ea;
+  --color-surface: #fffdfb;
+  --color-surface-alt: #fff0f4;
+  --color-border: #f5d9e3;
+  --color-border-strong: #c99aac;
+
+  --color-primary: #ffadc8;
+  --color-primary-edge: #e07ea0;
+  --color-primary-soft: #ffe4ee;
+  --color-primary-strong: #a83266;
+  --color-secondary: #a8dcc8;
+  --color-secondary-edge: #6cb89c;
+  --color-secondary-soft: #e4f5ee;
+  --color-mint: #a8e8c8;
+  --color-mint-edge: #6cc79e;
+  --color-butter: #ffe39a;
+  --color-butter-edge: #d9b24a;
+  --color-sky: #c6e6ff;
+  --color-sky-edge: #8cbfe8;
+  --color-cream: #fffaf4;
+  --color-cream-edge: #ead8d0;
+  --color-danger-fill: #ff9d94;
+  --color-danger-edge: #d9645b;
+
+  --color-desk-bg: #ffe6ef;
+  --color-desk-bg-2: #e8f6ef;
+  --color-desk-mid-1: #fff0f5;
+  --color-desk-mid-2: #f3faf6;
+
+  --radius-sm: 12px;
+  --radius-md: 18px;
+  --radius-lg: 26px;
+  --radius-xl: 34px;
+}
+
+/* 장난감 방: 남색 외곽선 + 빨강·파랑 원색 장난감, 반듯한 모서리 */
+:root[data-theme="toys"] {
+  --logo-fill: #ff8a8a;
+  --logo-stroke: #3d3a6b;
+  --color-ink: #2c2a52;
+  --color-text: #2c2a52;
+  --color-muted: #55537a;
+  --color-line: #3d3a6b;
+  --outline-width: 3px;
+  --edge-height: 4px;
+
+  --color-background: #fff8e6;
+  --color-background-dot: #ffeec4;
+  --color-surface: #fffdf6;
+  --color-surface-alt: #fff4dc;
+  --color-border: #f2e2bc;
+  --color-border-strong: #b8a87a;
+
+  --color-primary: #ff8a8a;
+  --color-primary-edge: #e05c5c;
+  --color-primary-soft: #ffe4e4;
+  --color-primary-strong: #a82e2e;
+  --color-secondary: #8fc4ff;
+  --color-secondary-edge: #5c8fe0;
+  --color-secondary-soft: #e2efff;
+  --color-mint: #a8e8c8;
+  --color-mint-edge: #6cc79e;
+  --color-butter: #ffe39a;
+  --color-butter-edge: #d9b24a;
+  --color-sky: #c6e6ff;
+  --color-sky-edge: #8cbfe8;
+  --color-cream: #fffbef;
+  --color-cream-edge: #e6d8b4;
+  --color-danger-fill: #ff9d94;
+  --color-danger-edge: #d9645b;
+
+  --color-desk-bg: #fff1c9;
+  --color-desk-bg-2: #e2efff;
+  --color-desk-mid-1: #fff6dc;
+  --color-desk-mid-2: #f0f6ff;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+}
+
+/* 사막 피라미드: 진갈색 외곽선 + 모래 황금·오아시스 청록 */
+:root[data-theme="desert"] {
+  --logo-fill: #ffc46b;
+  --logo-stroke: #6b4426;
+  --color-ink: #4a2e18;
+  --color-text: #4a2e18;
+  --color-muted: #76563a;
+  --color-line: #6b4426;
+  --outline-width: 3px;
+  --edge-height: 4px;
+
+  --color-background: #fff6e2;
+  --color-background-dot: #fbe6bc;
+  --color-surface: #fffcf4;
+  --color-surface-alt: #fff1d6;
+  --color-border: #efd9b0;
+  --color-border-strong: #c4a272;
+
+  --color-primary: #ffc46b;
+  --color-primary-edge: #e09a3a;
+  --color-primary-soft: #ffeccc;
+  --color-primary-strong: #8f5210;
+  --color-secondary: #6fc8c0;
+  --color-secondary-edge: #3fa098;
+  --color-secondary-soft: #dcf3f0;
+  --color-mint: #a8e8c8;
+  --color-mint-edge: #6cc79e;
+  --color-butter: #ffe39a;
+  --color-butter-edge: #d9b24a;
+  --color-sky: #c6e6ff;
+  --color-sky-edge: #8cbfe8;
+  --color-cream: #fffaee;
+  --color-cream-edge: #e8d6b0;
+  --color-danger-fill: #ff9d94;
+  --color-danger-edge: #d9645b;
+
+  --color-desk-bg: #fbe6bc;
+  --color-desk-bg-2: #dcf3f0;
+  --color-desk-mid-1: #fff1d6;
+  --color-desk-mid-2: #eef8f6;
+
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 26px;
+}
