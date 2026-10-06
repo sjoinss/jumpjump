@@ -322,3 +322,37 @@ test("일회용 발판을 밟으면 무너지는 아래 발판의 후보 구슬�
   assert.ok(!ev.some((e) => e.type === "candidate"), "떨어지는 동안 선택창 없음");
   assert.ok(ev.some((e) => e.type === "gameover"));
 });
+
+test("가만히 있으면 끝없이 오르지 못한다: 혼자든 동료가 있든, 어느 자리에서든 (먼 발판 구간)", () => {
+  for (const [companionMax, companions] of [[0, 0], [5, 0], [5, 1], [5, 2], [5, 3]]) {
+    for (let seed = 1; seed <= 8; seed++) {
+      for (const x of [0, 60, 100, 148, 160, 200, 296]) {
+        const w = new World({ rng: mulberry32(seed), playHeight: 720, viewHeight: 720, companionMax });
+        w.companions = companions;
+        w.hero.x = Math.min(x, CONFIG.view.width - w.formation.width);
+        w.launch();
+        run(w, 200);
+        assert.ok(w.score < 120, `M${companionMax} C${companions} seed ${seed} x ${x}: ${w.score}m`);
+      }
+    }
+  }
+});
+
+test("먼 발판 구간: 기준 발판에서 점프로 닿는 높이 안의 발판은 착지 폭보다 멀리, 움직이지 않고, 벽 밖으로는 조금만", () => {
+  const cfg = CONFIG.world.farPlacement;
+  for (const [companionMax, companions] of [[0, 0], [5, 1], [5, 2]]) {
+    const w = new World({ rng: mulberry32(3), playHeight: 720, viewHeight: 720, companionMax });
+    w.companions = companions;
+    w.cameraY = 30000;
+    w.setView(720, 720);
+    const ps = w.platforms.filter((p) => p.kind !== "ground" && p.y > 1000);
+    let far = 0;
+    for (const p of ps) {
+      assert.ok(p.x >= -cfg.overhang - 1e-6 && p.x + p.width <= CONFIG.view.width + cfg.overhang + 1e-6, `x ${p.x}`);
+      if (p.x < 0 || p.x + p.width > CONFIG.view.width) far++;
+    }
+    assert.ok(ps.length > 100);
+    // 화면 안만으론 자리가 모자라는 경우가 실제로 생긴다 (동료 1~2명)
+    if (companions > 0) assert.ok(far > 0, `C${companions}`);
+  }
+});

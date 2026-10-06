@@ -132,6 +132,10 @@ export class World {
   private topY = 0;
   /** 다음 후보 순번 (candidateHeight(n)) */
   private nextCandidate = 0;
+  /** 마지막으로 만든 발판 (먼 발판 구간의 기준) */
+  private last: { center: number; y: number; kind: PlatformKind } | null = null;
+  /** 먼 발판 구간: anchor(가운데 x)에서 점프로 닿는 높이(untilY)까지는 anchor와 좌우로 멀리 놓는다 */
+  private far: { anchor: number; untilY: number } | null = null;
 
   constructor(opts: WorldOptions) {
     this.rng = opts.rng;
@@ -172,6 +176,8 @@ export class World {
     this.nextId = 1;
     this.nextCandidate = 0;
     this.candidates = [];
+    this.last = null;
+    this.far = null;
     this.platforms = [{ id: 0, kind: "ground", x: -w, y: 0, width: w * 3, touched: true }];
     this.topY = CONFIG.world.firstPlatformY - gapAt(0);
     this.spawn();
@@ -362,12 +368,16 @@ export class World {
       const width = this.platformWidth;
       const gap = gapAt(this.topY) * (1 - CONFIG.world.gapJitter * this.rng());
       this.topY += gap;
+      const far = this.farRun();
       const meters = toMeters(this.topY);
       const hasCandidate = meters >= candidateHeight(this.nextCandidate);
       while (meters >= candidateHeight(this.nextCandidate)) this.nextCandidate += 1;
       // 후보가 올라가는 발판은 부서지지 않는 기본 발판으로
-      const kind = hasCandidate ? "basic" : pickKind(meters, this.rng());
-      const x = this.rng() * (CONFIG.view.width - width);
+      let kind = hasCandidate ? "basic" : pickKind(meters, this.rng());
+      // 먼 발판 구간엔 움직이는 발판을 두지 않는다 (가만히 있는 캐릭터 밑으로 지나가 버리지 않게)
+      if (far !== null && kind === "moving") kind = "basic";
+      const x = far === null ? this.rng() * (CONFIG.view.width - width) : this.farX(far, width);
+      this.last = { center: x + width / 2, y: this.topY, kind };
       const id = this.nextId++;
       // 움직이는 발판: 방향·빠르기는 발판마다 다르게
       const m = CONFIG.special.moving;
@@ -385,5 +395,43 @@ export class World {
         });
       }
     }
+  }
+
+  /**
+   * 가운데에 가만히 있어도 끝없이 오르는 것을 막는다. 발판이 넓어서 아무 데나 놓아도 화면 가운데에 걸리기 때문.
+   * 가끔(높이에 따라) 직전 발판을 기준으로 삼아, 거기서 점프로 닿는 높이까지는 기준 발판과 좌우로 "착지 폭"보다 멀리 놓는다.
+   * 그러면 기준 발판에 서 있던 자리에서 움직이지 않으면 다음 발판을 절대 밟을 수 없다 (기준 발판 위에서 계속 튀기만 함).
+   * 고점프·움직이는 발판은 닿는 범위가 달라서 기준으로 삼지 않는다. 지금 topY(새 발판 높이)가 정해진 뒤 부른다
+   */
+  private farRun(): number | null {
+    if (this.far && this.topY > this.far.untilY) this.far = null;
+    const cfg = CONFIG.world.farPlacement;
+    const last = this.last;
+    if (!this.far && last && (last.kind === "basic" || last.kind === "oneTime") && toMeters(this.topY) >= cfg.fromM) {
+      let chance = 0;
+      for (const step of cfg.chance) if (toMeters(this.topY) >= step.fromM) chance = step.value;
+      if (this.rng() < chance) this.far = { anchor: last.center, untilY: last.y + maxJumpHeight() };
+    }
+    return this.far ? this.far.anchor : null;
+  }
+
+  /**
+   * 기준(anchor)과 가운데 사이가 착지 폭(대열 폭 + 발판 폭)보다 먼 x. 화면 안만으론 자리가 모자라면(동료 1~2명 등)
+   * 발판이 벽 밖으로 조금(최대 overhang) 나가도 된다 — 나간 부분은 잘려 보이고, 벽 안쪽 부분을 밟으면 된다
+   */
+  private farX(anchor: number, width: number): number {
+    const cfg = CONFIG.world.farPlacement;
+    const span = this.formation.width + width + cfg.margin;
+    const room = CONFIG.view.width - width;
+    const over = Math.min(cfg.overhang, Math.max(0, (span - room) / 2));
+    const lo = width / 2 - over;
+    const hi = CONFIG.view.width - width / 2 + over;
+    const left = anchor - span - lo;
+    const right = hi - (anchor + span);
+    let center: number;
+    if (left <= 0 && right <= 0) center = anchor - lo > hi - anchor ? lo : hi;
+    else if (this.rng() * (Math.max(0, left) + Math.max(0, right)) < Math.max(0, left)) center = lo + this.rng() * left;
+    else center = anchor + span + this.rng() * right;
+    return center - width / 2;
   }
 }

@@ -392,6 +392,11 @@ export class Engine {
     // 발판 (바닥 제외). 시작 장면에서는 숨긴다
     if (this.platformSprites && this.platformAlpha > 0) {
       ctx.globalAlpha = this.reducedMotion ? 1 : this.platformAlpha;
+      // 먼 발판은 벽 밖으로 조금 나갈 수 있다 → 판정 영역 밖은 잘라서 (넓은 화면에서도 벽에서 잘려 보이게)
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(vp.playX, -vp.logicalHeight, CONFIG.view.width, vp.logicalHeight * 3);
+      ctx.clip();
       for (const p of world.platforms) {
         if (p.kind === "ground") continue;
         // 동료가 늘어 좁아진 발판은 그림도 같은 비율로 작게 (판정 = 보이는 크기, 도트가 찌그러지지 않게).
@@ -421,6 +426,7 @@ export class Engine {
         drawSprite(ctx, sprite, px, Math.round(y), width, height);
         if (this.markers) this.drawMarker(p.kind, px + width / 2, Math.round(y));
       }
+      ctx.restore();
       ctx.globalAlpha = 1;
     }
 

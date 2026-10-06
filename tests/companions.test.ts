@@ -202,8 +202,11 @@ test("동료 최대 인원 0으로 시작한 판은 발판 판정 폭이 넓다 
   assert.equal(solo.platformWidth, CONFIG.platform.width + CONFIG.world.platformWidthBonusSolo);
   assert.equal(withM.platformWidth, CONFIG.platform.width);
   assert.ok(CONFIG.world.platformWidthBonusSolo > 0);
-  // 넓어져도 화면 폭 안에서만 생긴다
+  // 넓어져도 보이는 발판(기본 크기, 가운데 정렬)은 화면 폭 안에 생긴다. 먼 발판도 혼자일 땐 보이지 않는 여유만 벽 밖으로 나간다
   solo.cameraY = 5000;
   solo.setView(720, 720);
-  for (const p of solo.platforms.filter((q) => q.kind !== "ground")) assert.ok(p.x >= 0 && p.x + p.width <= CONFIG.view.width);
+  const inset = (solo.platformWidth - CONFIG.platform.width) / 2;
+  for (const p of solo.platforms.filter((q) => q.kind !== "ground")) {
+    assert.ok(p.x + inset >= -1e-6 && p.x + p.width - inset <= CONFIG.view.width + 1e-6, `x ${p.x}`);
+  }
 });
