@@ -77,11 +77,11 @@
   --spacing-xl: 32px;
   --spacing-2xl: 48px;
 
-  /* 모서리 */
-  --radius-sm: 8px;
-  --radius-md: 14px;
-  --radius-lg: 20px;
-  --radius-xl: 28px;
+  /* 모서리 (모든 테마 공통 — 도시 빌딩 기준) */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
   --radius-full: 999px;
 
   /* 글자: 제목·버튼·HUD는 번들 폰트(Jua), 긴 본문은 시스템 한글 폰트 */
@@ -159,11 +159,6 @@
 
   --color-desk-bg: #fff0f6;
   --color-desk-bg-2: #f1f6ff;
-
-  --radius-sm: 10px;
-  --radius-md: 18px;
-  --radius-lg: 24px;
-  --radius-xl: 32px;
 }
 
 /* 꿈나라: 라벤더·하늘빛, 은은한 빛 */
@@ -202,11 +197,6 @@
 
   --color-desk-bg: #efe8ff;
   --color-desk-bg-2: #e2ecff;
-
-  --radius-sm: 10px;
-  --radius-md: 16px;
-  --radius-lg: 24px;
-  --radius-xl: 30px;
 }
 
 /* 바닷속: 맑은 푸른색, 거품처럼 둥글게 */
@@ -250,11 +240,6 @@
   --color-desk-bg-2: #e6f5ff;
   --color-desk-mid-1: #dcefff;
   --color-desk-mid-2: #d3ebff;
-
-  --radius-sm: 10px;
-  --radius-md: 16px;
-  --radius-lg: 24px;
-  --radius-xl: 30px;
 }
 
 /* 블록 월드: 잔디·흙·돌 색, 모서리를 네모나게 */
@@ -297,11 +282,6 @@
   --color-desk-bg-2: #dcebff;
   --color-desk-mid-1: #e6f0f4;
   --color-desk-mid-2: #e9f1e1;
-
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-xl: 10px;
 }
 
 /* 과자 나라: 딸기우유·민트·초코 외곽선, 말랑하게 둥글게 */
@@ -344,11 +324,6 @@
   --color-desk-bg-2: #e6f6ff;
   --color-desk-mid-1: #f3f0ff;
   --color-desk-mid-2: #fff0f6;
-
-  --radius-sm: 12px;
-  --radius-md: 18px;
-  --radius-lg: 26px;
-  --radius-xl: 34px;
 }
 
 /* 도시 빌딩: 슬레이트 블루 외곽선 + 택시 주황, 반듯한 모서리 */
@@ -391,11 +366,6 @@
   --color-desk-bg-2: #e6ebf5;
   --color-desk-mid-1: #eef1f8;
   --color-desk-mid-2: #e3e9f4;
-
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 18px;
 }
 
 /* 동화 숲: 짙은 숲색 외곽선 + 새싹 초록·버섯 빨강, 둥근 모서리 */
@@ -438,11 +408,6 @@
   --color-desk-bg-2: #fff3dc;
   --color-desk-mid-1: #eef7e6;
   --color-desk-mid-2: #f6f9ec;
-
-  --radius-sm: 12px;
-  --radius-md: 18px;
-  --radius-lg: 24px;
-  --radius-xl: 32px;
 }
 
 /* 겨울 왕국: 깊은 밤색 파랑 외곽선 + 얼음 하늘색·딸기 분홍 */
@@ -485,11 +450,6 @@
   --color-desk-bg-2: #f1e8fb;
   --color-desk-mid-1: #edf4fd;
   --color-desk-mid-2: #f6f2fd;
-
-  --radius-sm: 12px;
-  --radius-md: 18px;
-  --radius-lg: 24px;
-  --radius-xl: 32px;
 }
 
 /* 벚꽃 마을: 자두색 외곽선 + 벚꽃 분홍·말차 민트, 둥근 모서리 */
@@ -532,11 +492,6 @@
   --color-desk-bg-2: #e8f6ef;
   --color-desk-mid-1: #fff0f5;
   --color-desk-mid-2: #f3faf6;
-
-  --radius-sm: 12px;
-  --radius-md: 18px;
-  --radius-lg: 26px;
-  --radius-xl: 34px;
 }
 
 /* 장난감 방: 남색 외곽선 + 빨강·파랑 원색 장난감, 반듯한 모서리 */
@@ -579,11 +534,6 @@
   --color-desk-bg-2: #e2efff;
   --color-desk-mid-1: #fff6dc;
   --color-desk-mid-2: #f0f6ff;
-
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 20px;
 }
 
 /* 사막 피라미드: 진갈색 외곽선 + 모래 황금·오아시스 청록 */
@@ -626,9 +576,4 @@
   --color-desk-bg-2: #dcf3f0;
   --color-desk-mid-1: #fff1d6;
   --color-desk-mid-2: #eef8f6;
-
-  --radius-sm: 10px;
-  --radius-md: 14px;
-  --radius-lg: 20px;
-  --radius-xl: 26px;
 }
